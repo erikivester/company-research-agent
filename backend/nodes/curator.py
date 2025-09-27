@@ -41,9 +41,13 @@ class Curator:
                     # Ensure score is a valid float
                     tavily_score = float(doc.get('score', 0))  # Default to 0 if no score
                     
-                    # Keep documents with good Tavily score
-                    if tavily_score >= self.relevance_threshold:
-                        logger.info(f"Document passed threshold with score {tavily_score:.4f} for '{doc.get('title', 'No title')}'")
+                    # Always keep company website data regardless of score (first-party information)
+                    is_company_website = doc.get('source') == 'company_website'
+                    
+                    # Keep documents with good Tavily score or company website data
+                    if tavily_score >= self.relevance_threshold or is_company_website:
+                        reason = "company website" if is_company_website else f"score {tavily_score:.4f}"
+                        logger.info(f"Document kept ({reason}) for '{doc.get('title', 'No title')}')")
                         
                         evaluated_doc = {
                             **doc,

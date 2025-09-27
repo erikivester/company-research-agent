@@ -46,16 +46,11 @@ class IndustryAnalyzer(BaseResearcher):
         
         industry_data = {}
         
-        # If we have site_scrape data, include it first
+        # Include site_scrape data for industry analysis
         if site_scrape := state.get('site_scrape'):
-            msg.append("\n📊 Including site scrape data in company analysis...")
-            company_url = state.get('company_url', 'company-website')
-            industry_data[company_url] = {
-                'title': state.get('company', 'Unknown Company'),
-                'raw_content': site_scrape,
-                'query': f'Industry analysis on {company}'  # Add a default query for site scrape
-            }
-        
+            msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
+            industry_data.update(site_scrape)
+
         # Perform additional research with increased search depth
         try:
             # Store documents with their respective queries
