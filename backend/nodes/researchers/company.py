@@ -48,13 +48,8 @@ class CompanyAnalyzer(BaseResearcher):
         
         # If we have site_scrape data, include it first
         if site_scrape := state.get('site_scrape'):
-            msg.append("\n📊 Including site scrape data in company analysis...")
-            company_url = state.get('company_url', 'company-website')
-            company_data[company_url] = {
-                'title': state.get('company', 'Unknown Company'),
-                'raw_content': site_scrape,
-                'query': f'Company overview and information about {company}'  # Add a default query for site scrape
-            }
+            msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
+            company_data.update(site_scrape)
         
         # Perform additional research with comprehensive search
         try:

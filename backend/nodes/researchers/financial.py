@@ -14,7 +14,6 @@ class FinancialAnalyst(BaseResearcher):
         self.analyst_type = "financial_analyzer"
 
     async def analyze(self, state: ResearchState) -> Dict[str, Any]:
-        company = state.get('company', 'Unknown Company')
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
         
@@ -51,13 +50,11 @@ class FinancialAnalyst(BaseResearcher):
             
             # Process site scrape data
             financial_data = {}
+            
+            # Include site_scrape data for financial analysis
             if site_scrape := state.get('site_scrape'):
-                company_url = state.get('company_url', 'company-website')
-                financial_data[company_url] = {
-                    'title': state.get('company', 'Unknown Company'),
-                    'raw_content': site_scrape,
-                    'query': f'Financial information on {company}'
-                }
+                messages.append(AIMessage(content=f"\n📊 Including {len(site_scrape)} pages from company website..."))
+                financial_data.update(site_scrape)
 
             for query in queries:
                 documents = await self.search_documents(state, [query])

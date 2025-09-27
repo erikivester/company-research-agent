@@ -37,7 +37,7 @@ class GroundingNode:
 
         # Only attempt extraction if we have a URL
         if url := state.get('company_url'):
-            msg += f"\n🌐 Analyzing company website: {url}"
+            msg += f"\n🌐 Crawling company website: {url}"
             logger.info(f"Starting website analysis for {url}")
             
             # Send initial briefing status
@@ -46,7 +46,7 @@ class GroundingNode:
                     await websocket_manager.send_status_update(
                         job_id=job_id,
                         status="processing",
-                        message="Analyzing company website",
+                        message="Crawling company website",
                         result={"step": "Initial Site Scrape"}
                     )
 
@@ -60,24 +60,24 @@ class GroundingNode:
                     extract_depth="advanced"
                 )
                 
-                raw_contents = []
+                site_scrape = {}
                 for item in site_extraction.get("results", []):
-                    if content := item.get("raw_content"):
-                        raw_contents.append(content)
+                    if item.get("raw_content"):
+                        page_url = item.get("url", url)
+                        site_scrape[page_url] = {
+                            'raw_content': item.get('raw_content'),
+                            'source': 'company_website'
+                        }
                 
-                if raw_contents:
-                    site_scrape = {
-                        'title': company,
-                        'raw_content': "\n\n".join(raw_contents)
-                    }
-                    logger.info(f"Successfully crawled {len(raw_contents)} content sections")
-                    msg += "\n✅ Successfully crawled content from website"
+                if site_scrape:
+                    logger.info(f"Successfully crawled {len(site_scrape)} pages from website")
+                    msg += f"\n✅ Successfully crawled {len(site_scrape)} pages from website"
                     if websocket_manager := state.get('websocket_manager'):
                         if job_id := state.get('job_id'):
                             await websocket_manager.send_status_update(
                                 job_id=job_id,
                                 status="processing",
-                                message="Successfully crawled and extracted content from website",
+                                message=f"Successfully crawled {len(site_scrape)} pages from website",
                                 result={"step": "Initial Site Scrape"}
                             )
                 else:
