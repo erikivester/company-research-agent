@@ -59,4 +59,4 @@ USER appuser
 
 # FIX: Use 'python -m uvicorn' in SHELL form. This ensures Python finds the module 
 # and the $PORT variable is correctly expanded for Cloud Run.
-CMD python -m uvicorn application:app --host 0.0.0.0 --port $PORT
+CMD python -c "import os; print('TAVILY:', os.getenv('TAVILY_API_KEY')); print('GEMINI:', os.getenv('GEMINI_API_KEY')); print('AIRTABLE_TABLE_NAME:', os.getenv('AIRTABLE_TABLE_NAME'));" && sleep 10 && exit 0
