@@ -58,5 +58,5 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Use the exec form for the CMD 
-CMD ["uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+# Corrected CMD (Uses Python's Module System)
+CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
