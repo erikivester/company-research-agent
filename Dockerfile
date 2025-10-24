@@ -2,7 +2,6 @@
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/ui
 COPY ui/package*.json ./
-# Use npm ci for clean installs in automated environments
 RUN npm ci
 COPY ui/ ./
 RUN npm run build
@@ -12,28 +11,30 @@ FROM python:3.11-slim AS backend-builder
 WORKDIR /app
 COPY requirements.txt .
 
-# CRITICAL FIX: Install core build tools and headers required for Python packages (e.g., reportlab, Pillow)
+# CRITICAL FIX (Stage 2): Install core build tools and headers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
     libjpeg-dev \
     zlib1g-dev \
+    libpng-dev \
+    libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install all Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 3: Final Image (CRITICAL RUNTIME FIX)
+# Stage 3: Final Image (Runtime)
 FROM python:3.11-slim
 WORKDIR /app
 
-# CRITICAL FIX: Install minimal runtime system libraries
+# CRITICAL FIX (Stage 3): Install minimal runtime system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    # Runtime libraries for image/PDF processing (Pillow, reportlab)
     libjpeg62-turbo \
     zlib1g \
-    # Runtime fonts required by reportlab to prevent crashes
+    libpng16-16 \
+    libfreetype6 \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,5 +63,5 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Corrected CMD (Uses Python's Module System and environment variable)
+# FINAL CORRECTED STARTUP COMMAND
 CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
