@@ -1,7 +1,9 @@
-# backend/graph.py
+// backend/graph.py
+
 import logging
 from typing import Any, AsyncIterator, Dict
 from datetime import datetime
+from langchain_core.messages import AIMessage # Import added for simple_report_compiler_node
 
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph
@@ -11,7 +13,7 @@ from .nodes import GroundingNode
 from .nodes.briefing import Briefing
 from .nodes.collector import Collector
 from .nodes.curator import Curator
-from .nodes.editor import Editor
+from .nodes.editor import Editor # Keep import for typing/safety, but won't be used in flow
 from .nodes.enricher import Enricher
 from .nodes.tagger import Tagger
 from .nodes.researchers import (
@@ -26,6 +28,57 @@ from backend.utils.references import format_references_section
 
 
 logger = logging.getLogger(__name__)
+
+# --- NEW HELPER FUNCTION TO BYPASS EDITOR (Generates state['report']) ---
+async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
+    """
+    Compiles individual briefings into a raw, unedited markdown report (state['report'])
+    when the full LLM Editor step is bypassed.
+    """
+    briefing_keys_map = {
+        'company_briefing': 'Company Overview',
+        'industry_briefing': 'Industry Overview',
+        'financial_briefing': 'Financial Overview',
+        'news_briefing': 'News',
+        'flw_sustainability_briefing': 'FLW and Sustainability'
+    }
+    # Define preferred order
+    report_order = ['company_briefing', 'industry_briefing', 'financial_briefing', 'flw_sustainability_briefing', 'news_briefing']
+    report_parts = []
+    
+    company = state.get('company', 'Research Report')
+    report_parts.append(f"# {company} Research Report (Raw - Editor Skipped)\n")
+
+    for key in report_order:
+        content = state.get(key)
+        if isinstance(content, str) and content.strip():
+            header = briefing_keys_map.get(key, key.replace('_', ' ').title())
+            report_parts.append(f"## {header}\n{content}\n")
+    
+    # Append references section
+    references_list = state.get("references", [])
+    if references_list:
+        ref_info = state.get("reference_info", {})
+        ref_titles = state.get("reference_titles", {})
+        try:
+            # Use the existing utility to format the references section
+            ref_text = format_references_section(references_list, ref_info, ref_titles)
+            report_parts.append(ref_text)
+        except Exception as ref_fmt_exc:
+            logger.error(f"Error formatting references during raw compilation: {ref_fmt_exc}")
+            report_parts.append("\n## References\n[Error formatting references]")
+            
+    final_report = "\n".join(report_parts)
+    state['report'] = final_report
+    
+    # Add status message to the stream for tracking
+    messages = state.get('messages', [])
+    messages.append(AIMessage(content=f"🚧 Editor Skipped. Generated raw report from briefings (Length: {len(final_report)} chars)."))
+    state['messages'] = messages
+    
+    return state
+# --- END NEW HELPER FUNCTION ---
+
 
 class Graph:
     def __init__(self, company=None, url=None, hq_location=None, industry=None,
@@ -61,7 +114,7 @@ class Graph:
         self.curator = Curator()
         self.enricher = Enricher()
         self.briefing = Briefing()
-        self.editor = Editor() # Node initialized but intentionally not used in the workflow
+        # self.editor = Editor() # COMMENTED OUT: Editor node is no longer initialized
         self.tagger = Tagger()
 
     async def airtable_upload_node(self, state: ResearchState) -> ResearchState:
@@ -91,7 +144,8 @@ class Graph:
                         "curating", "document kept", "no relevant documents",
                         "enriching", "extracting content", "enrichment complete",
                         "briefing for", "briefing start", "briefing complete",
-                        "compiling", "report compilation", "classification", "classifying"
+                        "compiling", "report compilation", "classification", "classifying",
+                        "editor skipped" # Added for the bypass case
                     ]):
                          process_notes.append(content)
 
@@ -100,7 +154,7 @@ class Graph:
             process_notes_str = "\n".join(process_notes)
             # --- End Process Notes ---
 
-            # --- Build References ---
+            # --- Build References (Uses state['references'] which is populated by Curator) ---
             references_str = ""
             references_list = state.get("references", [])
             reference_info = state.get("reference_info", {})
@@ -108,6 +162,7 @@ class Graph:
             if references_list:
                 try:
                     references_str = format_references_section(references_list, reference_info, reference_titles)
+                    # The format_references_section adds "## References\n", which we strip for the Airtable field
                     references_str = references_str.replace("## References\n", "").strip()
                 except Exception as ref_fmt_exc:
                      logger.error(f"Error formatting references in upload node: {ref_fmt_exc}")
@@ -130,7 +185,7 @@ class Graph:
                  "revenue_tags": revenue_tag, # Value is already extracted to be a string or None
                  
                  # --- REPORT/BRIEFING MAPPINGS (Using internal keys expected by airtable_uploader.py) ---
-                 "report_markdown": state.get("report", ""), # This will be empty/missing due to optimization
+                 "report_markdown": state.get("report", ""), # Now populated by raw_compiler if editor is skipped
                  "financial_briefing": state.get("financial_briefing", ""), 
                  "industry_briefing": state.get("industry_briefing", ""),   
                  "company_briefing": state.get("company_briefing", ""),     
@@ -166,7 +221,7 @@ class Graph:
         return state # Always return the state
 
     def _build_workflow(self):
-        """Configure the state graph workflow"""
+        """Configure the state graph workflow (MODIFIED TO BYPASS EDITOR)"""
         self.workflow = StateGraph(ResearchState)
 
         # Add nodes
@@ -180,7 +235,8 @@ class Graph:
         self.workflow.add_node("curator", self.curator.run)
         self.workflow.add_node("enricher", self.enricher.run)
         self.workflow.add_node("briefing", self.briefing.run)
-        self.workflow.add_node("editor", self.editor.run)
+        self.workflow.add_node("raw_compiler", simple_report_compiler_node) # NEW NODE: Simple compilation
+        # self.workflow.add_node("editor", self.editor.run) # REMOVED
         self.workflow.add_node("tagger", self.tagger.run)
         self.workflow.add_node("airtable_uploader", self.airtable_upload_node)
 
@@ -201,24 +257,18 @@ class Graph:
         self.workflow.add_edge("curator", "enricher")
         self.workflow.add_edge("enricher", "briefing")
         
-        # 🟢 OPTIMIZATION: Skip 'editor' node, connect 'briefing' directly to 'tagger'
-        self.workflow.add_edge("briefing", "tagger") 
+        # --- MODIFIED EDGES TO BYPASS EDITOR ---
+        self.workflow.add_edge("briefing", "raw_compiler") # Briefing output goes to compiler
+        self.workflow.add_edge("raw_compiler", "tagger")   # Compiler output (with state['report']) goes to tagger
+        # --- END MODIFIED EDGES ---
         
-        # The 'editor' node is no longer part of the chain after the optimization.
-        # self.workflow.add_edge("briefing", "editor") 
-        # self.workflow.add_edge("editor", "tagger")
-
         self.workflow.add_edge("tagger", "airtable_uploader")
 
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
         initial_state_data = self.input_state.copy()
-        
-        # 🟢 CRITICAL FIX: Extract airtable_record_id from the nested 'configurable' key
-        # The 'thread' argument is the LangGraph config dict, which contains the ID here.
-        record_id = thread.get('configurable', {}).get('airtable_record_id')
-        if record_id:
-             initial_state_data['airtable_record_id'] = record_id
+        if 'airtable_record_id' in thread:
+             initial_state_data['airtable_record_id'] = thread['airtable_record_id']
 
         compiled_graph = self.workflow.compile()
 
@@ -251,11 +301,11 @@ class Graph:
 
     def _calculate_progress(self, current_node_name: str) -> int:
         """Estimates progress based on the current node."""
-        # Removed 'editor' from the progress calculation
+        # Adjusted node_order to replace "editor" with "raw_compiler"
         node_order = [
             "grounding", "financial_analyst", # Treat parallel block start as one step
             "collector", "curator", "enricher", "briefing",
-            "tagger", "airtable_uploader", "__end__" # Editor removed
+            "raw_compiler", "tagger", "airtable_uploader", "__end__"
         ]
         try:
              base_index = -1
