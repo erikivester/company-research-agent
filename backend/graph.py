@@ -61,7 +61,7 @@ class Graph:
         self.curator = Curator()
         self.enricher = Enricher()
         self.briefing = Briefing()
-        self.editor = Editor()
+        self.editor = Editor() # Node initialized but intentionally not used in the workflow
         self.tagger = Tagger()
 
     async def airtable_upload_node(self, state: ResearchState) -> ResearchState:
@@ -130,7 +130,7 @@ class Graph:
                  "revenue_tags": revenue_tag, # Value is already extracted to be a string or None
                  
                  # --- REPORT/BRIEFING MAPPINGS (Using internal keys expected by airtable_uploader.py) ---
-                 "report_markdown": state.get("report", ""),
+                 "report_markdown": state.get("report", ""), # This will be empty/missing due to optimization
                  "financial_briefing": state.get("financial_briefing", ""), 
                  "industry_briefing": state.get("industry_briefing", ""),   
                  "company_briefing": state.get("company_briefing", ""),     
@@ -200,8 +200,14 @@ class Graph:
         self.workflow.add_edge("collector", "curator")
         self.workflow.add_edge("curator", "enricher")
         self.workflow.add_edge("enricher", "briefing")
-        self.workflow.add_edge("briefing", "editor")
-        self.workflow.add_edge("editor", "tagger")
+        
+        # 🟢 OPTIMIZATION: Skip 'editor' node, connect 'briefing' directly to 'tagger'
+        self.workflow.add_edge("briefing", "tagger") 
+        
+        # The 'editor' node is no longer part of the chain after the optimization.
+        # self.workflow.add_edge("briefing", "editor") 
+        # self.workflow.add_edge("editor", "tagger")
+
         self.workflow.add_edge("tagger", "airtable_uploader")
 
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
@@ -245,10 +251,11 @@ class Graph:
 
     def _calculate_progress(self, current_node_name: str) -> int:
         """Estimates progress based on the current node."""
+        # Removed 'editor' from the progress calculation
         node_order = [
             "grounding", "financial_analyst", # Treat parallel block start as one step
             "collector", "curator", "enricher", "briefing",
-            "editor", "tagger", "airtable_uploader", "__end__"
+            "tagger", "airtable_uploader", "__end__" # Editor removed
         ]
         try:
              base_index = -1
