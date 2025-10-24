@@ -12,11 +12,12 @@ FROM python:3.11-slim AS backend-builder
 WORKDIR /app
 COPY requirements.txt .
 
-# FIX: Install core build tools required by many Python packages (e.g., reportlab)
+# CRITICAL FIX: Install core build tools and headers required for Python packages (e.g., reportlab, Pillow)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
-    # Add libpq-dev if you later connect to Postgres, etc.
+    libjpeg-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install all Python dependencies
@@ -26,10 +27,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python:3.11-slim
 WORKDIR /app
 
-# FIX: Install runtime dependencies for stability and PDF generation
+# CRITICAL FIX: Install minimal runtime system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    # CRITICAL: Install necessary fonts for reportlab to function correctly at runtime
+    # Runtime libraries for image/PDF processing (Pillow, reportlab)
+    libjpeg62-turbo \
+    zlib1g \
+    # Runtime fonts required by reportlab to prevent crashes
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
@@ -58,5 +62,5 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Corrected CMD (Uses Python's Module System)
+# Corrected CMD (Uses Python's Module System and environment variable)
 CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
