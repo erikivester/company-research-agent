@@ -19,7 +19,7 @@ from backend.services.pdf_service import PDFService
 from backend.services.websocket_manager import WebSocketManager
 
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
-from backend.airtable_uploader import upload_to_airtable
+from backend.airtable_uploader import update_airtable_record
 from backend.debug_airtable import run_airtable_debug_test
 # ⬆️ END AIRTABLE IMPORTS ⬆️
 
@@ -81,6 +81,51 @@ class PDFGenerationRequest(BaseModel):
     report_content: str
     company_name: str | None = None
 
+# ----------------------------------------------------
+# 🟢 CONCURRENCY CONTROL SETUP
+# ----------------------------------------------------
+# Define the maximum number of research jobs allowed to run concurrently.
+MAX_CONCURRENT_JOBS = 5 
+job_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+
+# ----------------------------------------------------
+# 🟢 SEMAPHORE WRAPPER FOR BACKGROUND TASK
+# ----------------------------------------------------
+# Helper to perform the synchronous Airtable update call in a separate thread
+async def _update_airtable_status_queued(record_id: str, status_text: str):
+    """Helper to call the synchronous update function in a separate thread."""
+    if not record_id:
+        logger.warning("Airtable status update skipped: No record ID provided.")
+        return
+    try:
+        await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
+        logger.debug(f"Airtable status update successful for record {record_id} to {status_text}")
+    except Exception as e:
+        logger.error(f"Airtable status update failed for record {record_id} to {status_text}: {e}", exc_info=True)
+
+
+async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_record_id: str | None):
+    """Acquires semaphore, runs the core research logic, and releases semaphore."""
+    
+    # 1. Acquire the semaphore (blocks if limit reached)
+    await job_semaphore.acquire()
+    logger.info(f"SEMAPHORE ACQUIRED: Job {job_id} starting. {job_semaphore._value} slots remaining.")
+
+    try:
+        # 2. **CRITICAL:** Update status from 'Queued' to 'In Progress' (via Grounding node)
+        # We don't need an explicit update here as the GroundingNode handles the first "In Progress" status.
+        
+        # 3. Run the actual research logic
+        await process_research(job_id, data, airtable_record_id)
+        
+    except Exception as e:
+        logger.error(f"Job {job_id} failed during execution: {e}")
+    finally:
+        # 4. Release the semaphore (executed even if process_research fails)
+        job_semaphore.release()
+        logger.info(f"SEMAPHORE RELEASED: Job {job_id} finished. {job_semaphore._value} slots available.")
+
+
 @app.options("/research")
 async def preflight():
     response = JSONResponse(content=None, status_code=200)
@@ -89,7 +134,7 @@ async def preflight():
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
-# --- MODIFIED: process_research signature to accept airtable_record_id ---
+# --- CORE RESEARCH LOGIC: process_research (No functional change) ---
 async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None):
     try:
         if mongodb:
@@ -177,7 +222,7 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
         )
         if mongodb:
             mongodb.update_job(job_id=job_id, status="failed", error=str(e))
-# --- END MODIFIED process_research ---
+# --- END CORE RESEARCH LOGIC ---
 
 
 @app.post("/research")
@@ -185,8 +230,8 @@ async def research(data: ResearchRequest):
     try:
         logger.info(f"Received research request for {data.company}")
         job_id = str(uuid.uuid4())
-        # Pass airtable_record_id=None for UI-initiated runs
-        asyncio.create_task(process_research(job_id, data, airtable_record_id=None)) 
+        # Pass UI-initiated runs directly to the semaphore queue
+        asyncio.create_task(run_job_with_semaphore(job_id, data, airtable_record_id=None)) 
 
         response = JSONResponse(content={
             "status": "accepted",
@@ -203,20 +248,18 @@ async def research(data: ResearchRequest):
         logger.error(f"Error initiating research: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- NEW: Webhook Endpoint for Airtable Automation ---
+# --- MODIFIED: Webhook Endpoint for Airtable Automation ---
 @app.post("/webhook/start-research")
 async def start_research_webhook(data: AirtableWebhookInput):
     """
     Accepts a POST request (e.g., from an Airtable Automation webhook) 
-    and triggers the research pipeline in the background.
+    and queues the research pipeline using the semaphore.
     """
     try:
         logger.info(f"Received webhook request for {data.company} (Airtable ID: {data.airtable_record_id})")
         
-        # 1. Generate a unique job ID for tracking
         job_id = str(uuid.uuid4())
         
-        # 2. Convert webhook input to the base ResearchRequest format (data is automatically validated by Pydantic)
         research_data = ResearchRequest(
             company=data.company,
             company_url=data.company_url,
@@ -224,20 +267,23 @@ async def start_research_webhook(data: AirtableWebhookInput):
             hq_location=data.hq_location
         )
         
-        # 3. Start the process with the ID passed from Airtable
-        # This uses the modified process_research function to handle the airtable_record_id
-        asyncio.create_task(process_research(job_id, research_data, data.airtable_record_id))
+        # 1. CRITICAL: Immediately update Airtable status to "Queued" 
+        if data.airtable_record_id:
+             asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, "Queued"))
+
+        # 2. Start the job using the SEMAPHORE WRAPPER (This is now the non-blocking part)
+        asyncio.create_task(run_job_with_semaphore(job_id, research_data, data.airtable_record_id))
 
         return {
             "status": "Accepted",
-            "message": f"Research for {data.company} triggered via webhook.",
+            "message": f"Research for {data.company} queued or started. Job ID: {job_id}",
             "job_id": job_id
         }
 
     except Exception as e:
         logger.error(f"Error initiating research via webhook: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-# --- END NEW ENDPOINT ---
+# --- END MODIFIED ENDPOINT ---
 
 # 🟢 NEW DEBUG ENDPOINT: /debug/airtable-test
 @app.post("/debug/airtable-test")
