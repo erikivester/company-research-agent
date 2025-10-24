@@ -63,7 +63,9 @@ def _find_record_by_company(airtable: Airtable, company_name: str) -> Optional[s
         
     try:
         # Airtable filtering requires a formula
-        filter_formula = f"{{Organization}} = '{company_name.replace(\"'\", \"\\'\")}'" 
+        # FIX: Escape single quotes outside the f-string to avoid SyntaxError
+        company_name_safe = company_name.replace("'", "\\'")
+        filter_formula = f"{{Organization}} = '{company_name_safe}'"
         
         # Limit to 1 record and only retrieve the ID
         records = airtable.get_all(
