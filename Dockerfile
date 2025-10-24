@@ -2,6 +2,7 @@
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/ui
 COPY ui/package*.json ./
+# Use npm ci for clean installs in automated environments
 RUN npm ci
 COPY ui/ ./
 RUN npm run build
@@ -10,31 +11,24 @@ RUN npm run build
 FROM python:3.11-slim AS backend-builder
 WORKDIR /app
 COPY requirements.txt .
-
-# CRITICAL FIX (Stage 2): Install core build tools and headers
+# FIX: Install core build tools required by many Python packages (e.g., reportlab)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
-    libjpeg-dev \
-    zlib1g-dev \
-    libpng-dev \
-    libfreetype6-dev \
+    # Add libpq-dev if you later connect to Postgres, etc.
     && rm -rf /var/lib/apt/lists/*
 
 # Install all Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 3: Final Image (Runtime)
+# Stage 3: Final Image (CRITICAL RUNTIME FIX)
 FROM python:3.11-slim
 WORKDIR /app
 
-# CRITICAL FIX (Stage 3): Install minimal runtime system libraries
+# FIX: Install runtime dependencies for stability and PDF generation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    libjpeg62-turbo \
-    zlib1g \
-    libpng16-16 \
-    libfreetype6 \
+    # CRITICAL: Install necessary fonts for reportlab to function correctly at runtime
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
@@ -63,5 +57,6 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# FINAL CORRECTED STARTUP COMMAND
-CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+# FIX: Use 'python -m uvicorn' in SHELL form. This ensures Python finds the module 
+# and the $PORT variable is correctly expanded for Cloud Run.
+CMD python -m uvicorn application:app --host 0.0.0.0 --port $PORT
