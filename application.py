@@ -18,6 +18,10 @@ from backend.services.mongodb import MongoDBService
 from backend.services.pdf_service import PDFService
 from backend.services.websocket_manager import WebSocketManager
 
+# ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
+from backend.airtable_uploader import upload_to_airtable
+# ⬆️ END AIRTABLE IMPORTS ⬆️
+
 # Load environment variables from .env file at startup
 env_path = Path(__file__).parent / '.env'
 if env_path.exists():
@@ -66,6 +70,12 @@ class ResearchRequest(BaseModel):
     industry: str | None = None
     hq_location: str | None = None
 
+# --- NEW: Pydantic Model for Webhook Input ---
+class AirtableWebhookInput(ResearchRequest):
+    """Extends ResearchRequest to include the Airtable Record ID."""
+    airtable_record_id: str | None = None
+# --- END NEW MODEL ---
+
 class PDFGenerationRequest(BaseModel):
     report_content: str
     company_name: str | None = None
@@ -78,32 +88,15 @@ async def preflight():
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
-@app.post("/research")
-async def research(data: ResearchRequest):
-    try:
-        logger.info(f"Received research request for {data.company}")
-        job_id = str(uuid.uuid4())
-        asyncio.create_task(process_research(job_id, data))
-
-        response = JSONResponse(content={
-            "status": "accepted",
-            "job_id": job_id,
-            "message": "Research started. Connect to WebSocket for updates.",
-            "websocket_url": f"/research/ws/{job_id}"
-        })
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        return response
-
-    except Exception as e:
-        logger.error(f"Error initiating research: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-async def process_research(job_id: str, data: ResearchRequest):
+# --- MODIFIED: process_research signature to accept airtable_record_id ---
+async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None):
     try:
         if mongodb:
-            mongodb.create_job(job_id, data.dict())
+            # Include airtable_record_id in MongoDB job details
+            job_details = data.dict()
+            job_details['airtable_record_id'] = airtable_record_id
+            mongodb.create_job(job_id, job_details)
+            
         await asyncio.sleep(1)  # Allow WebSocket connection
 
         await manager.send_status_update(job_id, status="processing", message="Starting research")
@@ -117,14 +110,25 @@ async def process_research(job_id: str, data: ResearchRequest):
             job_id=job_id
         )
 
+        # CRITICAL: Pass airtable_record_id to the Graph's thread config
+        thread_config = {}
+        if airtable_record_id:
+             thread_config = {"configurable": {"airtable_record_id": airtable_record_id}}
+
         state = {}
-        async for s in graph.run(thread={}):
+        async for s in graph.run(thread=thread_config): # Pass the config here
             state.update(s)
         
         # Look for the compiled report in either location.
         report_content = state.get('report') or (state.get('editor') or {}).get('report')
+        
+        # Airtable upload is now handled inside the graph.run() call above.
+        # We don't need to call upload_to_airtable here anymore.
+
         if report_content:
             logger.info(f"Found report in final state (length: {len(report_content)})")
+
+            # Update job status and MongoDB
             job_status[job_id].update({
                 "status": "completed",
                 "report": report_content,
@@ -134,13 +138,16 @@ async def process_research(job_id: str, data: ResearchRequest):
             if mongodb:
                 mongodb.update_job(job_id=job_id, status="completed")
                 mongodb.store_report(job_id=job_id, report_data={"report": report_content})
+            
+            # Simplified final WebSocket message
             await manager.send_status_update(
                 job_id=job_id,
                 status="completed",
-                message="Research completed successfully",
+                message="Research completed successfully.", # <-- Simplified message
                 result={
                     "report": report_content,
                     "company": data.company
+                    # Airtable status is now handled internally by the graph node's logging
                 }
             )
         else:
@@ -169,6 +176,69 @@ async def process_research(job_id: str, data: ResearchRequest):
         )
         if mongodb:
             mongodb.update_job(job_id=job_id, status="failed", error=str(e))
+# --- END MODIFIED process_research ---
+
+
+@app.post("/research")
+async def research(data: ResearchRequest):
+    try:
+        logger.info(f"Received research request for {data.company}")
+        job_id = str(uuid.uuid4())
+        # Pass airtable_record_id=None for UI-initiated runs
+        asyncio.create_task(process_research(job_id, data, airtable_record_id=None)) 
+
+        response = JSONResponse(content={
+            "status": "accepted",
+            "job_id": job_id,
+            "message": "Research started. Connect to WebSocket for updates.",
+            "websocket_url": f"/research/ws/{job_id}"
+        })
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        return response
+
+    except Exception as e:
+        logger.error(f"Error initiating research: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- NEW: Webhook Endpoint for Airtable Automation ---
+@app.post("/webhook/start-research")
+async def start_research_webhook(data: AirtableWebhookInput):
+    """
+    Accepts a POST request (e.g., from an Airtable Automation webhook) 
+    and triggers the research pipeline in the background.
+    """
+    try:
+        logger.info(f"Received webhook request for {data.company} (Airtable ID: {data.airtable_record_id})")
+        
+        # 1. Generate a unique job ID for tracking
+        job_id = str(uuid.uuid4())
+        
+        # 2. Convert webhook input to the base ResearchRequest format (data is automatically validated by Pydantic)
+        research_data = ResearchRequest(
+            company=data.company,
+            company_url=data.company_url,
+            industry=data.industry,
+            hq_location=data.hq_location
+        )
+        
+        # 3. Start the process with the ID passed from Airtable
+        # This uses the modified process_research function to handle the airtable_record_id
+        asyncio.create_task(process_research(job_id, research_data, data.airtable_record_id))
+
+        return {
+            "status": "Accepted",
+            "message": f"Research for {data.company} triggered via webhook.",
+            "job_id": job_id
+        }
+
+    except Exception as e:
+        logger.error(f"Error initiating research via webhook: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+# --- END NEW ENDPOINT ---
+
+
 @app.get("/")
 async def ping():
     return {"message": "Alive"}
