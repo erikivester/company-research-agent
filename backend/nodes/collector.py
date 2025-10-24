@@ -2,9 +2,10 @@
 from langchain_core.messages import AIMessage
 import asyncio
 import logging
+from urllib.parse import urlparse # Ensure urlparse is imported
 
 from ..classes import ResearchState
-from backend.airtable_uploader import update_airtable_record
+from backend.airtable_uploader import update_airtable_record # synchronous function
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class Collector:
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
             # Log the error but do not raise, as Airtable update is a secondary task
-            logger.error(f"Collector node failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
     # --- END MODIFIED HELPER METHOD ---
 
     async def collect(self, state: ResearchState) -> ResearchState:
@@ -81,11 +82,17 @@ class Collector:
             # Use the URL of the highest scored document
             inferred_url = all_scored_docs[0]['url']
             
-            # Simple check for http/https to ensure it's a valid URL format
+            # 🟢 FIX: Clean URL to base domain (scheme://netloc)
             if inferred_url and inferred_url.startswith('http'):
-                 state['company_url'] = inferred_url
-                 logger.info(f"Inferred company_url set to: {inferred_url} (from top score {all_scored_docs[0]['score']})")
-                 msg.append(f"🔗 **Inferred Company URL** set to: {inferred_url}")
+                 parsed = urlparse(inferred_url)
+                 
+                 # Reconstruct URL as just scheme://netloc (homepage)
+                 # We specifically strip the path, query, and fragment.
+                 clean_base_url = f"{parsed.scheme}://{parsed.netloc.rstrip('/')}"
+
+                 state['company_url'] = clean_base_url
+                 logger.info(f"Inferred company_url set to clean base URL: {clean_base_url} (from top score {all_scored_docs[0]['score']})")
+                 msg.append(f"🔗 **Inferred Company URL** set to: {clean_base_url}")
             else:
                  logger.warning(f"Top scored URL '{inferred_url}' was invalid, skipping URL inference.")
         
@@ -102,7 +109,6 @@ class Collector:
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
-            # This status update is run as a non-blocking background task
             asyncio.create_task(
                 self._update_airtable_status(airtable_record_id, "Collecting Data")
             )
