@@ -1,10 +1,12 @@
+# backend/nodes/grounding.py
 import logging
 import os
-
+import asyncio
 from langchain_core.messages import AIMessage
 from tavily import AsyncTavilyClient
 
 from ..classes import InputState, ResearchState
+from backend.airtable_uploader import update_airtable_record
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,16 @@ class GroundingNode:
     
     def __init__(self) -> None:
         self.tavily_client = AsyncTavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+
+    # --- NEW HELPER METHOD ---
+    async def _update_airtable_status(self, record_id: str, status_text: str):
+        """Helper to call the synchronous update function."""
+        try:
+            update_airtable_record(record_id, {'Research Status': status_text})
+            logger.debug(f"Airtable status update successful for record {record_id}")
+        except Exception as e:
+            logger.error(f"GroundingNode failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+    # --- END HELPER METHOD ---
 
     async def initial_search(self, state: InputState) -> ResearchState:
         # Add debug logging at the start to check websocket manager
@@ -140,7 +152,8 @@ class GroundingNode:
             "site_scrape": site_scrape,
             # Pass through websocket info
             "websocket_manager": state.get('websocket_manager'),
-            "job_id": state.get('job_id')
+            "job_id": state.get('job_id'),
+            "airtable_record_id": state.get('airtable_record_id') # Ensure ID is passed through
         }
 
         # If there was an error in the initial crawl, store it in the state
@@ -150,4 +163,9 @@ class GroundingNode:
         return research_state
 
     async def run(self, state: InputState) -> ResearchState:
+        airtable_record_id = state.get('airtable_record_id')
+        if airtable_record_id:
+            asyncio.create_task(
+                self._update_airtable_status(airtable_record_id, "In Progress")
+            )
         return await self.initial_search(state)

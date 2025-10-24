@@ -2,47 +2,61 @@
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/ui
 COPY ui/package*.json ./
-RUN npm install
+# Use npm ci for clean installs in automated environments
+RUN npm ci
 COPY ui/ ./
 RUN npm run build
 
-# Stage 2: Build Backend
+# Stage 2: Build Backend (Where compilation happens)
 FROM python:3.11-slim AS backend-builder
 WORKDIR /app
 COPY requirements.txt .
+
+# FIX: Install core build tools required by many Python packages (e.g., reportlab)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    # Add libpq-dev if you later connect to Postgres, etc.
+    && rm -rf /var/lib/apt/lists/*
+
+# Install all Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 3: Final Image
+# Stage 3: Final Image (CRITICAL RUNTIME FIX)
 FROM python:3.11-slim
 WORKDIR /app
 
-# Install system dependencies
+# FIX: Install runtime dependencies for stability and PDF generation
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    # CRITICAL: Install necessary fonts for reportlab to function correctly at runtime
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy backend
+# Copy python packages from the build stage
 COPY --from=backend-builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+
+# Copy application files
 COPY backend/ ./backend/
 COPY application.py .
+COPY requirements.txt . 
 
-# Copy frontend build
+# Copy frontend build 
 COPY --from=frontend-builder /app/ui/dist/ ./ui/dist/
 
-# Create reports directory
-RUN mkdir -p reports
+# Create reports/PDFs directory 
+RUN mkdir -p pdfs
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=8080 
 
-# Expose the port
-EXPOSE 8000
+EXPOSE 8080
 
-# Create a non-root user
+# Create a non-root user (Good security practice)
 RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Start command
-CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Use the exec form for the CMD 
+CMD ["uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]

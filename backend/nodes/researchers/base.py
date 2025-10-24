@@ -287,7 +287,7 @@ class BaseResearcher:
         search_params = {
             "search_depth": "basic",
             "include_raw_content": False,
-            "max_results": 5
+            "max_results": 3 #tweak this knob back to 5 eventually. 3 for testing
         }
         
         if self.analyst_type == "news_analyst":
