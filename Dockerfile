@@ -21,8 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 🟢 NEW: Install uv using pip
 RUN pip install uv
 
-# 🟢 NEW: Install all Python dependencies using uv (much faster)
-RUN uv pip install -r requirements.txt
+# 🟢 FIX: Install all Python dependencies using uv --system
+# This installs dependencies globally within the Docker container.
+RUN uv pip install -r requirements.txt --system
 
 # Stage 3: Final Image (CRITICAL RUNTIME FIX)
 FROM python:3.11-slim
@@ -60,5 +61,5 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Use the exec form for the CMD 
-CMD ["uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+# FIX: This command correctly starts the Uvicorn server on the port provided by Cloud Run.
+CMD python -m uvicorn application:app --host 0.0.0.0 --port $PORT
