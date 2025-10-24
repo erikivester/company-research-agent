@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage
 
 from ..classes import ResearchState
 from ..utils.references import process_references_from_search_results
-from backend.airtable_uploader import update_airtable_record
+from backend.airtable_uploader import update_airtable_record # synchronous function
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class Curator:
         logger.info(f"Curator initialized with relevance threshold: {self.relevance_threshold}")
 
     async def evaluate_documents(self, state: ResearchState, docs: list, context: Dict[str, str]) -> list:
-        """Evaluate documents based on Tavily's scoring."""
+        """Evaluate documents based on Tavily's scoring, applying authority boosting."""
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
@@ -40,27 +40,48 @@ class Curator:
         try:
             for doc in docs:
                 try:
-                    # Use evaluation score if present (added by Curator previously?), else fallback to raw score
-                    if 'evaluation' in doc and 'overall_score' in doc['evaluation']:
-                         tavily_score = float(doc['evaluation']['overall_score'])
-                    else:
-                         tavily_score = float(doc.get('score', 0)) # Fallback to raw score
-
+                    # 1. Get base score and initialize boost
+                    tavily_score = float(doc.get('score', 0))
                     is_company_website = doc.get('source') == 'company_website'
+                    authority_boost = 0.0
+                    
+                    # Ensure metadata is available for boosting
+                    title = doc.get('title', '').lower()
+                    content = doc.get('content', '').lower()
 
-                    # ReFED Preference: Prioritize first-party (company website) sources
-                    # Keep if score meets threshold OR if it's from the company website
-                    if tavily_score >= self.relevance_threshold or is_company_website:
-                        reason = "company website" if is_company_website else f"score {tavily_score:.4f}"
-                        logger.info(f"Document kept ({reason}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})") # Added URL for context
+                    # 2. ReFED Optimization: Apply Authority Boost
+                    
+                    # Boost 1: Official Reports/Filings (Highest Authority)
+                    if any(k in title for k in ['esg report', 'impact report', 'sustainability report', '10-k']):
+                        authority_boost += 0.20
+                        
+                    # Boost 2: Critical Climate Keywords (Methane/GHG Focus)
+                    if 'methane' in content or 'ghg emissions' in content:
+                        authority_boost += 0.10
 
-                        # Ensure 'evaluation' key exists and store the score used for keeping the doc
+                    # Boost 3: Company Website (First-party source preference)
+                    if is_company_website and len(content) > 1000:
+                        authority_boost += 0.15
+
+                    # Calculate Final Score (Cap at 1.0)
+                    final_score = min(1.0, tavily_score + authority_boost)
+                    
+                    # 3. Decision Logic
+                    # Keep if final_score meets threshold OR if it's the company website (guaranteed passage for website)
+                    if final_score >= self.relevance_threshold or is_company_website:
+                        reason = f"Score {final_score:.4f}"
+                        if authority_boost > 0:
+                            reason += f" (Base: {tavily_score:.4f}, Boost: {authority_boost:.2f})"
+                        
+                        logger.info(f"Document kept ({reason}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})")
+
+                        # Ensure 'evaluation' key exists and store the final score used for keeping the doc
                         if 'evaluation' not in doc:
                              doc['evaluation'] = {}
-                        doc['evaluation']['overall_score'] = tavily_score # Store the score used
-                        doc['evaluation']['query'] = doc.get('query', '') # Ensure query is stored
+                        doc['evaluation']['overall_score'] = final_score # Store the final boosted score
+                        doc['evaluation']['query'] = doc.get('query', '') 
 
-                        evaluated_docs.append(doc) # Add the original doc dict (now potentially with evaluation key)
+                        evaluated_docs.append(doc) 
 
                         # Send incremental update for kept document via WebSocket
                         if websocket_manager and job_id:
@@ -70,14 +91,14 @@ class Curator:
                                 message=f"Kept document: {doc.get('title', 'No title')}",
                                 result={
                                     "step": "Curation",
-                                    "doc_type": doc.get('doc_type', 'unknown'), # Pass doc_type added earlier
+                                    "doc_type": doc.get('doc_type', 'unknown'), 
                                     "title": doc.get('title', 'No title'),
-                                    "score": tavily_score,
-                                    "url": doc.get('url', 'Unknown URL') # Include URL
+                                    "score": final_score, # Send the final score
+                                    "url": doc.get('url', 'Unknown URL')
                                 }
                             )
                     else:
-                         logger.debug(f"Document below threshold (Score: {tavily_score:.4f}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})") # Use debug level
+                         logger.debug(f"Document below threshold (Final Score: {final_score:.4f}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})")
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Error processing score for document '{doc.get('url', 'Unknown URL')}': {e}")
                     continue
@@ -86,7 +107,7 @@ class Curator:
             logger.error(f"Error during document evaluation: {e}", exc_info=True)
             return []
 
-        # Sort by the evaluation score we stored
+        # Sort by the evaluation score we stored (which is now the boosted score)
         evaluated_docs.sort(key=lambda x: float(x.get('evaluation', {}).get('overall_score', 0)), reverse=True)
         logger.info(f"Returning {len(evaluated_docs)} evaluated documents")
 
@@ -282,13 +303,21 @@ class Curator:
         logger.info(f"Curation complete for {company}. Final counts: {doc_counts_run}")
         return state
 
+    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable status update skipped: No record ID provided.")
+            return
         try:
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
+            logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            logger.error(f"Curator node failed to update Airtable status: {e}")
-
+            # Log the error but do not raise, as Airtable update is a secondary task
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status: {e}", exc_info=True)
+    # --- END MODIFIED HELPER METHOD ---
+            
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
         try:
@@ -302,7 +331,10 @@ class Curator:
                     self._update_airtable_status(airtable_record_id, f"Curation Failed: {str(e)[:50]}")
                 )
             # Ensure essential keys exist even on failure
-            for data_field in data_types: # Use data_types keys defined in curate_data
+            # Note: data_types is not defined here, rely on the fact it's defined in curate_data and hope for the best
+            # or explicitly define it here for robustness on failure.
+            # Assuming the keys from curate_data are what's intended for cleanup:
+            for data_field in ['financial_data', 'news_data', 'industry_data', 'company_data', 'flw_data']: 
                  state.setdefault(f'curated_{data_field}', {})
             state.setdefault('references', [])
             state.setdefault('reference_titles', {})

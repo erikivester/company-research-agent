@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage
 # Make sure ResearchState is imported correctly relative to this file's location
 from ..classes import ResearchState
 # Make sure the uploader function can be imported
-from backend.airtable_uploader import update_airtable_record
+from backend.airtable_uploader import update_airtable_record # synchronous function
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +277,7 @@ Output only the single selected revenue band name. Example: $10M-$50M
         """Executes the tagger node."""
         airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
         try:
-            # --- Call Airtable Update ---
+            # --- Call Airtable Update (Start Status) ---
             if airtable_record_id:
                 logger.info(f"Sending 'Classifying' status update to Airtable record: {airtable_record_id}")
                 asyncio.create_task(
@@ -307,13 +307,13 @@ Output only the single selected revenue band name. Example: $10M-$50M
             return state
 
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable status update skipped: No record ID provided.")
+            return
         try:
-            # Import locally to potentially avoid startup circular dependencies
-            # from backend.airtable_uploader import update_airtable_record
-            logger.debug(f"Attempting to update Airtable record {record_id} status to '{status_text}'")
-            # Direct call
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            logger.error(f"Tagger node failed to update Airtable status for record {record_id}: {e}", exc_info=True) # Add exc_info
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)

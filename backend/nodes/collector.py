@@ -13,15 +13,20 @@ logger = logging.getLogger(__name__)
 class Collector:
     """Collects and organizes all research data before curation."""
 
-    # --- NEW HELPER METHOD ---
+    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable status update skipped: No record ID provided.")
+            return
         try:
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
+            # Log the error but do not raise, as Airtable update is a secondary task
             logger.error(f"Collector node failed to update Airtable status for record {record_id}: {e}", exc_info=True)
-    # --- END HELPER METHOD ---
+    # --- END MODIFIED HELPER METHOD ---
 
     async def collect(self, state: ResearchState) -> ResearchState:
         """Collect and verify all research data is present."""
@@ -97,6 +102,7 @@ class Collector:
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
+            # This status update is run as a non-blocking background task
             asyncio.create_task(
                 self._update_airtable_status(airtable_record_id, "Collecting Data")
             )
