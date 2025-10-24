@@ -207,8 +207,12 @@ class Graph:
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
         initial_state_data = self.input_state.copy()
-        if 'airtable_record_id' in thread:
-             initial_state_data['airtable_record_id'] = thread['airtable_record_id']
+        
+        # 🟢 CRITICAL FIX: Extract airtable_record_id from the nested 'configurable' key
+        # The 'thread' argument is the LangGraph config dict, which contains the ID here.
+        record_id = thread.get('configurable', {}).get('airtable_record_id')
+        if record_id:
+             initial_state_data['airtable_record_id'] = record_id
 
         compiled_graph = self.workflow.compile()
 

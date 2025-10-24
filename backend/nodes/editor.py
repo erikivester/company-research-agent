@@ -434,12 +434,20 @@ Output ONLY the final, polished markdown report. No explanations, commentary, or
             logger.error(f"Error in content sweep LLM call: {e}", exc_info=True)
             return content.strip() # Fallback to pre-sweep content on error
 
+    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable update skipped: No record ID provided.")
+            return
         try:
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
+            logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            logger.error(f"Editor node failed to update Airtable status: {e}")
+            # Log the error but do not raise, as Airtable update is a secondary task
+            logger.error(f"{self.__class__.__name__} node failed to update Airtable status: {e}", exc_info=True)
+    # --- END MODIFIED HELPER METHOD ---
 
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id')

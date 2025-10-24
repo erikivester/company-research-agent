@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage
 from tavily import AsyncTavilyClient
 
 from ..classes import InputState, ResearchState
-from backend.airtable_uploader import update_airtable_record
+from backend.airtable_uploader import update_airtable_record # synchronous function
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +16,20 @@ class GroundingNode:
     def __init__(self) -> None:
         self.tavily_client = AsyncTavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-    # --- NEW HELPER METHOD ---
+    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable status update skipped: No record ID provided.")
+            return
         try:
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            logger.error(f"GroundingNode failed to update Airtable status for record {record_id}: {e}", exc_info=True)
-    # --- END HELPER METHOD ---
+            # Log the error but do not raise, as Airtable update is a secondary task
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+    # --- END MODIFIED HELPER METHOD ---
 
     async def initial_search(self, state: InputState) -> ResearchState:
         # Add debug logging at the start to check websocket manager
@@ -165,7 +170,6 @@ class GroundingNode:
     async def run(self, state: InputState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
-            asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, "In Progress")
-            )
+            # AWAIT the critical initial status update
+            await self._update_airtable_status(airtable_record_id, "In Progress")
         return await self.initial_search(state)

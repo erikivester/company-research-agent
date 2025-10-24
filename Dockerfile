@@ -18,8 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Add libpq-dev if you later connect to Postgres, etc.
     && rm -rf /var/lib/apt/lists/*
 
-# Install all Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# 🟢 NEW: Install uv using pip
+RUN pip install uv
+
+# 🟢 NEW: Install all Python dependencies using uv (much faster)
+RUN uv pip install -r requirements.txt
 
 # Stage 3: Final Image (CRITICAL RUNTIME FIX)
 FROM python:3.11-slim
@@ -57,5 +60,5 @@ RUN useradd -m -u 1000 appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# FIX: This command correctly starts the Uvicorn server on the port provided by Cloud Run.
-CMD python -m uvicorn application:app --host 0.0.0.0 --port $PORT
+# Use the exec form for the CMD 
+CMD ["uvicorn", "application:app", "--host", "0.0.0.0", "--port", "${PORT}"]

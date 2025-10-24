@@ -21,7 +21,7 @@ class Enricher:
             raise ValueError("TAVILY_API_KEY environment variable is not set")
         self.tavily_client = AsyncTavilyClient(api_key=tavily_key)
         self.batch_size = 20 # Number of URLs to fetch in parallel per batch
-        self.semaphore_limit = 5 # Max concurrent requests to Tavily API
+        self.semaphore_limit = 10 # Max concurrent requests to Tavily API
 
     async def fetch_single_content(self, url: str, websocket_manager=None, job_id=None, category=None) -> Dict[str, Any]:
         """Fetch raw content for a single URL using the extract method."""
@@ -305,12 +305,20 @@ class Enricher:
         state['messages'] = messages
         return state
 
+    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
-        """Helper to call the synchronous update function."""
+        """Helper to call the synchronous update function in a separate thread."""
+        if not record_id:
+            logger.warning("Airtable status update skipped: No record ID provided.")
+            return
         try:
-            update_airtable_record(record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
+            logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            logger.error(f"Enricher node failed to update Airtable status: {e}")
+            # Log the error but do not raise, as Airtable update is a secondary task
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status: {e}", exc_info=True)
+    # --- END MODIFIED HELPER METHOD ---
 
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
@@ -325,6 +333,13 @@ class Enricher:
                      self._update_airtable_status(airtable_record_id, "Enrichment Failed")
                  )
             # Ensure curated keys exist even on failure
+            data_types = {
+                 'financial_data': ('💰 Financial', 'financial'),
+                 'news_data': ('📰 News', 'news'),
+                 'industry_data': ('🏭 Industry', 'industry'),
+                 'company_data': ('🏢 Company', 'company'),
+                 'flw_data': ('🌿 FLW/Sustainability', 'flw') 
+            }
             for data_field in data_types: # Use data_types keys defined in enrich_data
                  state.setdefault(f'curated_{data_field}', {})
             return state
