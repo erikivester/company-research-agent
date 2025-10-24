@@ -1,11 +1,3 @@
-# Stage 1: Build Frontend
-FROM node:20-slim AS frontend-builder
-WORKDIR /app/ui
-COPY ui/package*.json ./
-# Use npm ci for clean installs in automated environments
-RUN npm ci
-COPY ui/ ./
-RUN npm run build
 
 # Stage 2: Build Backend (Where compilation happens)
 FROM python:3.11-slim AS backend-builder
@@ -43,9 +35,6 @@ COPY --from=backend-builder /usr/local/lib/python3.11/site-packages/ /usr/local/
 COPY backend/ ./backend/
 COPY application.py .
 COPY requirements.txt . 
-
-# Copy frontend build 
-COPY --from=frontend-builder /app/ui/dist/ ./ui/dist/
 
 # Create reports/PDFs directory 
 RUN mkdir -p pdfs
