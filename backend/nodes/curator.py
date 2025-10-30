@@ -1,8 +1,8 @@
 # backend/nodes/curator.py
 import logging
 import asyncio
-from typing import Dict
-from urllib.parse import urljoin, urlparse
+from typing import Dict, List, Any
+from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage
 
@@ -18,7 +18,7 @@ class Curator:
         logger.info(f"Curator initialized with relevance threshold: {self.relevance_threshold}")
 
     async def evaluate_documents(self, state: ResearchState, docs: list, context: Dict[str, str]) -> list:
-        """Evaluate documents based on Tavily's scoring, applying authority boosting."""
+        """(v2) Evaluate documents based on Tavily's scoring, applying authority boosting."""
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
@@ -114,7 +114,7 @@ class Curator:
         return evaluated_docs
 
     async def curate_data(self, state: ResearchState) -> ResearchState:
-        """Curate all collected data based on Tavily scores."""
+        """(v2) Curate all collected data from the 5 v2 nodes."""
         company = state.get('company', 'Unknown Company')
         airtable_record_id = state.get('airtable_record_id')
         logger.info(f"Starting curation for company: {company}")
@@ -127,14 +127,17 @@ class Curator:
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
-        # Define all data types, including the new FLW category
+        # --- v2 MODIFICATION: Updated data_types dictionary ---
+        # Maps the v2 researcher node outputs (state keys) to labels
         data_types = {
-            'financial_data': ('💰 Financial', 'financial'),
-            'news_data': ('📰 News', 'news'),
-            'industry_data': ('🏭 Industry', 'industry'),
-            'company_data': ('🏢 Company', 'company'),
-            'flw_data': ('🌿 FLW/Sustainability', 'flw') # <-- ADDED FLW entry
+            'company_brief_data': ('🏢 Company Brief', 'company'),
+            'news_signal_data': ('📰 News & Signals', 'news'),
+            'flw_data': ('🌿 FLW/Sustainability', 'flw'),
+            'contact_finder_data': ('👥 Contacts', 'contact'),
+            'engagement_finder_data': ('🛰️ Engagements', 'engagement')
         }
+        # --- END v2 MODIFICATION ---
+        
         # Initialize doc_counts for all defined types
         doc_counts_init = { info[1]: {"initial": 0, "kept": 0} for _, info in data_types.items() }
 
@@ -163,6 +166,7 @@ class Curator:
         # Use a fresh dictionary to track counts accurately during this run
         doc_counts_run = { info[1]: {"initial": 0, "kept": 0} for _, info in data_types.items() }
 
+        # This loop now iterates over the 5 v2 data_types
         for data_field, (emoji, doc_type) in data_types.items():
             data = state.get(data_field, {})
             if not data or not isinstance(data, dict): # Check data exists and is a dict
@@ -195,9 +199,13 @@ class Curator:
 
                     if clean_url not in unique_docs:
                         doc['url'] = clean_url # Store cleaned URL in the doc itself
-                        doc['doc_type'] = doc_type # Assign the type (financial, news, flw, etc.)
+                        doc['doc_type'] = doc_type # Assign the type (e.g., 'company', 'news', 'flw', etc.)
                         unique_docs[clean_url] = doc
-                    # Optional: Could add logic here to keep the doc with the higher score if URL collision occurs
+                    else:
+                        # Optional: Keep the doc with the higher score if URL collision occurs
+                        if doc.get('score', 0) > unique_docs[clean_url].get('score', 0):
+                            unique_docs[clean_url] = doc
+                            
                 except Exception as parse_exc:
                     logger.warning(f"Error parsing or cleaning URL '{url}' in {data_field}: {parse_exc}")
                     continue
@@ -225,7 +233,7 @@ class Curator:
                     result={ "step": "Curation", "doc_type": doc_type, "initial_count": len(docs) }
                 )
 
-            # Evaluate documents for relevance
+            # Evaluate documents for relevance (uses v2 evaluate_documents)
             evaluated_docs = await self.evaluate_documents(state, docs, context)
 
             if not evaluated_docs:
@@ -261,7 +269,6 @@ class Curator:
                 msg.append(f"  ✓ Kept {kept_count} relevant documents")
                 logger.info(f"Kept {kept_count} documents for {doc_type}")
             else:
-                # This case might be redundant due to the 'if not evaluated_docs' check above, but keep for safety
                 msg.append("  ⚠️ No documents met relevance threshold after sorting/limiting")
                 logger.warning(f"No documents met threshold for {doc_type} after sorting/limiting")
 
@@ -271,7 +278,8 @@ class Curator:
         # --- Process References AFTER all categories are curated ---
         try:
             logger.info("Processing references from all curated data...")
-            # Ensure process_references passes the state which now includes curated_flw_data
+            # This function will be updated later, but it reads from the state,
+            # which now contains the new v2 'curated_...' keys.
             top_reference_urls, reference_titles, reference_info = process_references_from_search_results(state)
             logger.info(f"Selected top {len(top_reference_urls)} references for the report")
             state['references'] = top_reference_urls
@@ -303,7 +311,7 @@ class Curator:
         logger.info(f"Curation complete for {company}. Final counts: {doc_counts_run}")
         return state
 
-    # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
+    # --- Use robust HELPER METHOD from collector.py ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
         if not record_id:
@@ -316,7 +324,7 @@ class Curator:
         except Exception as e:
             # Log the error but do not raise, as Airtable update is a secondary task
             logger.error(f"{self.__class__.__name__} failed to update Airtable status: {e}", exc_info=True)
-    # --- END MODIFIED HELPER METHOD ---
+    # --- END HELPER METHOD ---
             
     async def run(self, state: ResearchState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
@@ -330,12 +338,16 @@ class Curator:
                 asyncio.create_task(
                     self._update_airtable_status(airtable_record_id, f"Curation Failed: {str(e)[:50]}")
                 )
-            # Ensure essential keys exist even on failure
-            # Note: data_types is not defined here, rely on the fact it's defined in curate_data and hope for the best
-            # or explicitly define it here for robustness on failure.
-            # Assuming the keys from curate_data are what's intended for cleanup:
-            for data_field in ['financial_data', 'news_data', 'industry_data', 'company_data', 'flw_data']: 
-                 state.setdefault(f'curated_{data_field}', {})
+            
+            # --- v2 MODIFICATION: Ensure all new v2 keys exist on failure ---
+            v2_curated_keys = [
+                'curated_company_brief_data', 'curated_news_signal_data', 'curated_flw_data',
+                'curated_contact_finder_data', 'curated_engagement_finder_data'
+            ]
+            for key in v2_curated_keys:
+                state.setdefault(key, {})
+            # --- END v2 MODIFICATION ---
+                
             state.setdefault('references', [])
             state.setdefault('reference_titles', {})
             state.setdefault('reference_info', {})

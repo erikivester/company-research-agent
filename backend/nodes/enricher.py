@@ -161,7 +161,7 @@ class Enricher:
         return raw_contents
 
     async def enrich_data(self, state: ResearchState) -> ResearchState:
-        """Enrich curated documents with raw content."""
+        """(v2) Enrich curated documents with raw content."""
         company = state.get('company', 'Unknown Company')
         airtable_record_id = state.get('airtable_record_id')
         websocket_manager = state.get('websocket_manager')
@@ -181,16 +181,20 @@ class Enricher:
 
         msg = [f"📚 Enriching curated data for {company}:"]
 
-        # Define all data types to enrich, including FLW
+        # --- v2 MODIFICATION: Updated data_types dictionary ---
+        # Maps the v2 researcher node outputs (state keys) to labels
         data_types = {
-            'financial_data': ('💰 Financial', 'financial'),
-            'news_data': ('📰 News', 'news'),
-            'industry_data': ('🏭 Industry', 'industry'),
-            'company_data': ('🏢 Company', 'company'),
-            'flw_data': ('🌿 FLW/Sustainability', 'flw') # <-- ADDED FLW entry
+            'company_brief_data': ('🏢 Company Brief', 'company'),
+            'news_signal_data': ('📰 News & Signals', 'news'),
+            'flw_data': ('🌿 FLW/Sustainability', 'flw'),
+            'contact_finder_data': ('👥 Contacts', 'contact'),
+            'engagement_finder_data': ('🛰️ Engagements', 'engagement')
         }
+        # --- END v2 MODIFICATION ---
+        
         enrichment_tasks = []
 
+        # This loop now iterates over the 5 v2 data_types
         for data_field, (label, category) in data_types.items():
             curated_field = f'curated_{data_field}' # e.g., 'curated_flw_data'
             curated_docs = state.get(curated_field, {})
@@ -332,14 +336,13 @@ class Enricher:
                  asyncio.create_task(
                      self._update_airtable_status(airtable_record_id, "Enrichment Failed")
                  )
-            # Ensure curated keys exist even on failure
-            data_types = {
-                 'financial_data': ('💰 Financial', 'financial'),
-                 'news_data': ('📰 News', 'news'),
-                 'industry_data': ('🏭 Industry', 'industry'),
-                 'company_data': ('🏢 Company', 'company'),
-                 'flw_data': ('🌿 FLW/Sustainability', 'flw') 
-            }
-            for data_field in data_types: # Use data_types keys defined in enrich_data
-                 state.setdefault(f'curated_{data_field}', {})
+            
+            # --- v2 MODIFICATION: Ensure all new v2 keys exist on failure ---
+            v2_curated_keys = [
+                'curated_company_brief_data', 'curated_news_signal_data', 'curated_flw_data',
+                'curated_contact_finder_data', 'curated_engagement_finder_data'
+            ]
+            for key in v2_curated_keys:
+                state.setdefault(key, {})
+            # --- END v2 MODIFICATION ---
             return state

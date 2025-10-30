@@ -12,3 +12,6 @@ uvicorn[standard]==0.34.0
 websockets==12.0
 google-generativeai==0.8.4
 airtable-python-wrapper
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

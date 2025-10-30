@@ -1,4 +1,4 @@
-# backend/nodes/researchers/flw.py
+# backend/nodes/researchers/engagement_finder.py
 import logging
 from typing import Any, Dict
 
@@ -10,20 +10,21 @@ from .base import BaseResearcher
 
 logger = logging.getLogger(__name__)
 
-class FLWAnalyzer(BaseResearcher):
+class EngagementFinderNode(BaseResearcher):
     """
-    (v2) Researcher focused on Food Loss & Waste (FLW), sustainability, ESG reports,
-    and related environmental initiatives for a company.
+    (v2) A new researcher node dedicated to finding a company's external
+    engagements, affiliations, partnerships, and awards, which act as
+    strong signals for outreach.
     """
     def __init__(self) -> None:
         super().__init__()
         # Set a specific analyst type for this researcher
-        self.analyst_type = "flw_analyzer"
-        logger.info("FLW/Sustainability Analyzer initialized.")
+        self.analyst_type = "engagement_finder"
+        logger.info("Engagement Finder Node initialized.")
 
     async def analyze(self, state: ResearchState) -> Dict[str, Any]:
         """
-        Analyzes the company's FLW and sustainability efforts.
+        Analyzes public information for signals of external engagement.
         """
         company = state.get('company', 'Unknown Company')
         industry = state.get('industry', 'Unknown Industry') # Get industry for context
@@ -31,27 +32,28 @@ class FLWAnalyzer(BaseResearcher):
         job_id = state.get('job_id')
 
         # Initial message for logging and state update
-        msg = [f"🌿 FLW/Sustainability Analyzer investigating {company}"]
-        logger.info(f"Starting FLW/Sustainability analysis for {company}")
+        msg = [f"🛰️ Engagement Finder Node hunting for signals at {company}"]
+        logger.info(f"Starting engagement finding for {company}")
 
         try:
-            # v2: Updated query generation prompt for more specific ReFED signals
+            # v2: Generate search queries to hunt for "creative signals"
             queries = await self.generate_queries(
                 state,
                 f"""
-                Generate specific search queries to understand '{company}'s efforts related to food loss and waste (FLW) and sustainability. Focus on:
-                - **ESG Reports:** Search for '"{company}" ESG Report 2024 2025' or '"{company}" Sustainability Report 2024 2025'.
-                - **Methane Goals:** Queries for '"{company}" methane reduction' or '"{company}" climate goals methane'.
-                - **FLW Initiatives:** "food waste reduction", "prevention", "rescue", "recycling".
-                - **Sustainable Packaging:** "sustainable packaging", "packaging materials", "circularity".
-                - **Food Donation:** "food donation programs", "food rescue partnerships".
-                - **Supply Chain FLW:** "supply chain food waste", "cold chain", "forecasting".
-                - **Certifications:** '"{company}" B Corp', '"{company}" UN SDGs'.
+                Generate creative search queries to hunt for external signals of engagement for "{company}". 
+                We are looking for affiliations, partnerships, memberships, and awards that suggest an interest in sustainability, food waste, or corporate responsibility.
+
+                Focus on finding:
+                - **Memberships:** '"{company}" 1% for the Planet', '"{company}" US Food Waste Pact', '"{company}" B Corp certified', '"{company}" Ceres member'.
+                - **Event Participation:** '"{company}" speaker ReFED Summit', '"{company}" attended Systems Change Lab', '"{company}" sponsor Aspen Institute'.
+                - **Awards & Recognition:** '"{company}" sustainability award 2024', '"{company}" Fast Company most innovative', '"{company}" Dow Jones Sustainability Index'.
+                - **Nonprofit Partnerships:** '"{company}" partners with Feeding America', '"{company}" World Wildlife Fund partnership', '"{company}" nonprofit partners'.
+                - **Coalition Signatory:** '"{company}" Consumer Goods Forum', '"{company}" Food Marketing Institute FMI'.
                 """
             )
 
             # Add generated queries to state messages for transparency
-            subqueries_msg = "🔍 Subqueries for FLW/Sustainability analysis:\n" + "\n".join([f"• {query}" for query in queries])
+            subqueries_msg = "🔍 Subqueries for engagement finding:\n" + "\n".join([f"• {query}" for query in queries])
             messages = state.get('messages', [])
             messages.append(AIMessage(content=subqueries_msg))
             state['messages'] = messages
@@ -61,37 +63,36 @@ class FLWAnalyzer(BaseResearcher):
                 await websocket_manager.send_status_update(
                     job_id=job_id,
                     status="processing",
-                    message="FLW/Sustainability analysis queries generated",
+                    message="Engagement finder queries generated",
                     result={
-                        "step": "FLW/Sustainability Analyst", # Use a descriptive step name
+                        "step": "Engagement Finder",
                         "analyst_type": self.analyst_type,
                         "queries": queries
                     }
                 )
 
             # Initialize dictionary to store research results
-            flw_data = {}
+            engagement_finder_data = {}
 
             # Include relevant data from the initial website scrape if available
             if site_scrape := state.get('site_scrape'):
                 msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
-                flw_data.update(site_scrape)
+                engagement_finder_data.update(site_scrape)
                 logger.info(f"Included {len(site_scrape)} site scrape results.")
 
-
             # Execute searches for the generated queries
-            logger.info(f"Searching documents for {len(queries)} FLW/Sustainability queries.")
+            logger.info(f"Searching documents for {len(queries)} engagement queries.")
             documents_found = await self.search_documents(state, queries)
 
             if documents_found:
                 # Add found documents, associating each with its query
                 for url, doc in documents_found.items():
                     doc['query'] = doc.get('query', 'Unknown Query')
-                    flw_data[url] = doc
+                    engagement_finder_data[url] = doc
                 msg.append(f"\n✓ Found {len(documents_found)} documents from web search.")
                 logger.info(f"Found {len(documents_found)} documents from web search.")
             else:
-                 msg.append("\nℹ️ No additional documents found from web search for FLW/Sustainability.")
+                 msg.append("\nℹ️ No additional documents found from web search for engagements.")
                  logger.info("No additional documents found from web search.")
 
             # Send WebSocket update: Search complete
@@ -99,7 +100,7 @@ class FLWAnalyzer(BaseResearcher):
                  await websocket_manager.send_status_update(
                      job_id=job_id,
                      status="processing",
-                     message=f"Found {len(documents_found)} documents for FLW/Sustainability",
+                     message=f"Found {len(documents_found)} documents for engagements",
                      result={
                          "step": "Searching",
                          "analyst_type": self.analyst_type,
@@ -112,17 +113,18 @@ class FLWAnalyzer(BaseResearcher):
             messages = state.get('messages', [])
             messages.append(AIMessage(content="\n".join(msg)))
             state['messages'] = messages
-            # This state key ('flw_data') is already correct per our v2 state.py
-            state['flw_data'] = flw_data
-            logger.info(f"Completed FLW/Sustainability analysis. Total documents collected: {len(flw_data)}")
+            
+            # Use the specific key from our new v2 state.py
+            state['engagement_finder_data'] = engagement_finder_data
+            logger.info(f"Completed engagement finding. Total documents collected: {len(engagement_finder_data)}")
 
             return {
                 'message': "\n".join(msg),
-                'flw_data': flw_data
+                'engagement_finder_data': engagement_finder_data
             }
 
         except Exception as e:
-            error_msg = f"FLW/Sustainability analysis failed: {str(e)}"
+            error_msg = f"Engagement finding failed: {str(e)}"
             logger.error(error_msg, exc_info=True) 
 
             if websocket_manager and job_id:
@@ -131,7 +133,7 @@ class FLWAnalyzer(BaseResearcher):
                     status="error",
                     message=error_msg,
                     result={
-                        "step": "FLW/Sustainability Analyst",
+                        "step": "Engagement Finder",
                         "analyst_type": self.analyst_type,
                         "error": str(e)
                     }
@@ -140,7 +142,7 @@ class FLWAnalyzer(BaseResearcher):
             messages = state.get('messages', [])
             messages.append(AIMessage(content=f"\n⚠️ {error_msg}"))
             state['messages'] = messages
-            state['flw_data'] = state.get('flw_data', {}) # Ensure key exists even on failure
+            state['engagement_finder_data'] = state.get('engagement_finder_data', {}) # Ensure key exists
             raise
 
     async def run(self, state: ResearchState) -> ResearchState:
@@ -151,8 +153,8 @@ class FLWAnalyzer(BaseResearcher):
         try:
             await self.analyze(state)
         except Exception as e:
-             logger.error(f"FLWAnalyzer run failed: {e}")
+             logger.error(f"EngagementFinderNode run failed: {e}")
              # Ensure key exists even on failure
-             if 'flw_data' not in state:
-                state['flw_data'] = {}
+             if 'engagement_finder_data' not in state:
+                state['engagement_finder_data'] = {}
         return state # Always return the state

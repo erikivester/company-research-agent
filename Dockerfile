@@ -1,4 +1,3 @@
-
 # Stage 2: Build Backend (Where compilation happens)
 FROM python:3.11-slim AS backend-builder
 WORKDIR /app

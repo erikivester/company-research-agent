@@ -44,19 +44,23 @@ class Collector:
                 result={"step": "Collecting"}
             )
 
-        # Check each type of research data, including the new FLW data
+        # --- v2 MODIFICATION: Updated research_types dictionary ---
+        # This now maps to the 5 new/refocused researcher nodes and their state keys
         research_types = {
-            'financial_data': '💰 Financial',
-            'news_data': '📰 News',
-            'industry_data': '🏭 Industry',
-            'company_data': '🏢 Company',
-            'flw_data': '🌿 FLW/Sustainability' # <-- ADDED: Entry for the new data type
+            'company_brief_data': '🏢 Company Brief',
+            'news_signal_data': '📰 News & Signals',
+            'flw_data': '🌿 FLW/Sustainability', # This key remains the same
+            'contact_finder_data': '👥 Contacts',
+            'engagement_finder_data': '🛰️ Engagements'
         }
+        # --- END v2 MODIFICATION ---
+
 
         # --- NEW LOGIC: Collect all scored documents to infer missing company_url ---
         best_url = state.get('company_url')
         all_scored_docs = []
 
+        # This loop now iterates over the v2 research_types
         for data_field, label in research_types.items():
             data = state.get(data_field, {})
             if data and isinstance(data, dict): # Check if data exists and is a dictionary

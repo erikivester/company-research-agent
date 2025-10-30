@@ -29,8 +29,8 @@ def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
             api_key=airtable_key
         )
 
-        # Ensure multi-select fields are lists (even if empty) for updates
-        multi_select_fields = ['Industries', 'Country/Region'] 
+        # --- v2 MODIFICATION: Add 'ReFED Alignment' to multi-select list ---
+        multi_select_fields = ['Industries', 'Country/Region', 'ReFED Alignment'] 
         for field in multi_select_fields:
             if field in fields_to_update:
                 value = fields_to_update[field]
@@ -63,7 +63,7 @@ def _find_record_by_company(airtable: Airtable, company_name: str) -> Optional[s
         
     try:
         # Airtable filtering requires a formula
-        # FIX: Escape single quotes outside the f-string to avoid SyntaxError
+        # FIX: Escape single quotes
         company_name_safe = company_name.replace("'", "\\'")
         filter_formula = f"{{Organization}} = '{company_name_safe}'"
         
@@ -89,8 +89,8 @@ def _find_record_by_company(airtable: Airtable, company_name: str) -> Optional[s
 
 def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str = None):
     """
-    Connects to Airtable and performs an UPSERT (Update or Insert).
-    It first attempts to find a record by Organization name.
+    (v2) Connects to Airtable and performs an UPSERT (Update or Insert).
+    Maps all new v2 fields to their Airtable Column Names.
     """
     airtable_key = os.getenv('AIRTABLE_API_KEY')
     base_id = os.getenv('AIRTABLE_BASE_ID')
@@ -108,22 +108,29 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
         return {"status": "Failure", "error": f"Airtable initialization failed: {str(e)}"}
 
 
-    # --- 1. Map all fields to Airtable format ---
+    # --- 1. v2: Map all fields to Airtable format ---
+    # NOTE: The keys on the *left* (e.g., 'Industries') are your *Airtable Column Names*.
+    # The keys on the *right* (e.g., 'industries_tags') are the *internal Python keys* from graph.py.
     fields_to_send = {
         'Organization': company_name, 
         'Website': report_data.get('company_url', ''),
+        
+        # --- v2 Tags ---
         'Industries': report_data.get('industries_tags', []),
         'Country/Region': report_data.get('region_tags', []),
         'Revenue Band (est.)': report_data.get('revenue_tags'),
-
+        'ReFED Alignment': report_data.get('refed_alignment_tags', []), # <-- NEW
+        
+        # --- v2 Briefings & Report ---
         'Markdown Report': (report_data.get('report_markdown') or '')[:10000],
-        'Financial Briefing': (report_data.get('financial_briefing') or '')[:8000],
-        'Industry Briefing': (report_data.get('industry_briefing') or '')[:8000],
-        'Company Briefing': (report_data.get('company_briefing') or '')[:8000],
-        'News Briefing': (report_data.get('news_briefing') or '')[:8000],
-        'FLW and Sustainability Briefing': (report_data.get('flw_sustainability_briefing') or '')[:8000],
+        'Company Briefing': (report_data.get('company_brief_briefing') or '')[:8000],         # <-- RENAMED/NEW
+        'News & Signals Briefing': (report_data.get('news_signal_briefing') or '')[:8000],   # <-- RENAMED/NEW
+        'FLW and Sustainability Briefing': (report_data.get('flw_sustainability_briefing') or '')[:8000], # <-- KEPT
+        'Potential Contacts Briefing': (report_data.get('contact_briefing') or '')[:8000],     # <-- NEW
+        'Engagements Briefing': (report_data.get('engagement_briefing') or '')[:8000],          # <-- NEW
+        # --- REMOVED: Financial Briefing, Industry Briefing, News Briefing (old) ---
 
-        # Final Status is set here for both INSERT and UPDATE
+        # --- Meta Fields ---
         'Research Status': 'Completed', 
         'Process Notes': (report_data.get('process_notes') or '')[:10000],
         'References': (report_data.get('references_formatted') or '')[:10000]
@@ -134,8 +141,8 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
     for k, v in fields_to_send.items():
         if v is not None:
              fields_payload[k] = v
-        # Ensure lists are sent even if empty for multi-selects
-        elif k in ['Industries', 'Country/Region']:
+        # v2: Ensure all multi-select lists are sent even if empty
+        elif k in ['Industries', 'Country/Region', 'ReFED Alignment']:
             fields_payload[k] = []
             
     logger.info(f"DEBUG: Final payload keys being sent: {fields_payload.keys()}")
@@ -153,8 +160,6 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
         # UPDATE: Record found, update all fields
         logger.info(f"Performing UPDATE on Airtable record {final_record_id} for job {job_id}")
         
-        # We use the existing update_airtable_record helper, but rename the logging key inside payload
-        # since it expects the internal names. Here, we pass the final mapped payload directly.
         update_result = update_airtable_record(final_record_id, fields_payload)
         
         if update_result.get("status") == "Success":
