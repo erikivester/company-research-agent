@@ -81,7 +81,7 @@ class Briefing:
 Key requirements:
 1. Structure using these exact headers. Use only bullet points under headers.
 ### Core Business
-* Conc cisely summarize {company}'s primary products, services, and mission.
+* Conccisely summarize {company}'s primary products, services, and mission.
 ### Financial Health
 * List any "ballpark" revenue figures (e.g., "$100M-$500M", "Est. $1B+").
 * List any "financial health signals" found (e.g., "Recent layoffs reported", "Stock price drop", "Secured new funding").

@@ -61,4 +61,3 @@ class ResearchState(InputState):
     
     # Current node (for WS updates)
     current_node: NotRequired[str]
-}
