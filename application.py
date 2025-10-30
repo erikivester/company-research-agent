@@ -71,11 +71,12 @@ class ResearchRequest(BaseModel):
     industry: str | None = None
     hq_location: str | None = None
 
-# --- NEW: Pydantic Model for Webhook Input ---
+# --- v2 MODIFIED: Pydantic Model for Webhook Input ---
 class AirtableWebhookInput(ResearchRequest):
-    """Extends ResearchRequest to include the Airtable Record ID."""
+    """Extends ResearchRequest to include Airtable Record ID and Google Drive URL."""
     airtable_record_id: str | None = None
-# --- END NEW MODEL ---
+    google_drive_folder_url: str | None = None # <-- ADDED
+# --- END v2 MODIFICATION ---
 
 class PDFGenerationRequest(BaseModel):
     report_content: str
@@ -104,7 +105,8 @@ async def _update_airtable_status_queued(record_id: str, status_text: str):
         logger.error(f"Airtable status update failed for record {record_id} to {status_text}: {e}", exc_info=True)
 
 
-async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_record_id: str | None):
+# --- v2 MODIFIED: Added google_drive_folder_url parameter ---
+async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_record_id: str | None, google_drive_folder_url: str | None):
     """Acquires semaphore, runs the core research logic, and releases semaphore."""
     
     # 1. Acquire the semaphore (blocks if limit reached)
@@ -116,7 +118,8 @@ async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_re
         # We don't need an explicit update here as the GroundingNode handles the first "In Progress" status.
         
         # 3. Run the actual research logic
-        await process_research(job_id, data, airtable_record_id)
+        # --- v2 MODIFIED: Pass google_drive_folder_url ---
+        await process_research(job_id, data, airtable_record_id, google_drive_folder_url)
         
     except Exception as e:
         logger.error(f"Job {job_id} failed during execution: {e}")
@@ -134,42 +137,47 @@ async def preflight():
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
-# --- CORE RESEARCH LOGIC: process_research (No functional change) ---
-async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None):
+# --- v2 MODIFIED: process_research signature ---
+async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None, google_drive_folder_url: str | None = None):
     try:
         if mongodb:
             # Include airtable_record_id in MongoDB job details
             job_details = data.dict()
             job_details['airtable_record_id'] = airtable_record_id
+            job_details['google_drive_folder_url'] = google_drive_folder_url # Add GDrive URL to log
             mongodb.create_job(job_id, job_details)
             
         await asyncio.sleep(1)  # Allow WebSocket connection
 
         await manager.send_status_update(job_id, status="processing", message="Starting research")
 
+        # --- v2 MODIFIED: Pass google_drive_folder_url to Graph constructor ---
         graph = Graph(
             company=data.company,
             url=data.company_url,
             industry=data.industry,
             hq_location=data.hq_location,
             websocket_manager=manager,
-            job_id=job_id
+            job_id=job_id,
+            google_drive_folder_url=google_drive_folder_url # <-- PASS GDrive URL
         )
 
-        # CRITICAL: Pass airtable_record_id to the Graph's thread config
-        thread_config = {}
+        # --- v2 MODIFIED: Pass all IDs to the Graph's thread config ---
+        thread_config = {"configurable": {}}
         if airtable_record_id:
-             thread_config = {"configurable": {"airtable_record_id": airtable_record_id}}
+             thread_config["configurable"]["airtable_record_id"] = airtable_record_id
+        if google_drive_folder_url:
+             thread_config["configurable"]["google_drive_folder_url"] = google_drive_folder_url
+        # --- End v2 Modification ---
 
         state = {}
         async for s in graph.run(thread=thread_config): # Pass the config here
             state.update(s)
         
-        # Look for the compiled report in either location.
+        # Look for the compiled report. 'editor' key is no longer used, but keeping check is safe.
         report_content = state.get('report') or (state.get('editor') or {}).get('report')
         
-        # Airtable upload is now handled inside the graph.run() call above.
-        # We don't need to call upload_to_airtable here anymore.
+        # Airtable upload is handled inside the graph.run() call
 
         if report_content:
             logger.info(f"Found report in final state (length: {len(report_content)})")
@@ -189,16 +197,14 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
             await manager.send_status_update(
                 job_id=job_id,
                 status="completed",
-                message="Research completed successfully.", # <-- Simplified message
+                message="Research completed successfully.",
                 result={
                     "report": report_content,
                     "company": data.company
-                    # Airtable status is now handled internally by the graph node's logging
                 }
             )
         else:
             logger.error(f"Research completed without finding report. State keys: {list(state.keys())}")
-            logger.error(f"Editor state: {state.get('editor', {})}")
             
             # Check if there was a specific error in the state
             error_message = "No report found"
@@ -230,8 +236,8 @@ async def research(data: ResearchRequest):
     try:
         logger.info(f"Received research request for {data.company}")
         job_id = str(uuid.uuid4())
-        # Pass UI-initiated runs directly to the semaphore queue
-        asyncio.create_task(run_job_with_semaphore(job_id, data, airtable_record_id=None)) 
+        # --- v2 MODIFIED: Pass google_drive_folder_url=None for UI runs ---
+        asyncio.create_task(run_job_with_semaphore(job_id, data, airtable_record_id=None, google_drive_folder_url=None)) 
 
         response = JSONResponse(content={
             "status": "accepted",
@@ -248,7 +254,7 @@ async def research(data: ResearchRequest):
         logger.error(f"Error initiating research: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- MODIFIED: Webhook Endpoint for Airtable Automation ---
+# --- v2 MODIFIED: Webhook Endpoint for Airtable Automation ---
 @app.post("/webhook/start-research")
 async def start_research_webhook(data: AirtableWebhookInput):
     """
@@ -272,7 +278,13 @@ async def start_research_webhook(data: AirtableWebhookInput):
              asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, "Queued"))
 
         # 2. Start the job using the SEMAPHORE WRAPPER (This is now the non-blocking part)
-        asyncio.create_task(run_job_with_semaphore(job_id, research_data, data.airtable_record_id))
+        # --- v2 MODIFIED: Pass data.google_drive_folder_url ---
+        asyncio.create_task(run_job_with_semaphore(
+            job_id, 
+            research_data, 
+            data.airtable_record_id, 
+            data.google_drive_folder_url # <-- PASS GDrive URL
+        ))
 
         return {
             "status": "Accepted",
@@ -285,7 +297,7 @@ async def start_research_webhook(data: AirtableWebhookInput):
         raise HTTPException(status_code=500, detail=str(e))
 # --- END MODIFIED ENDPOINT ---
 
-# 🟢 NEW DEBUG ENDPOINT: /debug/airtable-test
+# 🟢 DEBUG ENDPOINT: /debug/airtable-test
 @app.post("/debug/airtable-test")
 async def debug_airtable_test(record_id: str | None = None):
     """

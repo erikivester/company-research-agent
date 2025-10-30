@@ -1,14 +1,16 @@
 # backend/nodes/researchers/__init__.py
-from .financial import FinancialAnalyst
-from .news import NewsScanner
-from .industry import IndustryAnalyzer
-from .company import CompanyAnalyzer
-from .flw import FLWAnalyzer # <-- ADDED Import for the new analyzer
+# --- v2: Import our 5 new/refocused nodes ---
+from .company import CompanyBriefNode
+from .news import NewsSignalNode
+from .flw import FLWAnalyzer
+from .contact_finder import ContactFinderNode
+from .engagement_finder import EngagementFinderNode
 
+# --- v2: Update __all__ to export the 5 new nodes ---
 __all__ = [
-    "FinancialAnalyst",
-    "NewsScanner",
-    "IndustryAnalyzer",
-    "CompanyAnalyzer",
-    "FLWAnalyzer" # <-- ADDED FLWAnalyzer to the list
+    "CompanyBriefNode",
+    "NewsSignalNode",
+    "FLWAnalyzer",
+    "ContactFinderNode",
+    "EngagementFinderNode"
 ]

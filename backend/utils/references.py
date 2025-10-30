@@ -124,27 +124,37 @@ def extract_website_name_from_domain(domain: str) -> str:
     return website_name
 
 def process_references_from_search_results(state: Dict[str, Any]) -> Tuple[List[str], Dict[str, str], Dict[str, Dict[str, Any]]]:
-    """Process references from search results and return top references, titles, and info."""
+    """(v2) Process references from the 5 new v2 researcher nodes."""
     all_top_references = []
     
-    # Collect references with scores from all data types
-    data_types = ['curated_company_data', 'curated_industry_data', 'curated_financial_data', 'curated_news_data']
+    # --- v2 MODIFICATION: Updated data_types list ---
+    # This list now contains the v2 state keys for curated data
+    data_types = [
+        'curated_company_brief_data',
+        'curated_news_signal_data',
+        'curated_flw_data',
+        'curated_contact_finder_data',
+        'curated_engagement_finder_data'
+    ]
+    # --- END v2 MODIFICATION ---
     
-    # Log the start of reference processing
-    logger.info("Starting to process references from search results")
+    logger.info("Starting to process references from v2 curated search results")
     
     for data_type in data_types:
         if curated_data := state.get(data_type, {}):
             for url, doc in curated_data.items():
+                if not isinstance(doc, dict):
+                    logger.warning(f"Skipping non-dict item in {data_type} for URL: {url}")
+                    continue
                 try:
-                    # Ensure we have a valid score
+                    # Ensure we have a valid score from the 'evaluation' dict
                     if 'evaluation' in doc and 'overall_score' in doc['evaluation']:
                         score = float(doc['evaluation']['overall_score'])
                     else:
                         # Fallback to raw score if available
                         score = float(doc.get('score', 0))
                     
-                    logger.info(f"Found reference in {data_type}: URL={url}, Score={score:.4f}")
+                    logger.debug(f"Found reference in {data_type}: URL={url}, Score={score:.4f}")
                     all_top_references.append((url, score))
                 except (KeyError, ValueError, TypeError) as e:
                     logger.warning(f"Error processing score for {url} in {data_type}: {e}")
@@ -160,7 +170,6 @@ def process_references_from_search_results(state: Dict[str, Any]) -> Tuple[List[
     for i, (url, score) in enumerate(all_top_references[:20]):
         logger.info(f"{i+1}. Score: {score:.4f} - URL: {url}")
     
-    # Use a set to store unique URLs, keeping only the highest scored version of each URL
     seen_urls = set()
     unique_references = []
     reference_titles = {}  # Store titles for references
@@ -179,36 +188,46 @@ def process_references_from_search_results(state: Dict[str, Any]) -> Tuple[List[
             seen_urls.add(normalized_url)
             unique_references.append((normalized_url, score))
             
-            # Extract domain name for website citation
             parsed = urlparse(url)
             domain = parsed.netloc
             
-            # Find and store the title and other info for this URL
             title = None
             website_name = None
             
-            # Look for the document info in all data types
+            # Look for the document info in all v2 data types
             for data_type in data_types:
                 if not title and (curated_data := state.get(data_type, {})):
-                    for doc in curated_data.values():
-                        if doc.get('url') == url:
-                            title = doc.get('title', '')
-                            if title:
-                                # Clean up the title
-                                title = clean_title(title)
-                                if title and title.strip() and title != url:
-                                    reference_titles[normalized_url] = title
-                                    logger.info(f"Found title for URL {url}: '{title}'")
-                                    break
+                    # Find the doc whose *original* URL matches
+                    # Note: This relies on curator.py storing the *original* URL in doc['url']
+                    # A more robust way might be to search by normalized_url if curator.py normalizes it first
+                    
+                    # Let's check both original and normalized for safety
+                    doc_found = None
+                    if url in curated_data: # Check by original URL
+                        doc_found = curated_data.get(url)
+                    elif normalized_url in curated_data: # Check by normalized URL
+                        doc_found = curated_data.get(normalized_url)
+                    else: # Last resort: iterate and check doc['url']
+                        for doc in curated_data.values():
+                             if not isinstance(doc, dict): continue
+                             if doc.get('url') == url or doc.get('url') == normalized_url:
+                                 doc_found = doc
+                                 break
+                    
+                    if doc_found:
+                        title = doc_found.get('title', '')
+                        if title:
+                            title = clean_title(title)
+                            if title and title.strip() and title != url:
+                                reference_titles[normalized_url] = title
+                                logger.debug(f"Found title for URL {url}: '{title}'")
+                                break
             
-            # If no title was found, log it
             if not title:
-                logger.info(f"No valid title found for URL {url}")
+                logger.debug(f"No valid title found for URL {url}")
             
-            # Extract a better website name from the domain
             website_name = extract_website_name_from_domain(domain)
             
-            # Store additional information for MLA citation
             reference_info[normalized_url] = {
                 'title': title or '',
                 'domain': domain,
@@ -216,12 +235,10 @@ def process_references_from_search_results(state: Dict[str, Any]) -> Tuple[List[
                 'url': normalized_url,
                 'score': score
             }
-            logger.info(f"Stored reference info for {normalized_url} with score {score:.4f}")
+            logger.debug(f"Stored reference info for {normalized_url} with score {score:.4f}")
     
-    # Sort unique references by score again to ensure proper ordering
     unique_references.sort(key=lambda x: float(x[1]), reverse=True)
     
-    # Log unique references by score to verify sorting
     logger.info(f"Found {len(unique_references)} unique references after deduplication")
     logger.info("Unique references by score (sorted):")
     for i, (url, score) in enumerate(unique_references):
@@ -231,7 +248,6 @@ def process_references_from_search_results(state: Dict[str, Any]) -> Tuple[List[
     top_references = unique_references[:10]
     top_reference_urls = [url for url, _ in top_references]
     
-    # Log final top 10 references
     logger.info(f"Final top {len(top_reference_urls)} references selected:")
     for i, url in enumerate(top_reference_urls):
         score = next((s for u, s in unique_references if u == url), 0)
@@ -245,16 +261,11 @@ def format_reference_for_markdown(reference_entry: Dict[str, Any]) -> str:
     title = reference_entry.get('title', '')
     url = reference_entry.get('url', '')
     
-    # Ensure we have a website name
     if not website or website.strip() == "":
         website = extract_domain_name(url)
     
-    # Ensure we have a title
     if not title or title.strip() == "" or title == url:
-        # Try to extract a meaningful title from the URL
         title = extract_title_from_url_path(url)
-        
-        # If still no title, use default format
         if not title:
             title = f"Information from {website}"
     
@@ -276,11 +287,9 @@ def extract_link_info(line: str) -> tuple[str, str]:
             link_text = clean_title(mla_match.group(3))
             url = clean_title(mla_match.group(4))
             
-            # If website is empty or just a period, extract from URL
             if not website or website == ".":
                 website = extract_domain_name(url)
             
-            # Format for PDF: "Website. Title. URL"
             return f"{website}. {title}. {link_text}", url
         
         # Fallback for standard markdown links
@@ -288,7 +297,6 @@ def extract_link_info(line: str) -> tuple[str, str]:
         if match:
             title = clean_title(match.group(1))
             url = clean_title(match.group(2))
-            # If the title is a URL and matches the URL, just use the URL
             if title.startswith('http') and title == url:
                 return url, url
             return title, url
@@ -306,7 +314,6 @@ def format_references_section(references: List[str], reference_info: Dict[str, D
     
     logger.info(f"Formatting {len(references)} references for the report")
     
-    # Create a list of reference entries with all the information needed
     reference_entries = []
     for ref in references:
         info = reference_info.get(ref, {})
@@ -314,24 +321,20 @@ def format_references_section(references: List[str], reference_info: Dict[str, D
         title = info.get('title', '')
         score = info.get('score', 0)
         
-        # If title is not in reference_info, try to get it from reference_titles
         if not title or title.strip() == "":
             title = reference_titles.get(ref, '')
-            logger.info(f"Using title from reference_titles for {ref}: '{title}'")
+            logger.debug(f"Using title from reference_titles for {ref}: '{title}'")
         
         domain = info.get('domain', '')
         
-        # If we don't have a title, use the URL
         if not title or title.strip() == "" or title == ref:
             title = ref
-            logger.info(f"No title found for {ref}, using URL as title")
+            logger.debug(f"No title found for {ref}, using URL as title")
         
-        # If we don't have a website name, extract it from the URL
         if not website or website.strip() == "":
             website = extract_domain_name(ref)
-            logger.info(f"No website name found for {ref}, extracted: {website}")
+            logger.debug(f"No website name found for {ref}, extracted: {website}")
         
-        # Create a reference entry with all information
         entry = {
             'website': website,
             'title': title,
@@ -339,21 +342,18 @@ def format_references_section(references: List[str], reference_info: Dict[str, D
             'domain': domain,
             'score': score
         }
-        logger.info(f"Created reference entry: {entry}")
+        logger.debug(f"Created reference entry: {entry}")
         reference_entries.append(entry)
     
-    # Keep references in the same order they were provided (which should be by score)
-    # This preserves the top 10 scoring order from process_references_from_search_results
     logger.info("Maintaining reference order based on scores")
     
-    # Format references in MLA style
     reference_lines = ["\n## References"]
     for entry in reference_entries:
         reference_line = format_reference_for_markdown(entry)
         reference_lines.append(reference_line)
-        logger.info(f"Added reference: {reference_line}")
+        logger.debug(f"Added reference: {reference_line}")
     
     reference_text = "\n".join(reference_lines)
     logger.info(f"Completed references section with {len(reference_entries)} entries")
     
-    return reference_text 
+    return reference_text

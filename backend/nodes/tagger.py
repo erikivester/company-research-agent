@@ -16,7 +16,7 @@ from backend.airtable_uploader import update_airtable_record # synchronous funct
 logger = logging.getLogger(__name__)
 
 class Tagger:
-    """Classifies the company based on research briefings using OpenAI."""
+    """(v2) Classifies the company based on v2 research briefings using OpenAI."""
 
     def __init__(self) -> None:
         self.openai_key = os.getenv("OPENAI_API_KEY")
@@ -30,7 +30,7 @@ class Tagger:
         self.classification_rules = self._load_classification_rules()
 
     def _load_classification_rules(self) -> Dict[str, List[str]]:
-        """Loads the predefined classification options."""
+        """(v2) Loads the predefined classification options, including ReFED Alignment."""
         # These should exactly match your Airtable options
         return {
             "Country/Region": [
@@ -54,55 +54,74 @@ class Tagger:
             "Revenue Band (est.)": [
                 "<$1M", "$1M-$10M", "$10M-$50M", "$50M-$100M",
                 "$100M-$500M", "$500M-$1B", "$1B+", "Unknown"
+            ],
+            # --- NEW v2 ReFED Alignment Categories ---
+            "ReFED Alignment": [
+                "Insights Engine Engagement", "Data Contributor / Partner", "Business Services Opportunity",
+                "U.S. Food Waste Pact Prospect/Member", "FWFC: Capital-Seeking", "FWFC: Capital Provider",
+                "Catalytic Grant Fund Fit", "Events & Sponsorship (Summit/FWAN)", "Policy & Public Affairs Alignment",
+                "Measurement & Disclosure", "Solution Adopter (Corporate)", "Solution Provider (Vendor/Innovator)",
+                "Communications & Thought Leadership"
             ]
+            # --- END NEW v2 ---
         }
 
 
     async def classify_company(self, state: ResearchState) -> ResearchState:
-        """Classifies the company using OpenAI based on briefings."""
+        """(v2) Classifies the company using OpenAI based on the 5 v2 briefings."""
         company = state.get('company', 'Unknown Company')
-        logger.info(f"Starting classification for {company}...")
+        logger.info(f"Starting v2 classification for {company}...")
 
-        # --- Gather Content for Classification ---
+        # --- v2: Gather Content for Classification from 5 new briefings ---
         briefings_content = []
-        financial_briefing_text = ""
+        company_brief_text = ""
         
         # Inject HQ Location into content for regional classification
         hq_location = state.get('hq_location')
         if hq_location and hq_location.strip() and hq_location.lower() != 'unknown':
             briefings_content.append(f"## Location Context\n* Headquarters: {hq_location}")
             
-        if financial_briefing := state.get("financial_briefing"):
-            # Ensure briefing is a non-empty string before using
-            if isinstance(financial_briefing, str) and financial_briefing.strip():
-                financial_briefing_text = financial_briefing
-                briefings_content.append(f"## Financial Overview\n{financial_briefing}")
-        if company_briefing := state.get("company_briefing"):
+        # Get Company Brief (for Revenue & Industry)
+        if company_briefing := state.get("company_brief_briefing"):
             if isinstance(company_briefing, str) and company_briefing.strip():
-                briefings_content.append(f"## Company Overview\n{company_briefing}")
-        if industry_briefing := state.get("industry_briefing"):
-            if isinstance(industry_briefing, str) and industry_briefing.strip():
-                briefings_content.append(f"## Industry Overview\n{industry_briefing}")
+                company_brief_text = company_briefing
+                briefings_content.append(f"## Company Overview & Financial Health\n{company_briefing}")
+        
+        # Get FLW Briefing (for Industry & ReFED Alignment)
+        if flw_briefing := state.get("flw_sustainability_briefing"):
+            if isinstance(flw_briefing, str) and flw_briefing.strip():
+                briefings_content.append(f"## FLW & Sustainability Briefing\n{flw_briefing}")
+        
+        # Get News Briefing (for ReFED Alignment)
+        if news_briefing := state.get("news_signal_briefing"):
+            if isinstance(news_briefing, str) and news_briefing.strip():
+                briefings_content.append(f"## News & Signals Briefing\n{news_briefing}")
 
-        site_scrape = state.get("site_scrape", {})
-        if site_scrape:
-            # Safely get raw_content, defaulting to empty string
-            site_context = "\n\n".join(
-                f"URL: {url}\nContent Snippet:\n{data.get('raw_content', '')[:1000]}..."
-                for url, data in list(site_scrape.items())[:3] # Limit context size
-            )
-            if site_context.strip(): # Check if context was actually generated
-                briefings_content.append(f"## Website Content Snippets\n{site_context}")
+        # Get Engagement Briefing (for ReFED Alignment)
+        if engagement_briefing := state.get("engagement_briefing"):
+            if isinstance(engagement_briefing, str) and engagement_briefing.strip():
+                briefings_content.append(f"## Engagements & Affiliations Briefing\n{engagement_briefing}")
+
+        # Get Contact Briefing (for context)
+        if contact_briefing := state.get("contact_briefing"):
+            if isinstance(contact_briefing, str) and contact_briefing.strip():
+                briefings_content.append(f"## Potential Contacts Briefing\n{contact_briefing}")
+        # --- End v2 Content Gathering ---
 
         if not briefings_content:
-            logger.warning("No valid briefing or site scrape content available for classification.")
-            return state # Return early if no content
+            logger.warning("No valid briefing content available for classification.")
+            # Ensure all keys are initialized as empty/unknown before returning
+            state.setdefault('airtable_industries', ['Unknown'])
+            state.setdefault('airtable_country_region', ['Unknown'])
+            state.setdefault('airtable_revenue_band_est', ['Unknown'])
+            state.setdefault('airtable_refed_alignment', [])
+            return state
 
         combined_briefings = "\n\n".join(briefings_content)
 
-        # --- Prepare Classification Prompts ---
+        # --- v2: Prepare Classification Prompts ---
         prompts = {}
-        # Industry Prompt
+        # Industry Prompt (Uses combined briefings)
         prompts["Industries"] = f"""
 Analyze the following company information for "{company}":
 --- START COMPANY INFO ---
@@ -112,7 +131,7 @@ Based *only* on the information provided, select up to 3 relevant industries for
 Available Industries: {', '.join(self.classification_rules['Industries'])}
 Output only the selected industry names, separated by commas.
 """
-        # Country/Region Prompt
+        # Country/Region Prompt (Uses combined briefings)
         prompts["Country/Region"] = f"""
 Analyze the following company information for "{company}", paying close attention to locations, addresses, shipping, languages, TLDs, or explicit region mentions:
 --- START COMPANY INFO ---
@@ -122,12 +141,12 @@ Based *only* on the information provided, select all applicable regions of opera
 Available Regions: {', '.join(self.classification_rules['Country/Region'])}
 Output only the selected region names, separated by commas.
 """
-        # Revenue Band Prompt (Uses only financial briefing if available and valid)
-        if financial_briefing_text:
+        # Revenue Band Prompt (Uses only company_brief_text if available)
+        if company_brief_text:
              prompts["Revenue Band (est.)"] = f"""
 Analyze the following financial information for "{company}":
 --- START FINANCIAL INFO ---
-{financial_briefing_text}
+{company_brief_text}
 --- END FINANCIAL INFO ---
 Based *only* on the financial information provided (like total funding, revenue figures, company size hints), estimate the company's annual revenue band. Choose exactly ONE option from the list below that best fits the evidence. Do not guess or extrapolate heavily. If the information is insufficient to make a reasonable estimate, output "None".
 
@@ -137,11 +156,36 @@ Available Revenue Bands:
 Output only the single selected revenue band name. Example: $10M-$50M
 """
         else:
-             logger.info("Skipping Revenue Band estimation as Financial Briefing is missing or empty.")
+             logger.info("Skipping Revenue Band estimation as Company Briefing is missing or empty.")
 
+        # --- NEW v2 ReFED Alignment Prompt ---
+        prompts["ReFED Alignment"] = f"""
+You are a ReFED analyst. Analyze all the provided briefings for "{company}" to identify all areas of alignment with ReFED's work.
+--- START COMPANY INFO ---
+{combined_briefings}
+--- END COMPANY INFO ---
+Based *only* on the text, select ALL relevant alignment categories from the list below. Do not guess. If no specific signals are present, output "None".
+
+Available Alignment Categories:
+- **Insights Engine Engagement:** (Signals: cites Insights Engine, Food Waste Monitor, Impact Calculator, Solutions Database.)
+- **Data Contributor / Partner:** (Signals: open to data partnerships, APIs, dashboards, ESG data exchanges.)
+- **Business Services Opportunity:** (Signals: public waste goals but no clear roadmap; pilot interest; RFPs.)
+- **U.S. Food Waste Pact Prospect/Member:** (Signals: cross-value-chain commitments; supplier programs; scope 3 focus; signatory.)
+- **FWFC: Capital-Seeking:** (Signals: company/nonprofit raising a round; pilot scale-up; impact financing needs.)
+- **FWFC: Capital Provider:** (Signals: investor, lender, corporate VC, foundation with climate/food/ag focus.)
+- **Catalytic Grant Fund Fit:** (Signals: nonprofit/initiative with prevention/rescue/recycling projects; measurable impact; funding gap.)
+- **Events & Sponsorship (Summit/FWAN):** (Signals: conference speaking/sponsorship history; FWAN participation.)
+- **Policy & Public Affairs Alignment:** (Signals: policy statements; government affairs team; coalitions on food waste.)
+- **Measurement & Disclosure:** (Signals: public food loss/waste goals; CDP/ESG reports; WRAP/FLW Protocol usage.)
+- **Solution Adopter (Corporate):** (Signals: actively piloting/rolling out solutions like inventory AI, dynamic pricing, donation programs, byproduct valorization.)
+- **Solution Provider (Vendor/Innovator):** (Signals: B2B solution with retail/CPG/foodservice customers; case studies.)
+- **Communications & Thought Leadership:** (Signals: sustainability campaigns, media reach, executive platforms.)
+
+Output only the selected category names, separated by commas.
+"""
+        # --- END v2 PROMPTS ---
 
         # --- Call OpenAI API for each classification ---
-        classification_results = {}
         tasks = []
 
         async def get_classification(field_name: str, prompt: str):
@@ -155,7 +199,7 @@ Output only the single selected revenue band name. Example: $10M-$50M
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0,
-                    max_tokens=150
+                    max_tokens=250 # Increased max tokens for ReFED Alignment list
                 )
                 result_text = response.choices[0].message.content.strip()
                 logger.info(f"OpenAI response for {field_name}: {result_text}")
@@ -163,27 +207,24 @@ Output only the single selected revenue band name. Example: $10M-$50M
                 if not result_text or result_text.lower() == "none":
                     return field_name, [] # Return empty list for "None" or empty response
 
-                # Split tags, strip whitespace
-                selected_tags = [tag.strip() for tag in result_text.split(',') if tag.strip()] # Filter empty strings
+                selected_tags = [tag.strip() for tag in result_text.split(',') if tag.strip()]
 
-                # Validate against allowed options for the specific field
                 allowed_options = self.classification_rules.get(field_name, [])
                 valid_tags = [tag for tag in selected_tags if tag in allowed_options]
 
                 if not valid_tags:
                      logger.warning(f"OpenAI returned tags for {field_name}, but none matched allowed options: {selected_tags}")
-                     return field_name, [] # Return empty list if no valid tags found
+                     return field_name, [] 
 
-                # For single-select fields like Revenue, ensure only one tag is returned
                 if field_name == "Revenue Band (est.)":
                     logger.info(f"Taking first valid tag for single-select field '{field_name}': {valid_tags[0]}")
-                    return field_name, [valid_tags[0]] # Return only the first valid tag in a list
+                    return field_name, [valid_tags[0]] 
 
-                return field_name, valid_tags # Return list of valid tags
+                return field_name, valid_tags 
 
             except Exception as e:
-                logger.error(f"Error getting OpenAI classification for {field_name}: {e}", exc_info=True) # Add exc_info
-                return field_name, [] # Return empty list on error
+                logger.error(f"Error getting OpenAI classification for {field_name}: {e}", exc_info=True) 
+                return field_name, [] 
 
         # Create and run tasks concurrently
         for field, prompt_text in prompts.items():
@@ -191,9 +232,10 @@ Output only the single selected revenue band name. Example: $10M-$50M
 
         results = await asyncio.gather(*tasks)
 
-# Store results in state using specific keys
-        airtable_tags = {} # For logging purposes
-        # Fields that should default to ['Unknown'] if LLM returns None or invalid tags
+        # Store results in state using specific keys
+        airtable_tags = {}
+        
+        # v2: Updated default list
         default_to_unknown_fields = ["Country/Region", "Revenue Band (est.)", "Industries"] 
         
         for field, tags in results:
@@ -202,7 +244,7 @@ Output only the single selected revenue band name. Example: $10M-$50M
             if base_key_name.endswith('_(est.)'):
                 state_key = f"airtable_{base_key_name.replace('_(est.)','_est')}"
             else:
-                state_key = f"airtable_{base_key_name}"
+                state_key = f"airtable_{base_key_name}" # e.g., "airtable_refed_alignment"
 
             # 2. Determine the initial value/apply defaulting logic
             if tags: # Tags were successfully classified and validated
@@ -211,71 +253,37 @@ Output only the single selected revenue band name. Example: $10M-$50M
                 value_to_save = ['Unknown']
                 logger.info(f"No valid tags found for '{field}'. Defaulting state key '{state_key}' to ['Unknown'].")
             else:
-                value_to_save = []
+                value_to_save = [] # e.g., ReFED Alignment defaults to empty list
 
-            # --- NEW FEATURE: Cap Country/Region at ['Global'] if more than 2 regions are found ---
+            # Cap Country/Region at ['Global'] if more than 2 regions are found
             if field == "Country/Region" and len(value_to_save) > 2:
-                # Log the change
                 logger.info(f"Overriding Country/Region tags (found {len(value_to_save)} regions: {value_to_save}) to ['Global'].")
                 value_to_save = ['Global']
-            # --- END NEW FEATURE ---
             
+            # 3. Save to state
+            state[state_key] = value_to_save 
             if value_to_save:
-                # Use value_to_save for logging, not the original 'tags'
-                airtable_tags[field] = value_to_save 
+                airtable_tags[field] = value_to_save
                 logger.info(f"Updating state key '{state_key}' with tags: {value_to_save}")
-                state[state_key] = value_to_save # Assign the list of tags to the state
             else:
-                # Ensure key is initialized if it wasn't a defaulted field and had empty tags
-                if state_key not in state:
-                     logger.info(f"No valid tags for '{field}'. Setting state key '{state_key}' to empty list (no default).")
-                     state[state_key] = []
+                logger.info(f"No valid tags for '{field}'. Setting state key '{state_key}' to empty list.")
+
                 
         logger.info(f"Classification complete for {company}: {airtable_tags}")
 
         # Add results to messages list for logging/display
-        if airtable_tags: # Only add message if tags were found
+        if airtable_tags: 
             log_message = f"📊 Classification results for {company}:\n" + "\n".join([f"  • {field}: {', '.join(tags)}" for field, tags in airtable_tags.items()])
             state.setdefault('messages', []).append(AIMessage(content=log_message))
         else:
             logger.info("No classification tags were successfully generated or validated.")
             state.setdefault('messages', []).append(AIMessage(content=f"📊 No classification tags identified for {company}."))
 
-
-        # --- MORE DETAILED DEBUG LOGGING BEFORE RETURN ---
-        logger.info("-" * 20)
-        logger.info("DEBUG: Final state inspection BEFORE returning from classify_company:")
-        current_keys = list(state.keys())
-        logger.info(f"All Keys: {current_keys}")
-
-        revenue_key_string = 'airtable_revenue_band_est' # Define the exact key string we expect
-
-        # Check if the exact key string exists
-        if revenue_key_string in state:
-            logger.info(f"DEBUG: Key '{revenue_key_string}' FOUND in state.")
-            value = state[revenue_key_string] # Access directly, not via .get()
-            logger.info(f"DEBUG: Value via direct access state['{revenue_key_string}']: {value}")
-            logger.info(f"DEBUG: Type via direct access: {type(value)}")
-        else:
-            logger.warning(f"DEBUG: Key '{revenue_key_string}' NOT FOUND in state using 'in'.")
-            # Check if a visually similar key exists
-            similar_keys = [k for k in current_keys if 'revenue' in k]
-            if similar_keys:
-                logger.warning(f"DEBUG: Found similar keys: {similar_keys}")
-            else:
-                logger.warning("DEBUG: No keys containing 'revenue' found.")
-
-        # Check other keys for comparison
-        logger.info(f"DEBUG: Value of airtable_industries BEFORE return: {state.get('airtable_industries')}")
-        logger.info(f"DEBUG: Value of airtable_country_region BEFORE return: {state.get('airtable_country_region')}")
-        logger.info("-" * 20)
-        # --- END DEBUG LOGGING ---
-
         return state
 
     async def run(self, state: ResearchState) -> ResearchState:
         """Executes the tagger node."""
-        airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
+        airtable_record_id = state.get('airtable_record_id')
         try:
             # --- Call Airtable Update (Start Status) ---
             if airtable_record_id:
@@ -283,9 +291,7 @@ Output only the single selected revenue band name. Example: $10M-$50M
                 asyncio.create_task(
                     self._update_airtable_status(airtable_record_id, "Classifying")
                 )
-            # --- End Airtable Update Call ---
 
-            # Run the main classification logic
             state = await self.classify_company(state)
             return state
 
@@ -293,17 +299,17 @@ Output only the single selected revenue band name. Example: $10M-$50M
             logger.error(f"Error in Tagger node run method: {e}", exc_info=True)
             error_msg = f"⚠️ Tagger node failed critically: {str(e)}"
             state.setdefault('messages', []).append(AIMessage(content=error_msg))
-            # --- ADD AIRTABLE FAILURE UPDATE ---
             if airtable_record_id:
                 logger.info(f"Sending 'Tagger Failed' status update to Airtable record: {airtable_record_id}")
                 asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, f"Tagger Failed: {str(e)[:50]}") # Update status on error
+                    self._update_airtable_status(airtable_record_id, f"Tagger Failed: {str(e)[:50]}")
                 )
-            # --- END ---
-            # Ensure keys exist even on failure, set to empty lists
-            state.setdefault('airtable_industries', [])
-            state.setdefault('airtable_country_region', [])
-            state.setdefault('airtable_revenue_band_est', [])
+            
+            # --- v2: Ensure ALL keys exist on failure ---
+            state.setdefault('airtable_industries', ['Unknown'])
+            state.setdefault('airtable_country_region', ['Unknown'])
+            state.setdefault('airtable_revenue_band_est', ['Unknown'])
+            state.setdefault('airtable_refed_alignment', [])
             return state
 
     async def _update_airtable_status(self, record_id: str, status_text: str):
@@ -312,7 +318,6 @@ Output only the single selected revenue band name. Example: $10M-$50M
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
         try:
-            # Use asyncio.to_thread to safely run the synchronous Airtable API call
             await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
