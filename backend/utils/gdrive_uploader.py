@@ -4,7 +4,7 @@ import io
 import json
 import logging
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -13,12 +13,8 @@ from googleapiclient.http import MediaIoBaseUpload
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
-# Define the path to your service account credentials file.
-# This assumes 'gdrive_credentials.json' is in the project root directory.
-SERVICE_ACCOUNT_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-    'gdrive_credentials.json'
-)
+SERVICE_ACCOUNT_FILE = "/secrets/gdrive_credentials.json"
+
 # Define the scopes required for Google Drive API
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
