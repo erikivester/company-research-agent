@@ -20,8 +20,9 @@ from backend.services.websocket_manager import WebSocketManager
 
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
 from backend.airtable_uploader import update_airtable_record
-from backend.debug_airtable import run_airtable_debug_test
-# ⬆️ END AIRTABLE IMPORTS ⬆️
+# --- FIX: REMOVE DEBUG IMPORTS ---
+# from backend.debug_airtable import run_airtable_debug_test
+# --- END FIX ---
 
 # Load environment variables from .env file at startup
 env_path = Path(__file__).parent / '.env'
@@ -297,18 +298,17 @@ async def start_research_webhook(data: AirtableWebhookInput):
         raise HTTPException(status_code=500, detail=str(e))
 # --- END MODIFIED ENDPOINT ---
 
-# 🟢 DEBUG ENDPOINT: /debug/airtable-test
-@app.post("/debug/airtable-test")
-async def debug_airtable_test(record_id: str | None = None):
-    """
-    Triggers the logic from test_airtable.py with mock data.
+# --- FIX: REMOVE DEBUG ENDPOINT ---
+# @app.post("/debug/airtable-test")
+# async def debug_airtable_test(record_id: str | None = None):
+#     """
+#     Triggers the logic from test_airtable.py with mock data.
     
-    Pass ?record_id=recXXXXX in the query or body to test an UPDATE.
-    If no ID is passed, it tests an INSERT.
-    """
-    # The record_id can be passed via a query parameter or an empty Pydantic model body
-    # We accept it as a query parameter for simplicity here.
-    return await run_airtable_debug_test(record_id)
+#     Pass ?record_id=recXXXXX in the query or body to test an UPDATE.
+#     If no ID is passed, it tests an INSERT.
+#     """
+#     return await run_airtable_debug_test(record_id)
+# --- END FIX ---
 
 @app.get("/")
 async def ping():
