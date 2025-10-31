@@ -35,7 +35,8 @@ class BaseResearcher:
         self._analyst_type = value
 
     async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
-        company = state.get("company", "Unknown Company")
+        # Use 'or' to treat empty strings as missing values as well
+        company = state.get("company") or "Unknown Company"
         industry = state.get("industry", "Unknown Industry")
         
         # --- FIX #1: Use 'hq_location' from the state, not 'hq' ---
@@ -46,7 +47,9 @@ class BaseResearcher:
         job_id = state.get('job_id')
         
         try:
+            # Log repr for debugging so we can see empty/whitespace values
             logger.info(f"Generating queries for {company} as {self.analyst_type}")
+            logger.debug(f"DEBUG: company={company!r}, job_id={job_id!r}, state_keys={list(state.keys())}")
             
             response = await self.openai_client.chat.completions.create(
                 model="gpt-4.1-mini",
@@ -78,10 +81,10 @@ class BaseResearcher:
                 if content:
                     current_query += content
                     
-                    # Stream the current state to the UI.
-                    if websocket_manager and job_id:
-                        await websocket_manager.send_status_update(
-                            job_id=job_id,
+                    # Stream the current state to the UI using a safe helper that handles missing/falsy job_id
+                    if websocket_manager:
+                        await websocket_manager.safe_send(
+                            state=state,
                             status="query_generating",
                             message="Generating research query",
                             result={
@@ -101,9 +104,9 @@ class BaseResearcher:
                             query = query.strip()
                             if query:
                                 queries.append(query)
-                                if websocket_manager and job_id:
-                                    await websocket_manager.send_status_update(
-                                        job_id=job_id,
+                                if websocket_manager:
+                                    await websocket_manager.safe_send(
+                                        state=state,
                                         status="query_generated",
                                         message="Generated new research query",
                                         result={
@@ -119,9 +122,9 @@ class BaseResearcher:
             if current_query.strip():
                 query = current_query.strip()
                 queries.append(query)
-                if websocket_manager and job_id:
-                    await websocket_manager.send_status_update(
-                        job_id=job_id,
+                if websocket_manager:
+                    await websocket_manager.safe_send(
+                        state=state,
                         status="query_generated",
                         message="Generated final research query",
                         result={

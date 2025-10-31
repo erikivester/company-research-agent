@@ -264,11 +264,17 @@ async def start_research_webhook(data: AirtableWebhookInput):
     """
     try:
         logger.info(f"Received webhook request for {data.company} (Airtable ID: {data.airtable_record_id})")
-        
+
+        # Log the raw incoming webhook payload values (use repr to reveal empty/whitespace)
+        logger.debug(f"DEBUG: webhook payload: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}, google_drive_folder_url={data.google_drive_folder_url!r}")
+
         job_id = str(uuid.uuid4())
-        
+
+        # Normalize company to avoid empty-string issues downstream
+        company_value = data.company or "Unknown Company"
+
         research_data = ResearchRequest(
-            company=data.company,
+            company=company_value,
             company_url=data.company_url,
             industry=data.industry,
             hq_location=data.hq_location

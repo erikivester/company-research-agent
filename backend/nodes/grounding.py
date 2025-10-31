@@ -48,13 +48,12 @@ class GroundingNode:
         msg = f"🎯 Initiating research for {company}...\n"
         
         if websocket_manager := state.get('websocket_manager'):
-            if job_id := state.get('job_id'):
-                await websocket_manager.send_status_update(
-                    job_id=job_id,
-                    status="processing",
-                    message=f"🎯 Initiating research for {company}",
-                    result={"step": "Initializing"}
-                )
+            await websocket_manager.safe_send(
+                state=state,
+                status="processing",
+                message=f"🎯 Initiating research for {company}",
+                result={"step": "Initializing"}
+            )
 
         site_scrape = {}
         error_str = None # --- FIX: Initialize error_str ---
@@ -66,13 +65,12 @@ class GroundingNode:
             
             # Send initial briefing status
             if websocket_manager := state.get('websocket_manager'):
-                if job_id := state.get('job_id'):
-                    await websocket_manager.send_status_update(
-                        job_id=job_id,
-                        status="processing",
-                        message="Crawling company website",
-                        result={"step": "Initial Site Scrape"}
-                    )
+                await websocket_manager.safe_send(
+                    state=state,
+                    status="processing",
+                    message="Crawling company website",
+                    result={"step": "Initial Site Scrape"}
+                )
 
             try:
                 logger.info("Initiating Tavily crawl")
@@ -97,24 +95,22 @@ class GroundingNode:
                     logger.info(f"Successfully crawled {len(site_scrape)} pages from website")
                     msg += f"\n✅ Successfully crawled {len(site_scrape)} pages from website"
                     if websocket_manager := state.get('websocket_manager'):
-                        if job_id := state.get('job_id'):
-                            await websocket_manager.send_status_update(
-                                job_id=job_id,
-                                status="processing",
-                                message=f"Successfully crawled {len(site_scrape)} pages from website",
-                                result={"step": "Initial Site Scrape"}
-                            )
+                        await websocket_manager.safe_send(
+                            state=state,
+                            status="processing",
+                            message=f"Successfully crawled {len(site_scrape)} pages from website",
+                            result={"step": "Initial Site Scrape"}
+                        )
                 else:
                     logger.warning("No content found in crawl results")
                     msg += "\n⚠️ No content found in website crawl"
                     if websocket_manager := state.get('websocket_manager'):
-                        if job_id := state.get('job_id'):
-                            await websocket_manager.send_status_update(
-                                job_id=job_id,
-                                status="processing",
-                                message="⚠️ No content found in provided URL",
-                                result={"step": "Initial Site Scrape"}
-                            )
+                        await websocket_manager.safe_send(
+                            state=state,
+                            status="processing",
+                            message="⚠️ No content found in provided URL",
+                            result={"step": "Initial Site Scrape"}
+                        )
             except Exception as e:
                 error_str = str(e) # --- FIX: Capture error ---
                 logger.error(f"Website crawl error: {error_str}", exc_info=True)
@@ -122,27 +118,25 @@ class GroundingNode:
                 print(error_msg)
                 msg += f"\n{error_msg}"
                 if websocket_manager := state.get('websocket_manager'):
-                    if job_id := state.get('job_id'):
-                        await websocket_manager.send_status_update(
-                            job_id=job_id,
-                            status="website_error",
-                            message=error_msg,
-                            result={
-                                "step": "Initial Site Scrape", 
-                                "error": error_str,
-                                "continue_research": True  # Continue with research even if website extraction fails
-                            }
-                        )
+                    await websocket_manager.safe_send(
+                        state=state,
+                        status="website_error",
+                        message=error_msg,
+                        result={
+                            "step": "Initial Site Scrape", 
+                            "error": error_str,
+                            "continue_research": True  # Continue with research even if website extraction fails
+                        }
+                    )
         else:
             msg += "\n⏩ No company URL provided, proceeding directly to research phase"
             if websocket_manager := state.get('websocket_manager'):
-                if job_id := state.get('job_id'):
-                    await websocket_manager.send_status_update(
-                        job_id=job_id,
-                        status="processing",
-                        message="No company URL provided, proceeding directly to research phase",
-                        result={"step": "Initializing"}
-                    )
+                await websocket_manager.safe_send(
+                    state=state,
+                    status="processing",
+                    message="No company URL provided, proceeding directly to research phase",
+                    result={"step": "Initializing"}
+                )
         # Add context about what information we have
         context_data = {}
         if hq := state.get('hq_location'):

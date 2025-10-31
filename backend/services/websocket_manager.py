@@ -73,3 +73,40 @@ class WebSocketManager:
             "error": str(error) if error else None
         }
         await self.broadcast_to_job(job_id, update)
+
+    async def safe_send(self, *, state: Dict[str, Any] | None = None, job_id: str | None = None, status: str, message: str, result: Any = None, error: Any = None, fallback_job_id: str | None = None):
+        """
+        Safely send a status update using either an explicit job_id or a provided state dict.
+
+        Priority for job id selection:
+        1. Explicit job_id argument
+        2. state['job_id'] if present and truthy
+        3. fallback_job_id if provided
+
+        If no job id can be determined this will log a warning and return without raising.
+        """
+        # Determine which job_id to use
+        job_to_use = None
+        if job_id:
+            job_to_use = job_id
+        elif state and state.get('job_id'):
+            job_to_use = state.get('job_id')
+        elif fallback_job_id:
+            job_to_use = fallback_job_id
+
+        if not job_to_use:
+            # Helpful debug output showing keys we received
+            state_keys = list(state.keys()) if isinstance(state, dict) else None
+            logger.warning(f"Could not send WebSocket update: job_id missing. state_keys={state_keys}, explicit_job_id={job_id!r}, fallback={fallback_job_id!r}")
+            return
+
+        update = {
+            "type": "status_update",
+            "job_id": job_to_use,
+            "status": status,
+            "message": message,
+            "data": result,
+            "error": str(error) if error else None
+        }
+
+        await self.broadcast_to_job(job_to_use, update)

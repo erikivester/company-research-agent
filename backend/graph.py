@@ -96,8 +96,9 @@ class Graph:
         self.websocket_manager = websocket_manager
         self.job_id = job_id
 
+        # Ensure empty company strings are normalized to a readable fallback
         self.input_state = InputState(
-            company=company,
+            company=company or "Unknown Company",
             company_url=url,
             hq_location=hq_location,
             industry=industry,
@@ -307,6 +308,12 @@ class Graph:
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
         initial_state_data = self.input_state.copy()
+        # Ensure critical pass-through fields are present on the initial state
+        # (protects against any copy/merge semantics dropping them)
+        if self.job_id:
+            initial_state_data['job_id'] = self.job_id
+        if self.websocket_manager:
+            initial_state_data['websocket_manager'] = self.websocket_manager
         # --- v2: Pass GDrive URL from thread config ---
         if 'airtable_record_id' in thread.get("configurable", {}):
              initial_state_data['airtable_record_id'] = thread["configurable"]['airtable_record_id']
@@ -337,7 +344,8 @@ class Graph:
                 "keys": list(state.keys())
             }
         }
-        job_id_to_use = state.get('job_id', self.job_id)
+        # If state contains a falsy job_id (None or empty string), fall back to the Graph's job_id
+        job_id_to_use = state.get('job_id') or self.job_id
         if job_id_to_use:
              await self.websocket_manager.broadcast_to_job(job_id_to_use, update)
         else:
