@@ -28,7 +28,13 @@ COPY application.py .
 COPY requirements.txt . 
 
 # --- NEW FIX: Force-delete all __pycache__ directories ---
-RUN find . -type d -name "__pycache__" -exec rm -r {} +
+RUN find . \
+    -type d -name "__pycache__" -exec rm -r {} +
+
+# --- ADD THIS LINE ---
+# Copy the GDrive credentials to the path expected by gdrive_uploader.py
+COPY gdrive_credentials.json /secrets/gdrive_credentials.json
+# --- END ADDED LINE ---
 
 # Change ownership of all code
 RUN chown -R appuser:appuser /app
