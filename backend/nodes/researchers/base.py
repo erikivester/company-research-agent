@@ -35,10 +35,10 @@ class BaseResearcher:
         self._analyst_type = value
 
     async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
-        # --- FIX: Use 'or' to catch empty strings and None ---
-        company = state.get("company") or "Unknown Company"
-        industry = state.get("industry") or "Unknown Industry"
-        hq = state.get("hq") or "Unknown HQ"
+        company = state.get("company", "Unknown Company")
+        industry = state.get("industry", "Unknown Industry")
+        # Use the correct state key 'hq_location'
+        hq = state.get("hq_location", "Unknown HQ") 
         current_year = datetime.now().year
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
