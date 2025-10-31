@@ -1,6 +1,7 @@
 # Environment and secrets
 .env
 reports/*
+gdrive_credentials.json  # <-- CRITICAL: Add this file
 
 # Python
 __pycache__/
@@ -13,6 +14,9 @@ __pycache__/
 # IDE and OS
 .vscode/
 .DS_Store
+
+# ADD THIS:
+secrets/
 
 # Frontend
 node_modules/

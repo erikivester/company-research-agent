@@ -95,7 +95,11 @@ class NewsSignalNode(BaseResearcher):
             await self.analyze(state)
         except Exception as e:
              logger.error(f"NewsSignalNode run failed: {e}")
-             # Ensure key exists even on failure
-             if 'news_signal_data' not in state:
-                state['news_signal_data'] = {}
-        return state # Always return the state
+             state.setdefault('messages', []).append(AIMessage(content=f"News node failed: {e}"))
+             state.setdefault('news_signal_data', {})
+        
+        # Return ONLY the keys this node is responsible for
+        return {
+            "messages": state.get("messages", []),
+            "news_signal_data": state.get("news_signal_data", {})
+        }

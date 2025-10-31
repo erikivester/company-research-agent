@@ -156,7 +156,11 @@ class ContactFinderNode(BaseResearcher):
             await self.analyze(state)
         except Exception as e:
              logger.error(f"ContactFinderNode run failed: {e}")
-             # Ensure key exists even on failure
-             if 'contact_finder_data' not in state:
-                state['contact_finder_data'] = {}
-        return state # Always return the state
+             state.setdefault('messages', []).append(AIMessage(content=f"Contact finder node failed: {e}"))
+             state.setdefault('contact_finder_data', {})
+
+        # Return ONLY the keys this node is responsible for
+        return {
+            "messages": state.get("messages", []),
+            "contact_finder_data": state.get("contact_finder_data", {})
+        }

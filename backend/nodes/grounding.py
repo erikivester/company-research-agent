@@ -158,7 +158,9 @@ class GroundingNode:
             # Pass through websocket info
             "websocket_manager": state.get('websocket_manager'),
             "job_id": state.get('job_id'),
-            "airtable_record_id": state.get('airtable_record_id') # Ensure ID is passed through
+            "airtable_record_id": state.get('airtable_record_id'), # Ensure ID is passed through
+            # --- ADD THIS LINE ---
+            "google_drive_folder_url": state.get('google_drive_folder_url') 
         }
 
         # If there was an error in the initial crawl, store it in the state

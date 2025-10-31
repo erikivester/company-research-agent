@@ -152,7 +152,11 @@ class FLWAnalyzer(BaseResearcher):
             await self.analyze(state)
         except Exception as e:
              logger.error(f"FLWAnalyzer run failed: {e}")
-             # Ensure key exists even on failure
-             if 'flw_data' not in state:
-                state['flw_data'] = {}
-        return state # Always return the state
+             state.setdefault('messages', []).append(AIMessage(content=f"FLW node failed: {e}"))
+             state.setdefault('flw_data', {})
+
+        # Return ONLY the keys this node is responsible for
+        return {
+            "messages": state.get("messages", []),
+            "flw_data": state.get("flw_data", {})
+        }

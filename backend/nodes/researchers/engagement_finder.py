@@ -154,7 +154,11 @@ class EngagementFinderNode(BaseResearcher):
             await self.analyze(state)
         except Exception as e:
              logger.error(f"EngagementFinderNode run failed: {e}")
-             # Ensure key exists even on failure
-             if 'engagement_finder_data' not in state:
-                state['engagement_finder_data'] = {}
-        return state # Always return the state
+             state.setdefault('messages', []).append(AIMessage(content=f"Engagement finder node failed: {e}"))
+             state.setdefault('engagement_finder_data', {})
+
+        # Return ONLY the keys this node is responsible for
+        return {
+            "messages": state.get("messages", []),
+            "engagement_finder_data": state.get("engagement_finder_data", {})
+        }

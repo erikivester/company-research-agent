@@ -25,7 +25,7 @@ class Briefing:
 
         # Configure Gemini
         genai.configure(api_key=self.gemini_key)
-        self.gemini_model = genai.GenerativeModel('gemini-1.5-flash') # Use Flash for speed/context
+        self.gemini_model = genai.GenerativeModel('gemini-1.5-flash') 
         logger.info("Briefing node initialized with Gemini model.")
     
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---

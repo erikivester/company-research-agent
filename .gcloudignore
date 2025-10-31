@@ -1,6 +1,7 @@
 # Environment and secrets
 .env
 reports/*
+gdrive_credentials.json  # <-- CRITICAL: Add this file
 
 # Python
 __pycache__/
@@ -16,6 +17,9 @@ __pycache__/
 
 # Frontend
 node_modules/
+
+# ADD THIS:
+secrets/
 
 # LangGraph
 .langgraph/
