@@ -12,33 +12,45 @@ from langchain_core.messages import AIMessage
 logger = logging.getLogger(__name__)
 
 # --- Mock WebSocket Manager for testing nodes outside the main flow ---
-# We use a dummy manager since the test environment isn't expected to have a live WS connection
 class DummyWebSocketManager:
     async def send_status_update(self, job_id, status, message, result=None, error=None):
         logger.info(f"DUMMY WS: Job {job_id}, Status: {status}, Message: {message}")
         pass # Do nothing
 
-# --- MOCK STATE SETUP (Copy from test_airtable.py) ---
+# --- MOCK STATE SETUP (CORRECTED FOR V2) ---
 mock_state_before_tagger: ResearchState = {
     'company': 'Sustainable Foods Inc.',
     'company_url': 'https://www.sustainablefoods.example',
     'hq_location': 'Austin, TX',
-    'industry': 'Food & Beverage Manufacturing',
+    'industry': 'Food & Beverage Manufacturing', # Industry Hint
     'job_id': 'test-job-debug-api-1',
-    'airtable_record_id': None, # Set to None to test INSERT, or a real ID to test UPDATE
+    'airtable_record_id': None, # Set to None to test INSERT
     'messages': [
         AIMessage(content="Simulated initial message"), 
         AIMessage(content="Simulated curation message"), 
         AIMessage(content="Simulated briefing message")
     ],
-    'financial_briefing': "## Financial Overview\n### Funding & Investment\n* Estimated Annual Revenue: $35 million\n* Seed round: $5 million (June 2023)",
-    'company_briefing': "## Company Overview\nSustainable Foods Inc. is a food manufacturer focused on plant-based alternatives...",
-    'industry_briefing': "## Industry Overview\n### Market Overview\n* Operates in the plant-based meat alternative market.",
-    'news_briefing': "## News\n* **Major Announcements**: Launched new vegan sausage product (Jan 2024)",
+    
+    # --- V2 BRIEFING KEYS (Corrected) ---
+    # Tagger uses these keys
+    'company_brief_briefing': """## Company Overview & Financial Health
+* Sustainable Foods Inc. is a food manufacturer focused on plant-based alternatives.
+* Estimated Annual Revenue: $35 million
+* Seed round: $5 million (June 2023)
+""",
     'flw_sustainability_briefing': """## FLW and Sustainability
 ### FLW Initiatives & Reduction Efforts
 * Stated goal to reduce food waste by 50% by 2030.
+* Operates in the Food & Beverage Manufacturing sector.
 """,
+    'news_signal_briefing': """## News & Signals
+* **General News**: Launched new vegan sausage product (Jan 2024)
+* **ReFED Signal**: Mentioned in a panel on food waste reduction.
+""",
+    'engagement_briefing': "## Engagements & Affiliations\n* Member of the Plant-Based Foods Association.",
+    'contact_briefing': "## Potential Contacts\n* Jane Doe: Sustainability Manager",
+    # --- END V2 ---
+
     'report': """# Sustainable Foods Inc. Research Report
 # ... (omitted report markdown for brevity)
 ## References
@@ -51,7 +63,7 @@ mock_state_before_tagger: ResearchState = {
     'reference_titles': {
          "https://www.sustainablefoods.example/sustainability": "Sustainability at Sustainable Foods Inc."
     },
-    'briefings': {}
+    'briefings': {} # This is a holder, not used by Tagger
 }
 
 # --- EXPORTED TEST FUNCTION ---
@@ -77,23 +89,17 @@ async def run_airtable_debug_test(record_id: str | None = None):
         state.setdefault('airtable_industries', ['Unknown'])
         state.setdefault('airtable_country_region', ['Unknown'])
         state.setdefault('airtable_revenue_band_est', ['Unknown'])
+        state.setdefault('airtable_refed_alignment', []) # v2: Added alignment default
 
-    # 2. Call the dedicated upload node function (must mock its parent class methods)
+    # 2. Call the dedicated upload node function
     try:
-        # Since Graph.airtable_upload_node expects a complete state, we pass it.
-        # It handles all final data preparation and calls update_to_airtable.
-        # We need a dummy Graph instance to call the node function directly.
-        
-        # Instantiate a minimal Graph class to access the node function
         class MockGraph:
             async def airtable_upload_node(self, state):
                  # Directly call the actual upload logic
-                 return await Graph.airtable_upload_node(Graph(), state)
+                 return await Graph.airtable_upload_node(None, state)
 
-        # We must manually inject websocket_manager for graph.py's node
         state['websocket_manager'] = DummyWebSocketManager()
         
-        # Call the upload node function
         graph_instance = MockGraph()
         final_state = await graph_instance.airtable_upload_node(state)
         
@@ -106,6 +112,7 @@ async def run_airtable_debug_test(record_id: str | None = None):
             "tags": {
                  "industries": final_state.get('airtable_industries'),
                  "revenue": final_state.get('airtable_revenue_band_est'),
+                 "alignment": final_state.get('airtable_refed_alignment') # v2: Added alignment to output
             }
         }
     

@@ -72,7 +72,7 @@ def _find_record_by_company(airtable: Airtable, company_name: str) -> Optional[s
             view='Grid view', # Use a valid view name, 'Grid view' is common default
             max_records=1,
             fields=['Organization'], 
-            filter_by_formula=filter_formula
+            formula=filter_formula  # <-- THIS LINE IS THE FIX (was filter_by_formula)
         )
         
         if records and records[0].get('id'):
@@ -98,7 +98,8 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
     company_name = report_data.get('company_name', 'N/A')
 
     if not all([airtable_key, base_id, table_name]):
-        logger.warning("Airtable upload/update skipped: Environment variables not fully set.")
+        logger.warning(f"Airtable upload/update skipped: Environment variables not fully set. Check keys.")
+        logger.warning(f"DEBUG: Key: {airtable_key}, Base: {base_id}, Table: {table_name}")
         return {"status": "Skipped", "error": "Airtable environment variables not set."}
 
     try:
@@ -109,39 +110,28 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
 
 
     # --- 1. v2: Map all fields to Airtable format ---
-    # NOTE: The keys on the *left* (e.g., 'Industries') are your *Airtable Column Names*.
-    # The keys on the *right* (e.g., 'industries_tags') are the *internal Python keys* from graph.py.
     fields_to_send = {
         'Organization': company_name, 
         'Website': report_data.get('company_url', ''),
-        
-        # --- v2 Tags ---
         'Industries': report_data.get('industries_tags', []),
         'Country/Region': report_data.get('region_tags', []),
         'Revenue Band (est.)': report_data.get('revenue_tags'),
-        'ReFED Alignment': report_data.get('refed_alignment_tags', []), # <-- NEW
-        
-        # --- v2 Briefings & Report ---
+        'ReFED Alignment': report_data.get('refed_alignment_tags', []), 
         'Markdown Report': (report_data.get('report_markdown') or '')[:10000],
-        'Company Briefing': (report_data.get('company_brief_briefing') or '')[:8000],         # <-- RENAMED/NEW
-        'News & Signals Briefing': (report_data.get('news_signal_briefing') or '')[:8000],   # <-- RENAMED/NEW
-        'FLW and Sustainability Briefing': (report_data.get('flw_sustainability_briefing') or '')[:8000], # <-- KEPT
-        'Potential Contacts Briefing': (report_data.get('contact_briefing') or '')[:8000],     # <-- NEW
-        'Engagements Briefing': (report_data.get('engagement_briefing') or '')[:8000],          # <-- NEW
-        # --- REMOVED: Financial Briefing, Industry Briefing, News Briefing (old) ---
-
-        # --- Meta Fields ---
+        'Company Briefing': (report_data.get('company_brief_briefing') or '')[:8000],
+        'News & Signals Briefing': (report_data.get('news_signal_briefing') or '')[:8000],
+        'FLW and Sustainability Briefing': (report_data.get('flw_sustainability_briefing') or '')[:8000],
+        'Potential Contacts Briefing': (report_data.get('contact_briefing') or '')[:8000],
+        'Engagements Briefing': (report_data.get('engagement_briefing') or '')[:8000],
         'Research Status': 'Completed', 
         'Process Notes': (report_data.get('process_notes') or '')[:10000],
         'References': (report_data.get('references_formatted') or '')[:10000]
     }
     
-    # Clean out None values before sending, but keep empty lists/strings
     fields_payload = {}
     for k, v in fields_to_send.items():
         if v is not None:
              fields_payload[k] = v
-        # v2: Ensure all multi-select lists are sent even if empty
         elif k in ['Industries', 'Country/Region', 'ReFED Alignment']:
             fields_payload[k] = []
             
@@ -151,15 +141,12 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
     # --- 2. Determine Record ID (Search/Upsert Logic) ---
     final_record_id = record_id
     if not final_record_id and company_name != 'N/A':
-        # Search Airtable by Organization Name only if record_id wasn't provided (e.g., first run)
         final_record_id = _find_record_by_company(airtable, company_name)
 
 
     # --- 3. Execute UPSERT ---
     if final_record_id:
-        # UPDATE: Record found, update all fields
         logger.info(f"Performing UPDATE on Airtable record {final_record_id} for job {job_id}")
-        
         update_result = update_airtable_record(final_record_id, fields_payload)
         
         if update_result.get("status") == "Success":
@@ -169,7 +156,6 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
             return update_result
             
     else:
-        # INSERT: No existing record found, insert a new one
         logger.warning(f"No existing record found for job {job_id}, attempting INSERT as new record.")
         try:
             record = airtable.insert(fields_payload)
