@@ -32,13 +32,19 @@ class GroundingNode:
     # --- END MODIFIED HELPER METHOD ---
 
     async def initial_search(self, state: InputState) -> ResearchState:
+        """
+        FIXED: This function now modifies the 'state' object in-place
+        instead of creating a new 'research_state' dictionary.
+        This preserves all incoming fields like job_id, websocket_manager,
+        and google_drive_folder_url.
+        """
         # Add debug logging at the start to check websocket manager
         if websocket_manager := state.get('websocket_manager'):
             logger.info("Websocket manager found in state")
         else:
             logger.warning("No websocket manager found in state")
         
-        company = state.get('company', 'Unknown Company')
+        company = state.get('company') or 'Unknown Company' # Use 'or' to catch empty strings
         msg = f"🎯 Initiating research for {company}...\n"
         
         if websocket_manager := state.get('websocket_manager'):
@@ -51,6 +57,7 @@ class GroundingNode:
                 )
 
         site_scrape = {}
+        error_str = None # --- FIX: Initialize error_str ---
 
         # Only attempt extraction if we have a URL
         if url := state.get('company_url'):
@@ -109,7 +116,7 @@ class GroundingNode:
                                 result={"step": "Initial Site Scrape"}
                             )
             except Exception as e:
-                error_str = str(e)
+                error_str = str(e) # --- FIX: Capture error ---
                 logger.error(f"Website crawl error: {error_str}", exc_info=True)
                 error_msg = f"⚠️ Error crawling website content: {error_str}"
                 print(error_msg)
@@ -145,33 +152,21 @@ class GroundingNode:
             msg += f"\n🏭 Industry: {industry}"
             context_data["industry"] = industry
         
-        # Initialize ResearchState with input information
-        research_state = {
-            # Copy input fields
-            "company": state.get('company'),
-            "company_url": state.get('company_url'),
-            "hq_location": state.get('hq_location'),
-            "industry": state.get('industry'),
-            # Initialize research fields
-            "messages": [AIMessage(content=msg)],
-            "site_scrape": site_scrape,
-            # Pass through websocket info
-            "websocket_manager": state.get('websocket_manager'),
-            "job_id": state.get('job_id'),
-            "airtable_record_id": state.get('airtable_record_id'), # Ensure ID is passed through
-            # --- ADD THIS LINE ---
-            "google_drive_folder_url": state.get('google_drive_folder_url') 
-        }
+        
+        # --- FIX: Modify state in-place instead of replacing it ---
+        state['messages'] = [AIMessage(content=msg)]
+        state['site_scrape'] = site_scrape
+        if error_str:
+            state['error'] = error_str
 
-        # If there was an error in the initial crawl, store it in the state
-        if "⚠️ Error crawling website content:" in msg:
-            research_state["error"] = error_str
-
-        return research_state
+        # Return the MODIFIED state, not a new object
+        return state
 
     async def run(self, state: InputState) -> ResearchState:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
             # AWAIT the critical initial status update
             await self._update_airtable_status(airtable_record_id, "In Progress")
+        
+        # Pass the original state object to be modified
         return await self.initial_search(state)

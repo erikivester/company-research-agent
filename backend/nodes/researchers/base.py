@@ -34,27 +34,41 @@ class BaseResearcher:
     def analyst_type(self, value: str):
         self._analyst_type = value
 
-    async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
-        company = state.get("company", "Unknown Company")
-        industry = state.get("industry", "Unknown Industry")
-        hq = state.get("hq", "Unknown HQ")
-        current_year = datetime.now().year
-        websocket_manager = state.get('websocket_manager')
-        job_id = state.get('job_id')
+async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
+    # --- FIX 1: Use 'or' to catch empty strings ---
+    company = state.get("company") or "Unknown Company"
+    industry = state.get("industry") or "Unknown Industry"
+    hq = state.get("hq") or "Unknown HQ"
+    current_year = datetime.now().year
+    websocket_manager = state.get('websocket_manager')
+    job_id = state.get('job_id')
+
+    # --- FIX 2: Add a guard clause ---
+    if company == "Unknown Company" or not company.strip():
+        error_msg = f"Cannot generate queries for analyst {self.analyst_type}: Company name is blank or 'Unknown Company'."
+        logger.error(error_msg)
+        if websocket_manager and job_id:
+            await websocket_manager.send_status_update(
+                job_id=job_id,
+                status="error",
+                message="Query generation skipped: Company name is missing.",
+                error=error_msg
+            )
+        return [] # Stop execution for this node
+
+    try:
+        logger.info(f"Generating queries for {company} as {self.analyst_type}")
         
-        try:
-            logger.info(f"Generating queries for {company} as {self.analyst_type}")
-            
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": f"You are researching {company}, a company in the {industry} industry."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"""Researching {company} on {datetime.now().strftime("%B %d, %Y")}.
+        response = await self.openai_client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are researching {company}, a company in the {industry} industry."
+                },
+                {
+                    "role": "user",
+                    "content": f"""Researching {company} on {datetime.now().strftime("%B %d, %Y")}.
 {self._format_query_prompt(prompt, company, hq, current_year)}"""
                     }
                 ],
