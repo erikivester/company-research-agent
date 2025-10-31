@@ -1,3 +1,5 @@
+# backend/nodes/researchers/company.py
+import logging  # <-- ADDED
 from typing import Any, Dict
 
 from langchain_core.messages import AIMessage
@@ -5,6 +7,7 @@ from langchain_core.messages import AIMessage
 from ...classes import ResearchState
 from .base import BaseResearcher
 
+logger = logging.getLogger(__name__)  # <-- ADDED
 
 class CompanyBriefNode(BaseResearcher):
     def __init__(self) -> None:
@@ -91,16 +94,16 @@ class CompanyBriefNode(BaseResearcher):
             'company_brief_data': company_brief_data # v2: Uses new key
         }
 
-async def run(self, state: ResearchState) -> ResearchState:
-    """
-    Entry point for the LangGraph node execution.
-    Calls the analyze method and returns the updated state.
-    """
-    try:
-        await self.analyze(state)
-    except Exception as e:
-         logger.error(f"CompanyBriefNode run failed: {e}")
-         # Ensure key exists even on failure
-         if 'company_brief_data' not in state:
-            state['company_brief_data'] = {}
-    return state # Always return the state
+    async def run(self, state: ResearchState) -> ResearchState:
+        """
+        Entry point for the LangGraph node execution.
+        Calls the analyze method and returns the updated state.
+        """
+        try:
+            await self.analyze(state)
+        except Exception as e:
+             logger.error(f"CompanyBriefNode run failed: {e}") # This line caused the error
+             # Ensure key exists even on failure
+             if 'company_brief_data' not in state:
+                state['company_brief_data'] = {}
+        return state # Always return the state
