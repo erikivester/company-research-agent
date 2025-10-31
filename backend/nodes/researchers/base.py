@@ -37,24 +37,13 @@ class BaseResearcher:
     async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
         company = state.get("company", "Unknown Company")
         industry = state.get("industry", "Unknown Industry")
-        # Use the correct state key 'hq_location'
-        hq = state.get("hq_location", "Unknown HQ") 
+        
+        # --- FIX #1: Use 'hq_location' from the state, not 'hq' ---
+        hq = state.get("hq_location", "Unknown HQ")
+        
         current_year = datetime.now().year
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
-
-        # --- FIX: Add a guard clause to stop if company is missing ---
-        if company == "Unknown Company" or not company.strip():
-            error_msg = f"Cannot generate queries for analyst {self.analyst_type}: Company name is blank."
-            logger.error(error_msg)
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id,
-                    status="error",
-                    message="Query generation skipped: Company name is missing.",
-                    error=error_msg
-                )
-            return [] # Stop execution
         
         try:
             logger.info(f"Generating queries for {company} as {self.analyst_type}")
@@ -207,10 +196,10 @@ class BaseResearcher:
                 "max_results": 5
             }
             
-            if self.analyst_type == "news_analyst":
+            # --- FIX #2: Use new 'news_signal' type, not old 'news_analyst' ---
+            if self.analyst_type == "news_signal":
                 search_params["topic"] = "news"
-            elif self.analyst_type == "financial_analyst":
-                search_params["topic"] = "finance"
+            # Removed 'financial_analyst' check as it's no longer used
 
             results = await self.tavily_client.search(
                 query,
@@ -301,13 +290,13 @@ class BaseResearcher:
         search_params = {
             "search_depth": "basic",
             "include_raw_content": False,
-            "max_results": 3 #tweak this knob back to 5 eventually. 3 for testing
+            "max_results": 5
         }
         
-        if self.analyst_type == "news_analyst":
+        # --- FIX #2 (Repeated): Use 'news_signal' type, not old 'news_analyst' ---
+        if self.analyst_type == "news_signal":
             search_params["topic"] = "news"
-        elif self.analyst_type == "financial_analyst":
-            search_params["topic"] = "finance"
+        # Removed 'financial_analyst' check as it's no longer used
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
