@@ -88,11 +88,9 @@ class CompanyBriefNode(BaseResearcher):
         
         # v2: Update state with the new key
         state['company_brief_data'] = company_brief_data
-        
-        return {
-            'message': msg,
-            'company_brief_data': company_brief_data # v2: Uses new key
-        }
+
+        # Return the modified state in-place to preserve pass-through keys
+        return state
 
     async def run(self, state: ResearchState) -> ResearchState:
         """

@@ -97,7 +97,8 @@ class WebSocketManager:
         if not job_to_use:
             # Helpful debug output showing keys we received
             state_keys = list(state.keys()) if isinstance(state, dict) else None
-            logger.warning(f"Could not send WebSocket update: job_id missing. state_keys={state_keys}, explicit_job_id={job_id!r}, fallback={fallback_job_id!r}")
+            # Lower severity to DEBUG to avoid spamming logs when job_id is not available
+            logger.debug(f"Could not send WebSocket update: job_id missing. state_keys={state_keys}, explicit_job_id={job_id!r}, fallback={fallback_job_id!r}")
             return
 
         update = {

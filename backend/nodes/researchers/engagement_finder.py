@@ -118,10 +118,8 @@ class EngagementFinderNode(BaseResearcher):
             state['engagement_finder_data'] = engagement_finder_data
             logger.info(f"Completed engagement finding. Total documents collected: {len(engagement_finder_data)}")
 
-            return {
-                'message': "\n".join(msg),
-                'engagement_finder_data': engagement_finder_data
-            }
+            # Return the modified state in-place to preserve pass-through keys
+            return state
 
         except Exception as e:
             error_msg = f"Engagement finding failed: {str(e)}"
@@ -157,8 +155,5 @@ class EngagementFinderNode(BaseResearcher):
              state.setdefault('messages', []).append(AIMessage(content=f"Engagement finder node failed: {e}"))
              state.setdefault('engagement_finder_data', {})
 
-        # Return ONLY the keys this node is responsible for
-        return {
-            "messages": state.get("messages", []),
-            "engagement_finder_data": state.get("engagement_finder_data", {})
-        }
+        # Modify state in-place and return the full state to preserve pass-through keys
+        return state

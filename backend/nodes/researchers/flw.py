@@ -116,10 +116,8 @@ class FLWAnalyzer(BaseResearcher):
             state['flw_data'] = flw_data
             logger.info(f"Completed FLW/Sustainability analysis. Total documents collected: {len(flw_data)}")
 
-            return {
-                'message': "\n".join(msg),
-                'flw_data': flw_data
-            }
+            # Return the modified state in-place to preserve pass-through keys
+            return state
 
         except Exception as e:
             error_msg = f"FLW/Sustainability analysis failed: {str(e)}"
@@ -155,8 +153,5 @@ class FLWAnalyzer(BaseResearcher):
              state.setdefault('messages', []).append(AIMessage(content=f"FLW node failed: {e}"))
              state.setdefault('flw_data', {})
 
-        # Return ONLY the keys this node is responsible for
-        return {
-            "messages": state.get("messages", []),
-            "flw_data": state.get("flw_data", {})
-        }
+        # Modify state in-place and return the full state to preserve pass-through keys
+        return state

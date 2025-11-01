@@ -120,10 +120,8 @@ class ContactFinderNode(BaseResearcher):
             state['contact_finder_data'] = contact_finder_data
             logger.info(f"Completed contact finding. Total documents collected: {len(contact_finder_data)}")
 
-            return {
-                'message': "\n".join(msg),
-                'contact_finder_data': contact_finder_data
-            }
+            # Return the modified state in-place to preserve pass-through keys
+            return state
 
         except Exception as e:
             error_msg = f"Contact finding failed: {str(e)}"
@@ -159,8 +157,5 @@ class ContactFinderNode(BaseResearcher):
              state.setdefault('messages', []).append(AIMessage(content=f"Contact finder node failed: {e}"))
              state.setdefault('contact_finder_data', {})
 
-        # Return ONLY the keys this node is responsible for
-        return {
-            "messages": state.get("messages", []),
-            "contact_finder_data": state.get("contact_finder_data", {})
-        }
+        # Modify state in-place and return the full state to preserve pass-through keys
+        return state

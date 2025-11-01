@@ -50,6 +50,7 @@ class GroundingNode:
         if websocket_manager := state.get('websocket_manager'):
             await websocket_manager.safe_send(
                 state=state,
+                job_id=state.get('job_id'),
                 status="processing",
                 message=f"🎯 Initiating research for {company}",
                 result={"step": "Initializing"}
@@ -67,6 +68,7 @@ class GroundingNode:
             if websocket_manager := state.get('websocket_manager'):
                 await websocket_manager.safe_send(
                     state=state,
+                    job_id=state.get('job_id'),
                     status="processing",
                     message="Crawling company website",
                     result={"step": "Initial Site Scrape"}
@@ -97,6 +99,7 @@ class GroundingNode:
                     if websocket_manager := state.get('websocket_manager'):
                         await websocket_manager.safe_send(
                             state=state,
+                            job_id=state.get('job_id'),
                             status="processing",
                             message=f"Successfully crawled {len(site_scrape)} pages from website",
                             result={"step": "Initial Site Scrape"}
@@ -107,6 +110,7 @@ class GroundingNode:
                     if websocket_manager := state.get('websocket_manager'):
                         await websocket_manager.safe_send(
                             state=state,
+                            job_id=state.get('job_id'),
                             status="processing",
                             message="⚠️ No content found in provided URL",
                             result={"step": "Initial Site Scrape"}
@@ -117,22 +121,24 @@ class GroundingNode:
                 error_msg = f"⚠️ Error crawling website content: {error_str}"
                 print(error_msg)
                 msg += f"\n{error_msg}"
-                if websocket_manager := state.get('websocket_manager'):
-                    await websocket_manager.safe_send(
-                        state=state,
-                        status="website_error",
-                        message=error_msg,
-                        result={
-                            "step": "Initial Site Scrape", 
-                            "error": error_str,
-                            "continue_research": True  # Continue with research even if website extraction fails
-                        }
-                    )
+                    if websocket_manager := state.get('websocket_manager'):
+                        await websocket_manager.safe_send(
+                            state=state,
+                            job_id=state.get('job_id'),
+                            status="website_error",
+                            message=error_msg,
+                            result={
+                                "step": "Initial Site Scrape", 
+                                "error": error_str,
+                                "continue_research": True  # Continue with research even if website extraction fails
+                            }
+                        )
         else:
             msg += "\n⏩ No company URL provided, proceeding directly to research phase"
             if websocket_manager := state.get('websocket_manager'):
                 await websocket_manager.safe_send(
                     state=state,
+                    job_id=state.get('job_id'),
                     status="processing",
                     message="No company URL provided, proceeding directly to research phase",
                     result={"step": "Initializing"}

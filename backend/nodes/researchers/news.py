@@ -80,11 +80,9 @@ class NewsSignalNode(BaseResearcher):
         
         # v2: Update state with the new key
         state['news_signal_data'] = news_signal_data
-        
-        return {
-            'message': msg,
-            'news_signal_data': news_signal_data # v2: Uses new key
-        }
+
+        # Return the modified state in-place to preserve pass-through keys
+        return state
 
     async def run(self, state: ResearchState) -> ResearchState:
         """
@@ -98,8 +96,5 @@ class NewsSignalNode(BaseResearcher):
              state.setdefault('messages', []).append(AIMessage(content=f"News node failed: {e}"))
              state.setdefault('news_signal_data', {})
         
-        # Return ONLY the keys this node is responsible for
-        return {
-            "messages": state.get("messages", []),
-            "news_signal_data": state.get("news_signal_data", {})
-        }
+        # Modify state in-place and return the full state to preserve pass-through keys
+        return state

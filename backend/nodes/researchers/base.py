@@ -82,18 +82,19 @@ class BaseResearcher:
                     current_query += content
                     
                     # Stream the current state to the UI using a safe helper that handles missing/falsy job_id
-                    if websocket_manager:
-                        await websocket_manager.safe_send(
-                            state=state,
-                            status="query_generating",
-                            message="Generating research query",
-                            result={
-                                "query": current_query,
-                                "query_number": current_query_number,
-                                "category": self.analyst_type,
-                                "is_complete": False
-                            }
-                        )
+                            if websocket_manager:
+                                await websocket_manager.safe_send(
+                                    state=state,
+                                    job_id=job_id,
+                                    status="query_generating",
+                                    message="Generating research query",
+                                    result={
+                                        "query": current_query,
+                                        "query_number": current_query_number,
+                                        "category": self.analyst_type,
+                                        "is_complete": False
+                                    }
+                                )
                     
                     # If a newline is detected, treat it as a complete query.
                     if '\n' in current_query:
@@ -107,6 +108,7 @@ class BaseResearcher:
                                 if websocket_manager:
                                     await websocket_manager.safe_send(
                                         state=state,
+                                        job_id=job_id,
                                         status="query_generated",
                                         message="Generated new research query",
                                         result={
@@ -125,6 +127,7 @@ class BaseResearcher:
                 if websocket_manager:
                     await websocket_manager.safe_send(
                         state=state,
+                        job_id=job_id,
                         status="query_generated",
                         message="Generated final research query",
                         result={
