@@ -28,8 +28,6 @@ from backend.airtable_uploader import upload_to_airtable
 from backend.utils.references import format_references_section
 # --- NEW: Import for Google Drive Utility (we will create this file later) ---
 from backend.utils.gdrive_uploader import upload_context_to_gdrive
-from backend.utils.utils import company_name
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +57,7 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 
     report_parts = []
     
-    # Use non-empty company name for the report header; preserve special 'Research Report' fallback
-    company = (state.get('company') or 'Research Report')
+    company = state.get('company', 'Research Report')
     report_parts.append(f"# {company} Research Report (Raw)\n")
 
     for key in report_order:
@@ -96,19 +93,22 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 class Graph:
     def __init__(self, company=None, url=None, hq_location=None, industry=None,
                  websocket_manager=None, job_id=None, google_drive_folder_url=None): # Added GDrive URL
+        
+        # NOTE: self.input_state is NOT USED for webhook runs,
+        # but is still set here for non-webhook/UI runs.
+        # The 'config' from application.py will override this.
         self.websocket_manager = websocket_manager
-        self.job_id = job_id
+        self.job_id = job_id # Store job_id for websocket updates
 
-        # Ensure empty company strings are normalized to a readable fallback
         self.input_state = InputState(
-            company=company or "Unknown Company",
+            company=company,
             company_url=url,
             hq_location=hq_location,
             industry=industry,
             websocket_manager=websocket_manager,
             job_id=job_id,
             airtable_record_id=None,
-            google_drive_folder_url=google_drive_folder_url, # Pass GDrive URL
+            google_drive_folder_url=google_drive_folder_url, 
             messages=[
                 SystemMessage(content="Expert researcher starting investigation")
             ]
@@ -142,45 +142,7 @@ class Graph:
         try:
             job_id = state.get("job_id")
             record_id = state.get("airtable_record_id")
-            # Normalize company name for filenames and Airtable using helper
-            company_name_local = company_name(state)
-
-            # If helper returned Unknown Company or empty, try to infer from company_url or references
-            if not company_name_local or company_name_local.strip() == "Unknown Company":
-                inferred = None
-                # Try company_url domain -> pretty name
-                company_url = state.get('company_url')
-                if company_url:
-                    try:
-                        parsed = urlparse(company_url)
-                        netloc = parsed.netloc or parsed.path
-                        if netloc:
-                            netloc = netloc.lower().lstrip('www.')
-                            # Take first label (e.g., example from example.com)
-                            label = netloc.split('.')[0]
-                            label = label.replace('-', ' ').replace('_', ' ').strip()
-                            if label:
-                                inferred = label.title()
-                    except Exception:
-                        inferred = None
-
-                # Try reference titles (take first title) as fallback
-                if not inferred:
-                    ref_titles = state.get('reference_titles', {})
-                    if isinstance(ref_titles, dict) and ref_titles:
-                        try:
-                            first_title = next(iter(ref_titles.values()))
-                            if isinstance(first_title, str) and first_title.strip():
-                                # Extract a reasonable short name from a title
-                                inferred = first_title.split(' - ')[0].split('|')[0].strip()
-                        except Exception:
-                            inferred = None
-
-                if inferred:
-                    company_name_local = inferred
-                else:
-                    # For Airtable/file naming, keep the underscore-safe fallback
-                    company_name_local = "Unknown_Company"
+            company_name = state.get("company", "Unknown_Company")
 
             # --- 1. Google Drive Context Upload ---
             google_drive_folder_url = state.get("google_drive_folder_url")
@@ -197,7 +159,7 @@ class Graph:
                 if full_context:
                     try:
                         # Call the new utility function
-                        file_name = f"{company_name_local.replace(' ', '_')}_research_context.json"
+                        file_name = f"{company_name.replace(' ', '_')}_research_context.json"
                         await upload_context_to_gdrive(full_context, google_drive_folder_url, file_name)
                         logger.info(f"Successfully uploaded full context to Google Drive: {file_name}")
                     except Exception as gdrive_exc:
@@ -253,27 +215,27 @@ class Graph:
             revenue_tag = revenue_tag_list[0] if isinstance(revenue_tag_list, list) and revenue_tag_list else None
 
             report_data = {
-                "company_name": company_name_local,
-                "company_url": state.get("company_url"),
-
-                # --- v2 TAG MAPPINGS ---
-                "industries_tags": state.get("airtable_industries", []),
-                "region_tags": state.get("airtable_country_region", []),
-                "revenue_tags": revenue_tag,
-                "refed_alignment_tags": state.get("airtable_refed_alignment", []), # NEW
-
-                # --- v2 REPORT/BRIEFING MAPPINGS ---
-                "report_markdown": state.get("report", ""),
-                "company_brief_briefing": state.get("company_brief_briefing", ""),         # RENAMED
-                "news_signal_briefing": state.get("news_signal_briefing", ""),         # RENAMED
-                "flw_sustainability_briefing": state.get("flw_sustainability_briefing", ""), # KEPT
-                "contact_briefing": state.get("contact_briefing", ""),               # NEW
-                "engagement_briefing": state.get("engagement_briefing", ""),           # NEW
-                # REMOVED: financial_briefing, industry_briefing
-
-                # --- NOTES/REFERENCES MAPPINGS ---
-                "process_notes": process_notes_str,
-                "references_formatted": references_str,
+                 "company_name": state.get("company"),
+                 "company_url": state.get("company_url"),
+                 
+                 # --- v2 TAG MAPPINGS ---
+                 "industries_tags": state.get("airtable_industries", []),
+                 "region_tags": state.get("airtable_country_region", []),
+                 "revenue_tags": revenue_tag,
+                 "refed_alignment_tags": state.get("airtable_refed_alignment", []), # NEW
+                 
+                 # --- v2 REPORT/BRIEFING MAPPINGS ---
+                 "report_markdown": state.get("report", ""),
+                 "company_brief_briefing": state.get("company_brief_briefing", ""),         # RENAMED
+                 "news_signal_briefing": state.get("news_signal_briefing", ""),         # RENAMED
+                 "flw_sustainability_briefing": state.get("flw_sustainability_briefing", ""), # KEPT
+                 "contact_briefing": state.get("contact_briefing", ""),               # NEW
+                 "engagement_briefing": state.get("engagement_briefing", ""),           # NEW
+                 # REMOVED: financial_briefing, industry_briefing
+                 
+                 # --- NOTES/REFERENCES MAPPINGS ---
+                 "process_notes": process_notes_str, 
+                 "references_formatted": references_str, 
             }
 
             # Log data being sent (excluding large fields)
@@ -346,33 +308,39 @@ class Graph:
         
         self.workflow.add_edge("tagger", "airtable_uploader")
 
+    # --- THIS IS THE CORRECTED RUN METHOD ---
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
-        initial_state_data = self.input_state.copy()
-        # Ensure critical pass-through fields are present on the initial state
-        # (protects against any copy/merge semantics dropping them)
-        if self.job_id:
-            initial_state_data['job_id'] = self.job_id
-        if self.websocket_manager:
-            initial_state_data['websocket_manager'] = self.websocket_manager
-        # --- v2: Pass GDrive URL from thread config ---
-        if 'airtable_record_id' in thread.get("configurable", {}):
-             initial_state_data['airtable_record_id'] = thread["configurable"]['airtable_record_id']
-        if 'google_drive_folder_url' in thread.get("configurable", {}):
-             initial_state_data['google_drive_folder_url'] = thread["configurable"]['google_drive_folder_url']
-        # --- End v2 ---
+        
+        # We do NOT use self.input_state.copy() or manual merging.
+        # The 'thread' (config) from application.py is the *only* input we need
+        # for a webhook-triggered run.
+        
+        # We must pass the non-configurable parts (websocket, messages) this way.
+        initial_input = {
+            "messages": [
+                SystemMessage(content="Expert researcher starting investigation")
+            ],
+            "websocket_manager": self.websocket_manager
+        }
 
         compiled_graph = self.workflow.compile()
 
+        # 'thread' (which is our config) contains ALL data from application.py
+        # 'initial_input' provides the non-configurable parts.
+        # LangGraph correctly merges them to create the starting state.
         async for state_update in compiled_graph.astream(
-            initial_state_data, config=thread
+            initial_input, config=thread
         ):
              current_state = list(state_update.values())[0] if state_update else {}
-             if self.websocket_manager and self.job_id:
+             
+             # We use self.job_id from the constructor, not the state, for websocket updates
+             if self.websocket_manager and self.job_id: 
                   current_node = list(state_update.keys())[0] if state_update else "unknown"
                   current_state['current_node'] = str(current_node)
                   await self._handle_ws_update(current_state)
              yield current_state
+    # --- END CORRECTED RUN METHOD ---
 
     async def _handle_ws_update(self, state: Dict[str, Any]):
         """Handle WebSocket updates based on state changes"""
@@ -385,8 +353,7 @@ class Graph:
                 "keys": list(state.keys())
             }
         }
-        # If state contains a falsy job_id (None or empty string), fall back to the Graph's job_id
-        job_id_to_use = state.get('job_id') or self.job_id
+        job_id_to_use = state.get('job_id', self.job_id)
         if job_id_to_use:
              await self.websocket_manager.broadcast_to_job(job_id_to_use, update)
         else:

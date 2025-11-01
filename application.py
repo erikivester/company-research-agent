@@ -163,13 +163,24 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
             google_drive_folder_url=google_drive_folder_url # <-- PASS GDrive URL
         )
 
-        # --- v2 MODIFIED: Pass all IDs to the Graph's thread config ---
-        thread_config = {"configurable": {}}
+        # --- FIX: Pass ALL input data to the Graph's thread config as top-level keys ---
+        # LangGraph/StateGraph expects the config keys at the top-level so nodes
+        # can access them directly via state.get('company'), etc.
+        thread_config = {
+            # Add all the fields from the 'data' object
+            "company": data.company,
+            "company_url": data.company_url,
+            "industry": data.industry,
+            "hq_location": data.hq_location,
+            "job_id": job_id # Pass the job_id as well
+        }
+
+        # Add the optional fields only if they exist
         if airtable_record_id:
-             thread_config["configurable"]["airtable_record_id"] = airtable_record_id
+            thread_config["airtable_record_id"] = airtable_record_id
         if google_drive_folder_url:
-             thread_config["configurable"]["google_drive_folder_url"] = google_drive_folder_url
-        # --- End v2 Modification ---
+            thread_config["google_drive_folder_url"] = google_drive_folder_url
+        # --- End Fix ---
 
         state = {}
         async for s in graph.run(thread=thread_config): # Pass the config here
@@ -263,18 +274,30 @@ async def start_research_webhook(data: AirtableWebhookInput):
     and queues the research pipeline using the semaphore.
     """
     try:
-        logger.info(f"Received webhook request for {data.company} (Airtable ID: {data.airtable_record_id})")
+        # --- NEW DEBUG LOGGING ---
+        # Use repr() to see the exact string, including quotes and whitespace
+        logger.info(f"DEBUG: Webhook received: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}")
 
-        # Log the raw incoming webhook payload values (use repr to reveal empty/whitespace)
-        logger.debug(f"DEBUG: webhook payload: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}, google_drive_folder_url={data.google_drive_folder_url!r}")
+        # --- NEW GUARD CLAUSE (THE FIX) ---
+        # Check if data.company is None or just whitespace
+        if not data.company or data.company.strip() == "":
+            logger.warning(f"Webhook rejected: Missing or empty company name. Received: {data.company!r}")
+            # Immediately update Airtable to "Failed" if we have an ID
+            if data.airtable_record_id:
+                asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, "Failed: Missing Company Name"))
+            raise HTTPException(
+                status_code=422, 
+                detail="Company name is required and cannot be empty."
+            )
+        
+        company_value = data.company.strip() # Use the stripped, validated company name
+        logger.info(f"Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id})")
+        # --- END FIX ---
 
         job_id = str(uuid.uuid4())
 
-        # Normalize company to avoid empty-string issues downstream
-        company_value = data.company or "Unknown Company"
-
         research_data = ResearchRequest(
-            company=company_value,
+            company=company_value, # Use the validated 'company_value'
             company_url=data.company_url,
             industry=data.industry,
             hq_location=data.hq_location
@@ -295,12 +318,14 @@ async def start_research_webhook(data: AirtableWebhookInput):
 
         return {
             "status": "Accepted",
-            "message": f"Research for {data.company} queued or started. Job ID: {job_id}",
+            "message": f"Research for {company_value} queued or started. Job ID: {job_id}",
             "job_id": job_id
         }
 
     except Exception as e:
         logger.error(f"Error initiating research via webhook: {str(e)}", exc_info=True)
+        if isinstance(e, HTTPException):
+            raise e # Re-raise the HTTP exception
         raise HTTPException(status_code=500, detail=str(e))
 # --- END MODIFIED ENDPOINT ---
 
