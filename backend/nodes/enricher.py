@@ -6,9 +6,11 @@ from typing import Dict, List, Any
 
 from langchain_core.messages import AIMessage
 from tavily import AsyncTavilyClient
+from urllib.parse import urlparse
 
 from ..classes import ResearchState
 from backend.airtable_uploader import update_airtable_record
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -22,65 +24,87 @@ class Enricher:
         self.tavily_client = AsyncTavilyClient(api_key=tavily_key)
         self.batch_size = 20 # Number of URLs to fetch in parallel per batch
         self.semaphore_limit = 10 # Max concurrent requests to Tavily API
+        # Retry/backoff configuration for transient extract failures
+        self.extract_retries = 2  # number of additional attempts (total attempts = 1 + extract_retries)
+        self.extract_backoff_base = 0.5  # seconds, exponential backoff base
 
     async def fetch_single_content(self, url: str, websocket_manager=None, job_id=None, category=None) -> Dict[str, Any]:
         """Fetch raw content for a single URL using the extract method."""
-        try:
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id, status="extracting",
-                    message=f"Extracting content from {url}",
-                    result={ "step": "Enriching", "url": url, "category": category }
-                )
+        # Attempt the extract call with retries/backoff for transient errors
+        attempt = 0
+        last_error = None
+        while attempt <= self.extract_retries:
+            try:
+                if websocket_manager and job_id:
+                    await websocket_manager.send_status_update(
+                        job_id=job_id, status="extracting",
+                        message=f"Extracting content from {url} (attempt {attempt + 1})",
+                        result={ "step": "Enriching", "url": url, "category": category, "attempt": attempt + 1 }
+                    )
 
-            # Use Tavily's extract method
-            response = await self.tavily_client.extract(url)
+                response = await self.tavily_client.extract(url)
 
-            # Parse response
-            if response and isinstance(response, dict) and response.get('results'):
-                 result_content = response['results'][0].get('raw_content', '')
-                 if result_content and result_content.strip():
-                     logger.debug(f"Successfully extracted content from {url} (Length: {len(result_content)})")
-                     if websocket_manager and job_id:
-                         await websocket_manager.send_status_update(
-                             job_id=job_id, status="extracted",
-                             message=f"Successfully extracted content from {url}",
-                             result={ "step": "Enriching", "url": url, "category": category, "success": True }
-                         )
-                     return {url: result_content} # Return URL mapped to content string
-                 else:
-                      logger.warning(f"Empty raw_content found in extract results for {url}.")
-                      error_msg = "Empty content returned by extract"
-                      if websocket_manager and job_id:
-                          await websocket_manager.send_status_update(
-                              job_id=job_id, status="extraction_error",
-                              message=f"Failed to extract content from {url}: {error_msg}",
-                              result={"step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg}
-                          )
-                      # Return None for content, but keep URL as key and include error
-                      return {url: None, "error": error_msg}
+                # If response is falsy (None) then treat as transient and retry
+                if not response:
+                    raise RuntimeError("Empty response from extract API")
 
-            else:
-                 logger.warning(f"Unexpected response structure or empty results from extract for {url}. Response: {response}")
-                 error_msg = "Invalid response from extract API"
-                 if websocket_manager and job_id:
-                     await websocket_manager.send_status_update(
-                         job_id=job_id, status="extraction_error",
-                         message=f"Failed to extract content from {url}: {error_msg}",
-                         result={"step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg}
-                     )
-                 return {url: None, "error": error_msg}
+                # If response is a dict with explicit error, raise to potentially retry
+                if isinstance(response, dict) and response.get('error'):
+                    err_text = response.get('error')
+                    # Some errors are permanent (e.g., access denied), we still log and return below
+                    raise RuntimeError(f"Extract API error: {err_text}")
 
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Error calling Tavily extract for {url}: {error_msg}", exc_info=True)
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id, status="extraction_error",
-                    message=f"Failed to extract content from {url}: API Error",
-                    result={ "step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg }
-                )
-            return {url: None, "error": error_msg}
+                # Parse response results
+                if isinstance(response, dict) and response.get('results'):
+                    result_content = response['results'][0].get('raw_content', '')
+                    if result_content and result_content.strip():
+                        logger.debug(f"Successfully extracted content from {url} (Length: {len(result_content)})")
+                        if websocket_manager and job_id:
+                            await websocket_manager.send_status_update(
+                                job_id=job_id, status="extracted",
+                                message=f"Successfully extracted content from {url}",
+                                result={ "step": "Enriching", "url": url, "category": category, "success": True }
+                            )
+                        return {url: result_content}
+                    else:
+                        # Empty content is likely a permanent condition for this URL
+                        error_msg = "Empty content returned by extract"
+                        logger.warning(f"Empty raw_content found in extract results for {url}.")
+                        if websocket_manager and job_id:
+                            await websocket_manager.send_status_update(
+                                job_id=job_id, status="extraction_error",
+                                message=f"Failed to extract content from {url}: {error_msg}",
+                                result={"step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg}
+                            )
+                        return {url: None, "error": error_msg}
+                else:
+                    # Unexpected structure; raise to go through retry logic
+                    raise RuntimeError(f"Invalid response structure from extract API: {response}")
+
+            except Exception as e:
+                last_error = e
+                # Log and decide whether to retry
+                logger.warning(f"Attempt {attempt + 1} failed for extract({url}): {e}")
+                # If we've exhausted attempts, notify and return failure
+                if attempt >= self.extract_retries:
+                    error_msg = str(e)
+                    logger.error(f"Error calling Tavily extract for {url}: {error_msg}", exc_info=True)
+                    if websocket_manager and job_id:
+                        await websocket_manager.send_status_update(
+                            job_id=job_id, status="extraction_error",
+                            message=f"Failed to extract content from {url}: API Error",
+                            result={ "step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg }
+                        )
+                    return {url: None, "error": error_msg}
+
+                # Backoff before next attempt
+                backoff = self.extract_backoff_base * (2 ** attempt)
+                try:
+                    await asyncio.sleep(backoff)
+                except Exception:
+                    pass
+                attempt += 1
+                continue
 
     async def fetch_raw_content(self, urls: List[str], websocket_manager=None, job_id=None, category=None) -> Dict[str, Any]:
         """Fetch raw content for multiple URLs in parallel with rate limiting."""
@@ -162,7 +186,7 @@ class Enricher:
 
     async def enrich_data(self, state: ResearchState) -> ResearchState:
         """(v2) Enrich curated documents with raw content."""
-        company = state.get('company', 'Unknown Company')
+        company = company_name(state)
         airtable_record_id = state.get('airtable_record_id')
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
@@ -237,6 +261,7 @@ class Enricher:
             async def process_category(task):
                 enriched_count = 0; error_count = 0
                 urls_to_fetch = list(task['docs_to_enrich'].keys())
+                failed_domains = set()
                 try:
                     # Fetch content only for the docs needing it
                     raw_contents_results = await self.fetch_raw_content(
@@ -255,6 +280,14 @@ class Enricher:
                                 # Add error info to the specific document in the main dict
                                 task['all_curated_docs'][url]['enrichment_error'] = error_msg
                                 logger.warning(f"Failed to enrich {url} for {task['category']}: {error_msg}")
+                                # record domain for reporting
+                                try:
+                                    parsed = urlparse(url)
+                                    domain = parsed.netloc or parsed.path
+                                    if domain:
+                                        failed_domains.add(domain.lower().lstrip('www.'))
+                                except Exception:
+                                    pass
                             # Check if fetch succeeded (result is a non-empty string)
                             elif isinstance(fetch_result, str) and fetch_result.strip():
                                 task['all_curated_docs'][url]['raw_content'] = fetch_result
@@ -264,11 +297,23 @@ class Enricher:
                                 error_msg = "Content missing or empty after fetch"
                                 task['all_curated_docs'][url]['enrichment_error'] = error_msg
                                 logger.warning(f"Content issue for {url} in {task['category']} post-fetch. Result: {fetch_result}")
+                                try:
+                                    parsed = urlparse(url)
+                                    domain = parsed.netloc or parsed.path
+                                    if domain:
+                                        failed_domains.add(domain.lower().lstrip('www.'))
+                                except Exception:
+                                    pass
                         else:
                              logger.warning(f"URL {url} from fetch task not found in current curated docs for {task['category']}.")
 
                     # Update the state directly with the modified dictionary for this category
                     state[task['field']] = task['all_curated_docs']
+
+                    # Update aggregated failed domains in state
+                    if failed_domains:
+                        existing = set(state.get('enrichment_failed_domains', []))
+                        state['enrichment_failed_domains'] = list(existing.union(failed_domains))
 
                     logger.info(f"Finished enrichment for {task['label']}: {enriched_count} successful, {error_count} failed out of {len(urls_to_fetch)} attempts.")
                     if websocket_manager and job_id:

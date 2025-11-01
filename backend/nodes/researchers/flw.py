@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage
 # Use relative imports assuming standard project structure
 from ...classes import ResearchState
 from .base import BaseResearcher
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class FLWAnalyzer(BaseResearcher):
         """
         Analyzes the company's FLW and sustainability efforts.
         """
-        company = state.get('company', 'Unknown Company')
+        company = company_name(state)
         industry = state.get('industry', 'Unknown Industry') # Get industry for context
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')

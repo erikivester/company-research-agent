@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage
 # Use relative imports assuming standard project structure
 from ...classes import ResearchState
 from .base import BaseResearcher
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,8 @@ class ContactFinderNode(BaseResearcher):
         """
         Analyzes the company's public information to find relevant contacts.
         """
-        company = state.get('company', 'Unknown Company')
-        industry = state.get('industry', 'Unknown Industry') # Get industry for context
+        company = company_name(state)
+        industry = state.get('industry', 'Unknown Industry')  # Get industry for context
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
@@ -94,28 +95,28 @@ class ContactFinderNode(BaseResearcher):
                 msg.append(f"\n✓ Found {len(documents_found)} documents from web search.")
                 logger.info(f"Found {len(documents_found)} documents from web search.")
             else:
-                 msg.append("\nℹ️ No additional documents found from web search for contacts.")
-                 logger.info("No additional documents found from web search.")
+                msg.append("\nℹ️ No additional documents found from web search for contacts.")
+                logger.info("No additional documents found from web search.")
 
             # Send WebSocket update: Search complete
             if websocket_manager and job_id:
-                 await websocket_manager.send_status_update(
-                     job_id=job_id,
-                     status="processing",
-                     message=f"Found {len(documents_found)} documents for contacts",
-                     result={
-                         "step": "Searching",
-                         "analyst_type": self.analyst_type,
-                         "queries": queries,
-                         "documents_found": len(documents_found)
-                     }
-                 )
+                await websocket_manager.send_status_update(
+                    job_id=job_id,
+                    status="processing",
+                    message=f"Found {len(documents_found)} documents for contacts",
+                    result={
+                        "step": "Searching",
+                        "analyst_type": self.analyst_type,
+                        "queries": queries,
+                        "documents_found": len(documents_found)
+                    }
+                )
 
             # Update state with findings
             messages = state.get('messages', [])
             messages.append(AIMessage(content="\n".join(msg)))
             state['messages'] = messages
-            
+
             # Use the specific key from our new v2 state.py
             state['contact_finder_data'] = contact_finder_data
             logger.info(f"Completed contact finding. Total documents collected: {len(contact_finder_data)}")
@@ -125,7 +126,7 @@ class ContactFinderNode(BaseResearcher):
 
         except Exception as e:
             error_msg = f"Contact finding failed: {str(e)}"
-            logger.error(error_msg, exc_info=True) 
+            logger.error(error_msg, exc_info=True)
 
             if websocket_manager and job_id:
                 await websocket_manager.send_status_update(
@@ -138,11 +139,11 @@ class ContactFinderNode(BaseResearcher):
                         "error": str(e)
                     }
                 )
-            
+
             messages = state.get('messages', [])
             messages.append(AIMessage(content=f"\n⚠️ {error_msg}"))
             state['messages'] = messages
-            state['contact_finder_data'] = state.get('contact_finder_data', {}) # Ensure key exists
+            state['contact_finder_data'] = state.get('contact_finder_data', {})  # Ensure key exists
             raise
 
     async def run(self, state: ResearchState) -> ResearchState:

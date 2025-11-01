@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage
 
 from ...classes import ResearchState
 from .base import BaseResearcher
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)  # <-- ADDED
 
@@ -16,9 +17,9 @@ class CompanyBriefNode(BaseResearcher):
         self.analyst_type = "company_brief"
 
     async def analyze(self, state: ResearchState) -> Dict[str, Any]:
-        company = state.get('company', 'Unknown Company')
+        company = company_name(state)
         msg = [f"🏢 Company Brief Node analyzing {company}"]
-        
+
         # v2: Updated query generation prompt
         queries = await self.generate_queries(state, """
         Generate queries on the company fundamentals of {company} in the {industry} industry such as:
@@ -47,14 +48,14 @@ class CompanyBriefNode(BaseResearcher):
                         "queries": queries
                     }
                 )
-        
+
         company_brief_data = {}
-        
+
         # If we have site_scrape data, include it first
         if site_scrape := state.get('site_scrape'):
             msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
             company_brief_data.update(site_scrape)
-        
+
         # Perform additional research with comprehensive search
         try:
             # Store documents with their respective queries
@@ -64,7 +65,7 @@ class CompanyBriefNode(BaseResearcher):
                     for url, doc in documents.items():
                         doc['query'] = query  # Associate each document with its query
                         company_brief_data[url] = doc
-            
+
             msg.append(f"\n✓ Found {len(company_brief_data)} documents")
             if websocket_manager := state.get('websocket_manager'):
                 if job_id := state.get('job_id'):
@@ -80,12 +81,12 @@ class CompanyBriefNode(BaseResearcher):
                     )
         except Exception as e:
             msg.append(f"\n⚠️ Error during research: {str(e)}")
-        
+
         # Update state with our findings
         messages = state.get('messages', [])
         messages.append(AIMessage(content="\n".join(msg)))
         state['messages'] = messages
-        
+
         # v2: Update state with the new key
         state['company_brief_data'] = company_brief_data
 

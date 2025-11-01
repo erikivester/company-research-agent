@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage
 from ..classes import ResearchState
 from ..utils.references import process_references_from_search_results
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class Curator:
 
     async def curate_data(self, state: ResearchState) -> ResearchState:
         """(v2) Curate all collected data from the 5 v2 nodes."""
-        company = state.get('company', 'Unknown Company')
+        company = company_name(state)
         airtable_record_id = state.get('airtable_record_id')
         logger.info(f"Starting curation for company: {company}")
 
@@ -178,8 +179,8 @@ class Curator:
             unique_docs = {}
             for url, doc in data.items():
                 if not isinstance(doc, dict): # Skip if doc is not a dictionary
-                     logger.warning(f"Skipping non-dictionary item under URL '{url}' in {data_field}")
-                     continue
+                    logger.warning(f"Skipping non-dictionary item under URL '{url}' in {data_field}")
+                    continue
                 try:
                     parsed = urlparse(url)
                     current_url = url
@@ -188,8 +189,8 @@ class Curator:
                         parsed = urlparse(current_url)
 
                     if not parsed.netloc:
-                         logger.warning(f"Skipping invalid URL (no domain): {url} in {data_field}")
-                         continue
+                        logger.warning(f"Skipping invalid URL (no domain): {url} in {data_field}")
+                        continue
 
                     # Normalize URL: remove query, fragment, trailing slash, lower scheme/netloc
                     clean_url = parsed._replace(query='', fragment='',
@@ -215,11 +216,11 @@ class Curator:
             initial_count = len(docs)
             doc_counts_run[doc_type]["initial"] = initial_count # Update count for this run
             if initial_count > 0:
-                 logger.info(f"Found {initial_count} unique documents for {data_field} ({doc_type})")
-                 curation_tasks.append((data_field, emoji, doc_type, list(unique_docs.keys()), docs))
+                logger.info(f"Found {initial_count} unique documents for {data_field} ({doc_type})")
+                curation_tasks.append((data_field, emoji, doc_type, list(unique_docs.keys()), docs))
             else:
-                 logger.info(f"No valid, unique documents found for {data_field} ({doc_type}) after cleaning.")
-                 state[f'curated_{data_field}'] = {} # Ensure curated key exists
+                logger.info(f"No valid, unique documents found for {data_field} ({doc_type}) after cleaning.")
+                state[f'curated_{data_field}'] = {} # Ensure curated key exists
 
         # --- Process each category ---
         for data_field, emoji, doc_type, urls, docs in curation_tasks:
@@ -286,10 +287,10 @@ class Curator:
             state['reference_titles'] = reference_titles
             state['reference_info'] = reference_info
         except Exception as ref_exc:
-             logger.error(f"Error processing references: {ref_exc}", exc_info=True)
-             state['references'] = []
-             state['reference_titles'] = {}
-             state['reference_info'] = {}
+            logger.error(f"Error processing references: {ref_exc}", exc_info=True)
+            state['references'] = []
+            state['reference_titles'] = {}
+            state['reference_info'] = {}
         # --- End Reference Processing ---
 
         # Update final message list in state
@@ -299,15 +300,15 @@ class Curator:
 
         # Send final curation stats via WebSocket using the counts from this run
         if websocket_manager and job_id:
-             await websocket_manager.send_status_update(
-                 job_id=job_id,
-                 status="curation_complete",
-                 message="Document curation complete",
-                 result={
-                     "step": "Curation",
-                     "doc_counts": doc_counts_run # Send the final counts
-                 }
-             )
+            await websocket_manager.send_status_update(
+                job_id=job_id,
+                status="curation_complete",
+                message="Document curation complete",
+                result={
+                    "step": "Curation",
+                    "doc_counts": doc_counts_run # Send the final counts
+                }
+            )
         logger.info(f"Curation complete for {company}. Final counts: {doc_counts_run}")
         return state
 

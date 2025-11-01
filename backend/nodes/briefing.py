@@ -10,6 +10,7 @@ import google.generativeai as genai
 from ..classes import ResearchState
 # Import the Airtable update function
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +278,7 @@ Output ONLY the requested markdown content.
 
     async def create_briefings(self, state: ResearchState) -> ResearchState:
         """(v2) Create briefings for all 5 v2 categories in parallel."""
-        company = state.get('company', 'Unknown Company')
+        company = company_name(state)
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
@@ -309,28 +310,28 @@ Output ONLY the requested markdown content.
         }
         # --- END v2 MODIFICATION ---
 
-        briefings = {} 
-        briefing_tasks_details = [] 
+        briefings = {}
+        briefing_tasks_details = []
 
         # Prepare tasks for parallel processing
         for curated_key, (cat, briefing_key) in categories.items():
             curated_data = state.get(curated_key, {})
 
-            if curated_data and isinstance(curated_data, dict): 
+            if curated_data and isinstance(curated_data, dict):
                 logger.info(f"Preparing briefing task for {cat} using {len(curated_data)} documents from {curated_key}")
                 briefing_tasks_details.append({
-                    'category': cat, # e.g., 'contact'
-                    'briefing_key': briefing_key, # e.g., 'contact_briefing'
+                    'category': cat,  # e.g., 'contact'
+                    'briefing_key': briefing_key,  # e.g., 'contact_briefing'
                     'curated_data': curated_data,
-                    'data_field': curated_key 
+                    'data_field': curated_key
                 })
             else:
                 logger.info(f"No data available or invalid format for {curated_key}, skipping {cat} briefing.")
-                state[briefing_key] = "" # Ensure the briefing key exists in the state
+                state[briefing_key] = ""  # Ensure the briefing key exists in the state
 
         # Process briefings in parallel if tasks were prepared
         if briefing_tasks_details:
-            briefing_semaphore = asyncio.Semaphore(3) # Limit to 3 concurrent Gemini calls
+            briefing_semaphore = asyncio.Semaphore(3)  # Limit to 3 concurrent Gemini calls
 
             async def process_briefing(task_details: Dict[str, Any]) -> Dict[str, Any]:
                 """Process a single briefing with rate limiting."""
@@ -342,14 +343,14 @@ Output ONLY the requested markdown content.
                     )
 
                     briefing_content = result.get('content', '')
-                    success = bool(briefing_content) 
+                    success = bool(briefing_content)
 
                     state[task_details['briefing_key']] = briefing_content
                     if success:
-                         briefings[task_details['category']] = briefing_content
-                         logger.info(f"Completed {task_details['category']} briefing ({len(briefing_content)} chars)")
+                        briefings[task_details['category']] = briefing_content
+                        logger.info(f"Completed {task_details['category']} briefing ({len(briefing_content)} chars)")
                     else:
-                         logger.error(f"Failed to generate briefing for {task_details['category']} using {task_details['data_field']}")
+                        logger.error(f"Failed to generate briefing for {task_details['category']} using {task_details['data_field']}")
 
                     return {
                         'category': task_details['category'],
@@ -367,8 +368,7 @@ Output ONLY the requested markdown content.
             total_length = sum(r.get('length', 0) for r in results)
             logger.info(f"Generated {successful_briefings}/{len(briefing_tasks_details)} briefings successfully. Total characters generated: {total_length}")
         else:
-             logger.warning("No briefing tasks were prepared. Skipping parallel processing.")
-
+            logger.warning("No briefing tasks were prepared. Skipping parallel processing.")
 
         state['briefings'] = briefings
         logger.info("Finished creating all briefings.")

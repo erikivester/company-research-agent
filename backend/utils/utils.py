@@ -37,6 +37,27 @@ def clean_text(text: str) -> str:
     text = text.replace('<para>', '').replace('</para>', '')
     return text.strip()
 
+
+def company_name(state: dict) -> str:
+    """Return a normalized company name from state.
+
+    Prefers explicit 'company' (non-empty), then 'inferred_company',
+    and falls back to 'Unknown Company'. Always returns a stripped string.
+    """
+    try:
+        name = state.get('company') if isinstance(state, dict) else None
+    except Exception:
+        name = None
+    if not name or not isinstance(name, str) or not name.strip():
+        # Try inferred_company next
+        try:
+            name = state.get('inferred_company') if isinstance(state, dict) else None
+        except Exception:
+            name = None
+    if not name or not isinstance(name, str) or not name.strip():
+        return 'Unknown Company'
+    return name.strip()
+
 def generate_pdf_from_md(markdown_content: str, output_pdf) -> None:
     """Convert markdown content to PDF using a simplified ReportLab approach.
     

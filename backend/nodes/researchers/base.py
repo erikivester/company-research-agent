@@ -9,6 +9,7 @@ from tavily import AsyncTavilyClient
 
 from ...classes import ResearchState
 from ...utils.references import clean_title
+from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,10 @@ class BaseResearcher:
         self._analyst_type = value
 
     async def generate_queries(self, state: Dict, prompt: str) -> List[str]:
-        # Use 'or' to treat empty strings as missing values as well
-        company = state.get("company") or "Unknown Company"
+        # Use the normalized helper to prefer explicit 'company', then 'inferred_company',
+        # and finally fall back to 'Unknown Company'. This avoids passing empty/whitespace
+        # company values into downstream prompts.
+        company = company_name(state)
         industry = state.get("industry", "Unknown Industry")
         
         # --- FIX #1: Use 'hq_location' from the state, not 'hq' ---
@@ -80,21 +83,21 @@ class BaseResearcher:
                 content = chunk.choices[0].delta.content
                 if content:
                     current_query += content
-                    
+
                     # Stream the current state to the UI using a safe helper that handles missing/falsy job_id
-                            if websocket_manager:
-                                await websocket_manager.safe_send(
-                                    state=state,
-                                    job_id=job_id,
-                                    status="query_generating",
-                                    message="Generating research query",
-                                    result={
-                                        "query": current_query,
-                                        "query_number": current_query_number,
-                                        "category": self.analyst_type,
-                                        "is_complete": False
-                                    }
-                                )
+                    if websocket_manager:
+                        await websocket_manager.safe_send(
+                            state=state,
+                            job_id=job_id,
+                            status="query_generating",
+                            message="Generating research query",
+                            result={
+                                "query": current_query,
+                                "query_number": current_query_number,
+                                "category": self.analyst_type,
+                                "is_complete": False
+                            }
+                        )
                     
                     # If a newline is detected, treat it as a complete query.
                     if '\n' in current_query:

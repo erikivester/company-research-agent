@@ -28,6 +28,8 @@ from backend.airtable_uploader import upload_to_airtable
 from backend.utils.references import format_references_section
 # --- NEW: Import for Google Drive Utility (we will create this file later) ---
 from backend.utils.gdrive_uploader import upload_context_to_gdrive
+from backend.utils.utils import company_name
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,8 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 
     report_parts = []
     
-    company = state.get('company', 'Research Report')
+    # Use non-empty company name for the report header; preserve special 'Research Report' fallback
+    company = (state.get('company') or 'Research Report')
     report_parts.append(f"# {company} Research Report (Raw)\n")
 
     for key in report_order:
@@ -139,7 +142,45 @@ class Graph:
         try:
             job_id = state.get("job_id")
             record_id = state.get("airtable_record_id")
-            company_name = state.get("company", "Unknown_Company")
+            # Normalize company name for filenames and Airtable using helper
+            company_name_local = company_name(state)
+
+            # If helper returned Unknown Company or empty, try to infer from company_url or references
+            if not company_name_local or company_name_local.strip() == "Unknown Company":
+                inferred = None
+                # Try company_url domain -> pretty name
+                company_url = state.get('company_url')
+                if company_url:
+                    try:
+                        parsed = urlparse(company_url)
+                        netloc = parsed.netloc or parsed.path
+                        if netloc:
+                            netloc = netloc.lower().lstrip('www.')
+                            # Take first label (e.g., example from example.com)
+                            label = netloc.split('.')[0]
+                            label = label.replace('-', ' ').replace('_', ' ').strip()
+                            if label:
+                                inferred = label.title()
+                    except Exception:
+                        inferred = None
+
+                # Try reference titles (take first title) as fallback
+                if not inferred:
+                    ref_titles = state.get('reference_titles', {})
+                    if isinstance(ref_titles, dict) and ref_titles:
+                        try:
+                            first_title = next(iter(ref_titles.values()))
+                            if isinstance(first_title, str) and first_title.strip():
+                                # Extract a reasonable short name from a title
+                                inferred = first_title.split(' - ')[0].split('|')[0].strip()
+                        except Exception:
+                            inferred = None
+
+                if inferred:
+                    company_name_local = inferred
+                else:
+                    # For Airtable/file naming, keep the underscore-safe fallback
+                    company_name_local = "Unknown_Company"
 
             # --- 1. Google Drive Context Upload ---
             google_drive_folder_url = state.get("google_drive_folder_url")
@@ -156,7 +197,7 @@ class Graph:
                 if full_context:
                     try:
                         # Call the new utility function
-                        file_name = f"{company_name.replace(' ', '_')}_research_context.json"
+                        file_name = f"{company_name_local.replace(' ', '_')}_research_context.json"
                         await upload_context_to_gdrive(full_context, google_drive_folder_url, file_name)
                         logger.info(f"Successfully uploaded full context to Google Drive: {file_name}")
                     except Exception as gdrive_exc:
@@ -212,27 +253,27 @@ class Graph:
             revenue_tag = revenue_tag_list[0] if isinstance(revenue_tag_list, list) and revenue_tag_list else None
 
             report_data = {
-                 "company_name": state.get("company"),
-                 "company_url": state.get("company_url"),
-                 
-                 # --- v2 TAG MAPPINGS ---
-                 "industries_tags": state.get("airtable_industries", []),
-                 "region_tags": state.get("airtable_country_region", []),
-                 "revenue_tags": revenue_tag,
-                 "refed_alignment_tags": state.get("airtable_refed_alignment", []), # NEW
-                 
-                 # --- v2 REPORT/BRIEFING MAPPINGS ---
-                 "report_markdown": state.get("report", ""),
-                 "company_brief_briefing": state.get("company_brief_briefing", ""),         # RENAMED
-                 "news_signal_briefing": state.get("news_signal_briefing", ""),         # RENAMED
-                 "flw_sustainability_briefing": state.get("flw_sustainability_briefing", ""), # KEPT
-                 "contact_briefing": state.get("contact_briefing", ""),               # NEW
-                 "engagement_briefing": state.get("engagement_briefing", ""),           # NEW
-                 # REMOVED: financial_briefing, industry_briefing
-                 
-                 # --- NOTES/REFERENCES MAPPINGS ---
-                 "process_notes": process_notes_str, 
-                 "references_formatted": references_str, 
+                "company_name": company_name_local,
+                "company_url": state.get("company_url"),
+
+                # --- v2 TAG MAPPINGS ---
+                "industries_tags": state.get("airtable_industries", []),
+                "region_tags": state.get("airtable_country_region", []),
+                "revenue_tags": revenue_tag,
+                "refed_alignment_tags": state.get("airtable_refed_alignment", []), # NEW
+
+                # --- v2 REPORT/BRIEFING MAPPINGS ---
+                "report_markdown": state.get("report", ""),
+                "company_brief_briefing": state.get("company_brief_briefing", ""),         # RENAMED
+                "news_signal_briefing": state.get("news_signal_briefing", ""),         # RENAMED
+                "flw_sustainability_briefing": state.get("flw_sustainability_briefing", ""), # KEPT
+                "contact_briefing": state.get("contact_briefing", ""),               # NEW
+                "engagement_briefing": state.get("engagement_briefing", ""),           # NEW
+                # REMOVED: financial_briefing, industry_briefing
+
+                # --- NOTES/REFERENCES MAPPINGS ---
+                "process_notes": process_notes_str,
+                "references_formatted": references_str,
             }
 
             # Log data being sent (excluding large fields)
