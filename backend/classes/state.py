@@ -22,18 +22,44 @@ class InputState(TypedDict, total=False):
 def _first_value(a, b):
     return a
 
+
+def _prefer_non_empty(a, b):
+    """
+    Reducer that prefers non-empty (non-blank) values when merging.
+
+    If `a` is a non-empty string or otherwise truthy, return `a`.
+    Otherwise return `b` (which may be empty/None). This helps avoid
+    situations where an empty string from one source overshadows a
+    meaningful value from another source during LangGraph merges.
+    """
+    try:
+        # Prefer non-empty strings
+        if isinstance(a, str):
+            if a and a.strip():
+                return a
+            if isinstance(b, str) and b and b.strip():
+                return b
+            return a or b
+        # Fallback: prefer truthy values
+        return a if a else b
+    except Exception:
+        return a
+
 class ResearchState(TypedDict):
     # --- Input fields (pass-through) ---
     # Use Annotated to tell LangGraph how to merge these when parallel branches join.
     # We now use our correct _first_value reducer
-    company: Annotated[str, _first_value]
-    company_url: Annotated[str, _first_value]
-    hq_location: Annotated[str, _first_value]
-    industry: Annotated[str, _first_value]
+    # Prefer non-empty strings when merging state so provided company names
+    # or other inputs are not lost by an empty default value from another
+    # source during parallel branch merges.
+    company: Annotated[str, _prefer_non_empty]
+    company_url: Annotated[str, _prefer_non_empty]
+    hq_location: Annotated[str, _prefer_non_empty]
+    industry: Annotated[str, _prefer_non_empty]
     websocket_manager: Annotated[WebSocketManager, _first_value]
-    job_id: Annotated[str, _first_value]
-    airtable_record_id: Annotated[str, _first_value]
-    google_drive_folder_url: Annotated[str, _first_value]
+    job_id: Annotated[str, _prefer_non_empty]
+    airtable_record_id: Annotated[str, _prefer_non_empty]
+    google_drive_folder_url: Annotated[str, _prefer_non_empty]
 
     # --- Grounding node output (pass-through) ---
     site_scrape: Annotated[Dict[str, Any], _first_value]

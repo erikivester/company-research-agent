@@ -324,6 +324,19 @@ class Graph:
             "websocket_manager": self.websocket_manager
         }
 
+        # Ensure any configurable, pass-through keys from the provided
+        # `thread` config are also present in the initial_input dictionary.
+        # This avoids LangGraph merge ordering problems where empty defaults
+        # can overshadow a real company value supplied in the config.
+        if isinstance(thread, dict):
+            cfg = thread.get('configurable') if 'configurable' in thread else thread
+            for key in [
+                'company', 'company_url', 'hq_location', 'industry',
+                'job_id', 'airtable_record_id', 'google_drive_folder_url'
+            ]:
+                if key in cfg and cfg.get(key) is not None:
+                    initial_input[key] = cfg.get(key)
+
         compiled_graph = self.workflow.compile()
 
         # 'thread' (which is our config) contains ALL data from application.py

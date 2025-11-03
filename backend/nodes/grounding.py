@@ -154,6 +154,11 @@ class GroundingNode:
         
         
         # --- FIX: Modify state in-place instead of replacing it ---
+        # Ensure the canonical company value is stored on the state so
+        # downstream nodes and LangGraph merge reducers have a concrete
+        # non-empty value to work with.
+        state['company'] = company
+
         state['messages'] = [AIMessage(content=msg)]
         state['site_scrape'] = site_scrape
         if error_str:
