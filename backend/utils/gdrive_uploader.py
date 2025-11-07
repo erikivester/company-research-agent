@@ -13,27 +13,76 @@ from googleapiclient.http import MediaIoBaseUpload
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
-SERVICE_ACCOUNT_FILE = "gdrive_credentials.json"
+SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
+# --- END MODIFICATION ---
 
 # Define the scopes required for Google Drive API
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+# Use the full Drive scope so the service account (or delegated user)
+# can list Shared Drives and manage files across drives.
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 # --- HELPER: Get Google Drive Service ---
 def get_drive_service():
     """Authenticates and returns a Google Drive API service object."""
+    
+    creds = None
+    if os.getenv("GDRIVE_SERVICE_ACCOUNT_JSON"):
+        try:
+            creds_json = json.loads(os.environ["GDRIVE_SERVICE_ACCOUNT_JSON"])
+            creds = service_account.Credentials.from_service_account_info(creds_json, scopes=SCOPES)
+            logger.info("Loaded Google Drive credentials from ENV variable.")
+        except Exception as e:
+            logger.warning(f"Failed to load GDrive credentials from ENV: {e}")
+    
+    if not creds:
+        try:
+            creds = service_account.Credentials.from_service_account_file(
+                SERVICE_ACCOUNT_FILE, scopes=SCOPES
+            )
+            logger.info(f"Loaded Google Drive credentials from file: {SERVICE_ACCOUNT_FILE}")
+        except FileNotFoundError:
+            logger.error(f"CRITICAL: Google Drive credentials file not found at {SERVICE_ACCOUNT_FILE} and env var not set.")
+            return None
+        except Exception as e:
+            logger.error(f"Error building Google Drive service from file: {e}", exc_info=True)
+            return None
+
+    delegate_user = os.getenv("GDRIVE_DELEGATE_USER")
+    if delegate_user:
+        try:
+            creds = creds.with_subject(delegate_user)
+            logger.info(f"Using delegated credentials to impersonate: {delegate_user}")
+        except Exception as e:
+            logger.warning(f"Failed to delegate credentials to {delegate_user}: {e}", exc_info=False)
+
+    service = None 
     try:
-        creds = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES
-        )
         service = build('drive', 'v3', credentials=creds, cache_discovery=False)
-        return service
-    except FileNotFoundError:
-        logger.error(f"CRITICAL: Google Drive credentials file not found at {SERVICE_ACCOUNT_FILE}.")
-        logger.error("Please create a service account and place 'gdrive_credentials.json' in the project root.")
-        return None
+        sa_email = getattr(creds, 'service_account_email', None)
+        if sa_email:
+            logger.info(f"Google Drive credentials loaded for service account: {sa_email}")
+            
+            try:
+                drives = service.drives().list(fields="drives(id,name)").execute()
+                drive_count = len(drives.get('drives', []))
+                if drive_count == 0:
+                    logger.warning("⚠️ SA cannot see any Shared Drives! Add SA as member to the target Shared Drive.")
+                else:
+                    logger.info(f"✓ SA can see {drive_count} Shared Drive(s)")
+            except Exception as e:
+                logger.warning(f"⚠️ SA may not have permissions to list Shared Drives (this is ok if it's added as a member): {e}")
     except Exception as e:
-        logger.error(f"Error building Google Drive service: {e}", exc_info=True)
-        return None
+        logger.warning(f"Could not run SA diagnostics: {e}")
+        
+    if not service:
+        try:
+            service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+        except Exception as e:
+            logger.error(f"Error building Google Drive service: {e}", exc_info=True)
+            return None
+
+    return service
+
 
 # --- HELPER: Extract Folder ID from URL ---
 def _extract_folder_id_from_url(folder_url: str) -> Optional[str]:
@@ -41,15 +90,12 @@ def _extract_folder_id_from_url(folder_url: str) -> Optional[str]:
     if not folder_url or 'drive.google.com' not in folder_url:
         return None
     
-    # Standard URL format: .../folders/FOLDER_ID
-    parts = folder_url.split('/folders/')
-    if len(parts) > 1:
-        return parts[-1].split('?')[0] # Clean query params
-        
-    # Other possible format: .../drive/u/0/folders/FOLDER_ID
-    parts = folder_url.split('/folders/')
-    if len(parts) > 1:
-        return parts[-1].split('?')[0]
+    for prefix in ['/folders/', '/drive/folders/']:
+        parts = folder_url.split(prefix)
+        if len(parts) > 1:
+            folder_id = parts[-1].split('?')[0]
+            logger.debug(f"Extracted folder ID from URL: {folder_id}")
+            return folder_id
 
     logger.warning(f"Could not parse Folder ID from URL: {folder_url}")
     return None
@@ -58,14 +104,12 @@ def _extract_folder_id_from_url(folder_url: str) -> Optional[str]:
 async def upload_context_to_gdrive(
     context: Dict[str, Any], 
     folder_url: str, 
-    file_name: str
+    file_name: str,
+    content_type: str = 'application/json'
 ):
     """
-    Authenticates with Google Drive and uploads a JSON file of the
-    research context to the specified folder.
-    
-    This function is designed to be called with asyncio.to_thread
-    as the Google API client library is synchronous.
+    Authenticates with Google Drive and uploads a file to the specified folder
+    (which must be in a Shared Drive).
     """
     
     folder_id = _extract_folder_id_from_url(folder_url)
@@ -78,61 +122,67 @@ async def upload_context_to_gdrive(
 
     logger.info(f"Uploading '{file_name}' to GDrive Folder ID: {folder_id}...")
 
-    # Convert the context dictionary to JSON bytes
     try:
-        json_content = json.dumps(context, indent=2)
-        media_buffer = io.BytesIO(json_content.encode('utf-8'))
+        if content_type == 'application/json':
+            content = json.dumps(context, indent=2).encode('utf-8')
+        elif content_type == 'application/pdf':
+            content = context.encode('utf-8') if isinstance(context, str) else context
+        else:
+            content = context.encode('utf-8') if isinstance(context, str) else str(context).encode('utf-8')
+        
+        media_buffer = io.BytesIO(content)
     except Exception as e:
-        logger.error(f"Failed to serialize context to JSON: {e}")
+        logger.error(f"Failed to process content for upload: {e}")
         raise
 
-    # Define the file metadata
     file_metadata = {
         'name': file_name,
         'parents': [folder_id],
-        'mimeType': 'application/json'
+        'mimeType': content_type
     }
     
-    # Create the media upload object
+    media_buffer.seek(0)
     media = MediaIoBaseUpload(
         media_buffer,
-        mimetype='application/json',
+        mimetype=content_type,
         resumable=True
     )
 
     try:
-        # --- Run the synchronous upload in a separate thread ---
         def _execute_upload():
-            # Check if file with the same name already exists in this folder
             query = f"'{folder_id}' in parents and name = '{file_name}' and trashed = false"
-            existing_files = service.files().list(q=query, fields="files(id)").execute()
+            
+            existing_files = service.files().list(
+                q=query, 
+                fields="files(id)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True # This IS valid for list()
+            ).execute()
             
             existing_file = existing_files.get('files', [])
             
             if existing_file:
-                # UPDATE existing file
                 file_id = existing_file[0].get('id')
                 logger.debug(f"File '{file_name}' already exists. Updating existing file ID: {file_id}")
                 request = service.files().update(
                     fileId=file_id,
                     media_body=media,
-                    fields='id'
+                    fields='id',
+                    supportsAllDrives=True
                 )
             else:
-                # CREATE new file
                 logger.debug(f"File '{file_name}' not found. Creating new file.")
                 request = service.files().create(
                     body=file_metadata,
                     media_body=media,
-                    fields='id'
+                    fields='id',
+                    supportsAllDrives=True
                 )
             
             file = request.execute()
             return file.get('id')
         
-        # Run the blocking I/O operation in a thread
         file_id = await asyncio.to_thread(_execute_upload)
-        
         logger.info(f"Successfully uploaded/updated file. File ID: {file_id}")
 
     except Exception as e:
@@ -140,3 +190,53 @@ async def upload_context_to_gdrive(
         raise
     finally:
         media_buffer.close()
+
+
+def inspect_drive_folder(folder_url: str) -> Dict[str, Any]:
+    """Return metadata for a Drive folder (works with Shared Drives)."""
+    folder_id = _extract_folder_id_from_url(folder_url)
+    if not folder_id:
+        raise ValueError(f"Invalid Google Drive folder URL provided: {folder_url}")
+
+    service = get_drive_service()
+    if not service:
+        raise ConnectionError("Failed to authenticate Google Drive service. Check credentials.")
+
+    try:
+        # --- FIX: Removed 'includeItemsFromAllDrives' from get() call ---
+        resp = service.files().get(
+            fileId=folder_id,
+            supportsAllDrives=True,
+            fields="id,name,mimeType,driveId,owners,permissions,capabilities"
+        ).execute()
+        # --- END FIX ---
+
+        owners = [o.get('emailAddress') for o in resp.get('owners', []) if o.get('emailAddress')]
+        permissions = []
+        for p in resp.get('permissions', []):
+            permissions.append({
+                'id': p.get('id'),
+                'type': p.get('type'),
+                'role': p.get('role'),
+                'emailAddress': p.get('emailAddress')
+            })
+
+        drive_id = resp.get('driveId')
+        if drive_id:
+            logger.info(f"Target folder is in Shared Drive with ID: {drive_id}")
+
+        summary = {
+            'id': resp.get('id'),
+            'name': resp.get('name'),
+            'mimeType': resp.get('mimeType'),
+            'driveId': resp.get('driveId'),
+            'owners': owners,
+            'permissions': permissions,
+            'capabilities': resp.get('capabilities', {}),
+            'raw': resp
+        }
+        return summary
+
+    except Exception as e:
+        logger.error(f"Failed to inspect Drive folder {folder_url}: {e}", exc_info=True)
+        raise

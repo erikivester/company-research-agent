@@ -37,23 +37,7 @@ class ContactFinderNode(BaseResearcher):
 
         try:
             # v2: Generate search queries specific to finding people
-            queries = await self.generate_queries(
-                state,
-                f"""
-                Generate specific search queries to find a wide breadth of relevant mid-level contacts at "{company}". 
-                Focus on roles related to sustainability, corporate social responsibility (CSR), environmental impact, food waste, and community outreach.
-
-                Examples of queries to generate:
-                - '"{company}" Head of Sustainability'
-                - '"{company}" VP of Impact'
-                - '"{company}" corporate giving manager'
-                - '"{company}" food waste reduction team'
-                - '"{company}" community relations contacts'
-                - '"{company}" ESG team'
-                - '"{company}" key contacts for {industry} partnerships'
-                - '"{company}" executives on LinkedIn'
-                """
-            )
+            queries = state.get('research_queries', {}).get(self.analyst_type, [])
 
             # Add generated queries to state messages for transparency
             subqueries_msg = "🔍 Subqueries for contact finding:\n" + "\n".join([f"• {query}" for query in queries])
@@ -85,8 +69,8 @@ class ContactFinderNode(BaseResearcher):
 
             # Execute searches for the generated queries
             logger.info(f"Searching documents for {len(queries)} contact queries.")
-            documents_found = await self.search_documents(state, queries)
-
+            documents_found = await self.search_documents(state)
+            
             if documents_found:
                 # Add found documents, associating each with its query
                 for url, doc in documents_found.items():

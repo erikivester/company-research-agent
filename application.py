@@ -8,10 +8,11 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
+from typing import Optional
 
 from backend.graph import Graph
 from backend.services.mongodb import MongoDBService
@@ -20,6 +21,7 @@ from backend.services.websocket_manager import WebSocketManager
 
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
 from backend.airtable_uploader import update_airtable_record
+from backend.utils.gdrive_uploader import upload_context_to_gdrive, inspect_drive_folder  # Add GDrive import
 # --- FIX: REMOVE DEBUG IMPORTS ---
 # from backend.debug_airtable import run_airtable_debug_test 
 # --- END FIX ---
@@ -329,17 +331,139 @@ async def start_research_webhook(data: AirtableWebhookInput):
         raise HTTPException(status_code=500, detail=str(e))
 # --- END MODIFIED ENDPOINT ---
 
-# --- FIX: REMOVE DEBUG ENDPOINT ---
-# @app.post("/debug/airtable-test")
-# async def debug_airtable_test(record_id: str | None = None):
-#     """
-#     Triggers the logic from test_airtable.py with mock data.
+# --- Debug Endpoints ---
+@app.post("/webhook/debug/gdrive-test")
+async def debug_gdrive_test(
+    data: dict = Body(default={
+        "folder_url": "https://drive.google.com/drive/folders/10OH-9dquxNwIj2EDVrpdTDtM4cgLQB5C"
+    })
+):
+    """Debug endpoint for testing Google Drive uploads with minimal test data."""
+    try:
+        folder_url = data.get("folder_url")
+        test_content = {
+            "test_timestamp": datetime.now().isoformat(),
+            "company": "Debug Test",
+            "test_data": {
+                "message": "This is a test upload from debug endpoint",
+                "source": "debug/gdrive-test"
+            }
+        }
+
+        filename = f"debug_upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        await upload_context_to_gdrive(test_content, folder_url, filename)
+        
+        return {
+            "status": "success",
+            "message": f"Test file '{filename}' uploaded successfully",
+            "filename": filename,
+            "folder_url": folder_url
+        }
+    except Exception as e:
+        logger.error(f"GDrive debug upload failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload test file: {str(e)}"
+        )
+
+@app.post("/webhook/debug/mock-research")
+async def debug_mock_research(
+    data: dict = Body(default={
+        "company": "Test Company",
+        "folder_url": "https://drive.google.com/drive/folders/10OH-9dquxNwIj2EDVrpdTDtM4cgLQB5C"
+    })
+):
+    """Debug endpoint for testing research pipeline with mock data."""
+    try:
+        company = data.get("company", "Test Company")
+        folder_url = data.get("folder_url")
+        
+        mock_data = {
+            "company": company,
+            "timestamp": datetime.now().isoformat(),
+            "company_brief_data": {
+                "https://example.com/test": {
+                    "title": "Test Document",
+                    "content": "Test content for verification",
+                    "score": 0.95,
+                    "raw_content": "Extended test content",
+                    "evaluation": {"overall_score": 0.95}
+                }
+            },
+            "research_queries": {
+                "company_brief": [
+                    f"{company} annual revenue 2024 2025",
+                    f"{company} business model"
+                ]
+            }
+        }
+
+        filename = f"{company.lower().replace(' ', '_')}_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        await upload_context_to_gdrive(mock_data, folder_url, filename)
+        
+        return {
+            "status": "success",
+            "message": f"Mock research data for {company} uploaded as '{filename}'",
+            "filename": filename,
+            "folder_url": folder_url
+        }
+    except Exception as e:
+        logger.error(f"Mock research upload failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload mock research: {str(e)}"
+        )
     
-#     Pass ?record_id=recXXXXX in the query or body to test an UPDATE.
-#     If no ID is passed, it tests an INSERT.
-#     """
-#     return await run_airtable_debug_test(record_id)
-# --- END FIX ---
+
+@app.post("/webhook/debug/gdrive-folder-info")
+async def debug_gdrive_folder_info(
+    data: dict = Body(default={
+        "folder_url": "https://drive.google.com/drive/folders/10OH-9dquxNwIj2EDVrpdTDtM4cgLQB5C"
+    })
+):
+    """Return metadata about a Drive folder so we can confirm Shared Drive membership and driveId."""
+    try:
+        folder_url = data.get("folder_url")
+        if not folder_url:
+            raise HTTPException(status_code=422, detail="folder_url is required")
+
+        # Call the blocking helper in a thread to avoid blocking the event loop
+        info = await asyncio.to_thread(inspect_drive_folder, folder_url)
+
+        # Add a convenience check to see if our service account appears in permissions
+        sa_email = None
+        # Try to read from credentials file/env for a quick hint (non-fatal)
+        try:
+            import json as _json
+            sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
+            if os.path.exists(sa_file):
+                _j = _json.load(open(sa_file))
+                sa_email = _j.get('client_email')
+        except Exception:
+            sa_email = None
+
+        is_service_account_member = False
+        if sa_email:
+            for p in info.get('permissions', []):
+                if p.get('emailAddress') == sa_email:
+                    is_service_account_member = True
+                    break
+
+        return {
+            "status": "success",
+            "folder_info": info,
+            "service_account_email": sa_email,
+            "service_account_is_member": is_service_account_member
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"GDrive folder inspection failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+# --- End Debug Endpoints ---
 
 @app.get("/")
 async def ping():

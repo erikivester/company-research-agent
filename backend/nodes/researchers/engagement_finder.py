@@ -38,20 +38,7 @@ class EngagementFinderNode(BaseResearcher):
 
         try:
             # v2: Generate search queries to hunt for "creative signals"
-            queries = await self.generate_queries(
-                state,
-                f"""
-                Generate creative search queries to hunt for external signals of engagement for "{company}". 
-                We are looking for affiliations, partnerships, memberships, and awards that suggest an interest in sustainability, food waste, or corporate responsibility.
-
-                Focus on finding:
-                - **Memberships:** '"{company}" 1% for the Planet', '"{company}" US Food Waste Pact', '"{company}" B Corp certified', '"{company}" Ceres member'.
-                - **Event Participation:** '"{company}" speaker ReFED Summit', '"{company}" attended Systems Change Lab', '"{company}" sponsor Aspen Institute'.
-                - **Awards & Recognition:** '"{company}" sustainability award 2024', '"{company}" Fast Company most innovative', '"{company}" Dow Jones Sustainability Index'.
-                - **Nonprofit Partnerships:** '"{company}" partners with Feeding America', '"{company}" World Wildlife Fund partnership', '"{company}" nonprofit partners'.
-                - **Coalition Signatory:** '"{company}" Consumer Goods Forum', '"{company}" Food Marketing Institute FMI'.
-                """
-            )
+            queries = state.get('research_queries', {}).get(self.analyst_type, [])
 
             # Add generated queries to state messages for transparency
             subqueries_msg = "🔍 Subqueries for engagement finding:\n" + "\n".join([f"• {query}" for query in queries])
@@ -83,7 +70,7 @@ class EngagementFinderNode(BaseResearcher):
 
             # Execute searches for the generated queries
             logger.info(f"Searching documents for {len(queries)} engagement queries.")
-            documents_found = await self.search_documents(state, queries)
+            documents_found = await self.search_documents(state)
 
             if documents_found:
                 # Add found documents, associating each with its query

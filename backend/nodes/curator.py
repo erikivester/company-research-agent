@@ -9,14 +9,14 @@ from langchain_core.messages import AIMessage
 from ..classes import ResearchState
 from ..utils.references import process_references_from_search_results
 from backend.airtable_uploader import update_airtable_record # synchronous function
-from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
 class Curator:
     def __init__(self) -> None:
         self.relevance_threshold = 0.4
-        logger.info(f"Curator initialized with relevance threshold: {self.relevance_threshold}")
+        self.news_threshold = 0.3 # <-- NEW: Lower threshold for news
+        logger.info(f"Curator initialized with default threshold: {self.relevance_threshold} and news threshold: {self.news_threshold}")
 
     async def evaluate_documents(self, state: ResearchState, docs: list, context: Dict[str, str]) -> list:
         """(v2) Evaluate documents based on Tavily's scoring, applying authority boosting."""
@@ -44,6 +44,7 @@ class Curator:
                     # 1. Get base score and initialize boost
                     tavily_score = float(doc.get('score', 0))
                     is_company_website = doc.get('source') == 'company_website'
+                    doc_type = doc.get('doc_type', 'unknown') # <-- NEW: Get doc type
                     authority_boost = 0.0
                     
                     # Ensure metadata is available for boosting
@@ -67,19 +68,24 @@ class Curator:
                     # Calculate Final Score (Cap at 1.0)
                     final_score = min(1.0, tavily_score + authority_boost)
                     
+                    # --- NEW THRESHOLD LOGIC ---
+                    # Use the specific news threshold if doc_type is 'news', otherwise default
+                    current_threshold = self.news_threshold if doc_type == 'news' else self.relevance_threshold
+                    # --- END NEW LOGIC ---
+
                     # 3. Decision Logic
-                    # Keep if final_score meets threshold OR if it's the company website (guaranteed passage for website)
-                    if final_score >= self.relevance_threshold or is_company_website:
+                    # Keep if final_score meets threshold OR if it's the company website
+                    if final_score >= current_threshold or is_company_website:
                         reason = f"Score {final_score:.4f}"
                         if authority_boost > 0:
                             reason += f" (Base: {tavily_score:.4f}, Boost: {authority_boost:.2f})"
                         
                         logger.info(f"Document kept ({reason}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})")
 
-                        # Ensure 'evaluation' key exists and store the final score used for keeping the doc
+                        # Ensure 'evaluation' key exists and store the final score
                         if 'evaluation' not in doc:
                              doc['evaluation'] = {}
-                        doc['evaluation']['overall_score'] = final_score # Store the final boosted score
+                        doc['evaluation']['overall_score'] = final_score
                         doc['evaluation']['query'] = doc.get('query', '') 
 
                         evaluated_docs.append(doc) 
@@ -92,14 +98,14 @@ class Curator:
                                 message=f"Kept document: {doc.get('title', 'No title')}",
                                 result={
                                     "step": "Curation",
-                                    "doc_type": doc.get('doc_type', 'unknown'), 
+                                    "doc_type": doc_type, 
                                     "title": doc.get('title', 'No title'),
-                                    "score": final_score, # Send the final score
+                                    "score": final_score,
                                     "url": doc.get('url', 'Unknown URL')
                                 }
                             )
                     else:
-                         logger.debug(f"Document below threshold (Final Score: {final_score:.4f}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})")
+                         logger.debug(f"Document below threshold ({final_score:.4f} < {current_threshold}) for '{doc.get('title', 'No title')}' (URL: {doc.get('url', 'Unknown URL')})")
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Error processing score for document '{doc.get('url', 'Unknown URL')}': {e}")
                     continue
@@ -116,7 +122,7 @@ class Curator:
 
     async def curate_data(self, state: ResearchState) -> ResearchState:
         """(v2) Curate all collected data from the 5 v2 nodes."""
-        company = company_name(state)
+        company = state.get('company', 'Unknown Company')
         airtable_record_id = state.get('airtable_record_id')
         logger.info(f"Starting curation for company: {company}")
 
@@ -179,8 +185,8 @@ class Curator:
             unique_docs = {}
             for url, doc in data.items():
                 if not isinstance(doc, dict): # Skip if doc is not a dictionary
-                    logger.warning(f"Skipping non-dictionary item under URL '{url}' in {data_field}")
-                    continue
+                     logger.warning(f"Skipping non-dictionary item under URL '{url}' in {data_field}")
+                     continue
                 try:
                     parsed = urlparse(url)
                     current_url = url
@@ -189,8 +195,8 @@ class Curator:
                         parsed = urlparse(current_url)
 
                     if not parsed.netloc:
-                        logger.warning(f"Skipping invalid URL (no domain): {url} in {data_field}")
-                        continue
+                         logger.warning(f"Skipping invalid URL (no domain): {url} in {data_field}")
+                         continue
 
                     # Normalize URL: remove query, fragment, trailing slash, lower scheme/netloc
                     clean_url = parsed._replace(query='', fragment='',
@@ -216,11 +222,11 @@ class Curator:
             initial_count = len(docs)
             doc_counts_run[doc_type]["initial"] = initial_count # Update count for this run
             if initial_count > 0:
-                logger.info(f"Found {initial_count} unique documents for {data_field} ({doc_type})")
-                curation_tasks.append((data_field, emoji, doc_type, list(unique_docs.keys()), docs))
+                 logger.info(f"Found {initial_count} unique documents for {data_field} ({doc_type})")
+                 curation_tasks.append((data_field, emoji, doc_type, list(unique_docs.keys()), docs))
             else:
-                logger.info(f"No valid, unique documents found for {data_field} ({doc_type}) after cleaning.")
-                state[f'curated_{data_field}'] = {} # Ensure curated key exists
+                 logger.info(f"No valid, unique documents found for {data_field} ({doc_type}) after cleaning.")
+                 state[f'curated_{data_field}'] = {} # Ensure curated key exists
 
         # --- Process each category ---
         for data_field, emoji, doc_type, urls, docs in curation_tasks:
@@ -287,10 +293,10 @@ class Curator:
             state['reference_titles'] = reference_titles
             state['reference_info'] = reference_info
         except Exception as ref_exc:
-            logger.error(f"Error processing references: {ref_exc}", exc_info=True)
-            state['references'] = []
-            state['reference_titles'] = {}
-            state['reference_info'] = {}
+             logger.error(f"Error processing references: {ref_exc}", exc_info=True)
+             state['references'] = []
+             state['reference_titles'] = {}
+             state['reference_info'] = {}
         # --- End Reference Processing ---
 
         # Update final message list in state
@@ -300,15 +306,15 @@ class Curator:
 
         # Send final curation stats via WebSocket using the counts from this run
         if websocket_manager and job_id:
-            await websocket_manager.send_status_update(
-                job_id=job_id,
-                status="curation_complete",
-                message="Document curation complete",
-                result={
-                    "step": "Curation",
-                    "doc_counts": doc_counts_run # Send the final counts
-                }
-            )
+             await websocket_manager.send_status_update(
+                 job_id=job_id,
+                 status="curation_complete",
+                 message="Document curation complete",
+                 result={
+                     "step": "Curation",
+                     "doc_counts": doc_counts_run # Send the final counts
+                 }
+             )
         logger.info(f"Curation complete for {company}. Final counts: {doc_counts_run}")
         return state
 
@@ -328,7 +334,7 @@ class Curator:
     # --- END HELPER METHOD ---
             
     async def run(self, state: ResearchState) -> ResearchState:
-        airtable_record_id = state.get('airtable_record_id') # Get ID early for except block
+        airtable_record_id = state.get('airtable_record_id')  # Get ID early for except block
         try:
             return await self.curate_data(state)
         except Exception as e:

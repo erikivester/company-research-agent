@@ -12,7 +12,6 @@ from langchain_core.messages import AIMessage
 from ..classes import ResearchState
 # Make sure the uploader function can be imported
 from backend.airtable_uploader import update_airtable_record # synchronous function
-from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +51,14 @@ class Tagger:
                 "Travel & Tourism", "Healthcare & Life Sciences", "Education",
                 "Government & Public Sector", "Nonprofit & Philanthropy", "Unknown"
             ],
+            # --- MODIFIED: Expanded Revenue Bands ---
             "Revenue Band (est.)": [
                 "<$1M", "$1M-$10M", "$10M-$50M", "$50M-$100M",
-                "$100M-$500M", "$500M-$1B", "$1B+", "Unknown"
+                "$100M-$500M", "$500M-$1B", "$1B-$10B", "$10B-$50B", 
+                "$50B+", "Unknown"
             ],
+            # --- END MODIFICATION ---
+            
             # --- NEW v2 ReFED Alignment Categories ---
             "ReFED Alignment": [
                 "Insights Engine Engagement", "Data Contributor / Partner", "Business Services Opportunity",
@@ -70,29 +73,29 @@ class Tagger:
 
     async def classify_company(self, state: ResearchState) -> ResearchState:
         """(v2) Classifies the company using OpenAI based on the 5 v2 briefings."""
-        company = company_name(state)
+        company = state.get('company', 'Unknown Company')
         logger.info(f"Starting v2 classification for {company}...")
 
         # --- v2: Gather Content for Classification from 5 new briefings ---
         briefings_content = []
         company_brief_text = ""
-
+        
         # Inject HQ Location into content for regional classification
         hq_location = state.get('hq_location')
         if hq_location and hq_location.strip() and hq_location.lower() != 'unknown':
             briefings_content.append(f"## Location Context\n* Headquarters: {hq_location}")
-
+            
         # Get Company Brief (for Revenue & Industry)
         if company_briefing := state.get("company_brief_briefing"):
             if isinstance(company_briefing, str) and company_briefing.strip():
                 company_brief_text = company_briefing
                 briefings_content.append(f"## Company Overview & Financial Health\n{company_briefing}")
-
+        
         # Get FLW Briefing (for Industry & ReFED Alignment)
         if flw_briefing := state.get("flw_sustainability_briefing"):
             if isinstance(flw_briefing, str) and flw_briefing.strip():
                 briefings_content.append(f"## FLW & Sustainability Briefing\n{flw_briefing}")
-
+        
         # Get News Briefing (for ReFED Alignment)
         if news_briefing := state.get("news_signal_briefing"):
             if isinstance(news_briefing, str) and news_briefing.strip():

@@ -9,6 +9,7 @@ from langgraph.graph import StateGraph
 
 from .classes.state import InputState, ResearchState
 from .nodes import GroundingNode
+from .nodes.query_generator import QueryGeneratorNode # <-- NEW: Import query generator
 from .nodes.briefing import Briefing
 from .nodes.collector import Collector
 from .nodes.curator import Curator
@@ -93,12 +94,8 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 class Graph:
     def __init__(self, company=None, url=None, hq_location=None, industry=None,
                  websocket_manager=None, job_id=None, google_drive_folder_url=None): # Added GDrive URL
-        
-        # NOTE: self.input_state is NOT USED for webhook runs,
-        # but is still set here for non-webhook/UI runs.
-        # The 'config' from application.py will override this.
         self.websocket_manager = websocket_manager
-        self.job_id = job_id # Store job_id for websocket updates
+        self.job_id = job_id
 
         self.input_state = InputState(
             company=company,
@@ -108,7 +105,7 @@ class Graph:
             websocket_manager=websocket_manager,
             job_id=job_id,
             airtable_record_id=None,
-            google_drive_folder_url=google_drive_folder_url, 
+            google_drive_folder_url=google_drive_folder_url, # Pass GDrive URL
             messages=[
                 SystemMessage(content="Expert researcher starting investigation")
             ]
@@ -120,6 +117,7 @@ class Graph:
     def _init_nodes(self):
         """Initialize all workflow nodes (v2)"""
         self.ground = GroundingNode()
+        self.query_generator = QueryGeneratorNode() # <-- NEW: Initialize generator
         
         # --- v2: Initialize 5 new/refocused researcher nodes ---
         self.company_brief_node = CompanyBriefNode()
@@ -179,7 +177,7 @@ class Graph:
             for message in state.get("messages", []):
                 content = getattr(message, 'content', '')
                 if isinstance(content, str):
-                    if content.startswith("🔍 Subqueries"):
+                    if content.startswith("🔍 Subqueries") or content.startswith("📊 Successfully generated all research queries"): # <-- NEW: Check for new generator log
                         if not queries_found:
                             process_notes.append("--- Queries Generated ---")
                             queries_found = True
@@ -264,6 +262,7 @@ class Graph:
 
         # Add nodes
         self.workflow.add_node("grounding", self.ground.run)
+        self.workflow.add_node("query_generator", self.query_generator.run) # <-- NEW: Add generator node
         # --- v2: Add 5 new/refocused nodes ---
         self.workflow.add_node("company_brief_node", self.company_brief_node.run)
         self.workflow.add_node("news_signal_node", self.news_signal_node.run)
@@ -282,6 +281,8 @@ class Graph:
         # Configure workflow edges
         self.workflow.set_entry_point("grounding")
         self.workflow.set_finish_point("airtable_uploader")
+        
+        self.workflow.add_edge("grounding", "query_generator") # <-- NEW: Link grounding to generator
 
         # --- v2: Define 5 parallel research nodes ---
         research_nodes = [
@@ -293,9 +294,11 @@ class Graph:
         ]
         # --- End v2 ---
 
+        # --- NEW: Link generator to parallel researchers ---
         for node in research_nodes:
-            self.workflow.add_edge("grounding", node)
+            self.workflow.add_edge("query_generator", node)
             self.workflow.add_edge(node, "collector")
+        # --- END NEW LINKS ---
 
         self.workflow.add_edge("collector", "curator")
         self.workflow.add_edge("curator", "enricher")
@@ -308,52 +311,27 @@ class Graph:
         
         self.workflow.add_edge("tagger", "airtable_uploader")
 
-    # --- THIS IS THE CORRECTED RUN METHOD ---
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
-        
-        # We do NOT use self.input_state.copy() or manual merging.
-        # The 'thread' (config) from application.py is the *only* input we need
-        # for a webhook-triggered run.
-        
-        # We must pass the non-configurable parts (websocket, messages) this way.
-        initial_input = {
-            "messages": [
-                SystemMessage(content="Expert researcher starting investigation")
-            ],
-            "websocket_manager": self.websocket_manager
-        }
-
-        # Ensure any configurable, pass-through keys from the provided
-        # `thread` config are also present in the initial_input dictionary.
-        # This avoids LangGraph merge ordering problems where empty defaults
-        # can overshadow a real company value supplied in the config.
-        if isinstance(thread, dict):
-            cfg = thread.get('configurable') if 'configurable' in thread else thread
-            for key in [
-                'company', 'company_url', 'hq_location', 'industry',
-                'job_id', 'airtable_record_id', 'google_drive_folder_url'
-            ]:
-                if key in cfg and cfg.get(key) is not None:
-                    initial_input[key] = cfg.get(key)
+        initial_state_data = self.input_state.copy()
+        # --- v2: Pass GDrive URL from thread config ---
+        if 'airtable_record_id' in thread.get("configurable", {}):
+             initial_state_data['airtable_record_id'] = thread["configurable"]['airtable_record_id']
+        if 'google_drive_folder_url' in thread.get("configurable", {}):
+             initial_state_data['google_drive_folder_url'] = thread["configurable"]['google_drive_folder_url']
+        # --- End v2 ---
 
         compiled_graph = self.workflow.compile()
 
-        # 'thread' (which is our config) contains ALL data from application.py
-        # 'initial_input' provides the non-configurable parts.
-        # LangGraph correctly merges them to create the starting state.
         async for state_update in compiled_graph.astream(
-            initial_input, config=thread
+            initial_state_data, config=thread
         ):
              current_state = list(state_update.values())[0] if state_update else {}
-             
-             # We use self.job_id from the constructor, not the state, for websocket updates
-             if self.websocket_manager and self.job_id: 
+             if self.websocket_manager and self.job_id:
                   current_node = list(state_update.keys())[0] if state_update else "unknown"
                   current_state['current_node'] = str(current_node)
                   await self._handle_ws_update(current_state)
              yield current_state
-    # --- END CORRECTED RUN METHOD ---
 
     async def _handle_ws_update(self, state: Dict[str, Any]):
         """Handle WebSocket updates based on state changes"""
@@ -374,12 +352,15 @@ class Graph:
 
     def _calculate_progress(self, current_node_name: str) -> int:
         """Estimates progress based on the current node."""
+        # --- NEW: Added 'query_generator' to the order ---
         node_order = [
             "grounding", 
+            "query_generator",
             "company_brief_node", # Use one of the parallel nodes as the marker
             "collector", "curator", "enricher", "briefing",
             "raw_compiler", "tagger", "airtable_uploader", "__end__"
         ]
+        # --- END NEW ---
         try:
              base_index = -1
              # --- v2: Update parallel node list ---

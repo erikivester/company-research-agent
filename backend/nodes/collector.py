@@ -6,7 +6,6 @@ from urllib.parse import urlparse # Ensure urlparse is imported
 
 from ..classes import ResearchState
 from backend.airtable_uploader import update_airtable_record # synchronous function
-from backend.utils.utils import company_name
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class Collector:
 
     async def collect(self, state: ResearchState) -> ResearchState:
         """Collect and verify all research data is present."""
-        company = company_name(state)
+        company = state.get('company', 'Unknown Company')
         msg = [f"📦 Collecting research data for {company}:"]
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
@@ -57,22 +56,23 @@ class Collector:
         # --- END v2 MODIFICATION ---
 
 
-        # --- NEW LOGIC: Collect all scored documents to infer missing company_url ---
+        # --- LOGIC: Collect all scored documents to infer missing company_url ---
+        # --- FIX: We get the company_url from the state *first*. ---
         best_url = state.get('company_url')
         all_scored_docs = []
 
         # This loop now iterates over the v2 research_types
         for data_field, label in research_types.items():
             data = state.get(data_field, {})
-            if data and isinstance(data, dict):  # Check if data exists and is a dictionary
-
+            if data and isinstance(data, dict): # Check if data exists and is a dictionary
+                
                 # Check for existing data URL and add to all_scored_docs
                 for url, doc in data.items():
                     # We look for the raw Tavily search score (which is present in all research documents)
                     score = doc.get('score', 0.0)
                     if url and score > 0.0:
                         all_scored_docs.append({'url': url, 'score': score})
-
+                        
                 msg.append(f"• {label}: {len(data)} documents collected")
             else:
                 msg.append(f"• {label}: No data found")
@@ -80,28 +80,33 @@ class Collector:
                 if data_field not in state:
                     state[data_field] = {}
 
+        # --- CRITICAL FIX: ---
+        # Only run inference logic if the company URL was not provided in the input state.
         if not best_url and all_scored_docs:
             # Sort by score descending to find the single most relevant document
             all_scored_docs.sort(key=lambda x: x['score'], reverse=True)
-
+            
             # Use the URL of the highest scored document
             inferred_url = all_scored_docs[0]['url']
-
-            # 🟢 FIX: Clean URL to base domain (scheme://netloc)
+            
+            # Clean URL to base domain (scheme://netloc)
             if inferred_url and inferred_url.startswith('http'):
-                parsed = urlparse(inferred_url)
+                 parsed = urlparse(inferred_url)
+                 
+                 # Reconstruct URL as just scheme://netloc (homepage)
+                 # We specifically strip the path, query, and fragment.
+                 clean_base_url = f"{parsed.scheme}://{parsed.netloc.rstrip('/')}"
 
-                # Reconstruct URL as just scheme://netloc (homepage)
-                # We specifically strip the path, query, and fragment.
-                clean_base_url = f"{parsed.scheme}://{parsed.netloc.rstrip('/')}"
-
-                state['company_url'] = clean_base_url
-                logger.info(f"Inferred company_url set to clean base URL: {clean_base_url} (from top score {all_scored_docs[0]['score']})")
-                msg.append(f"🔗 **Inferred Company URL** set to: {clean_base_url}")
+                 state['company_url'] = clean_base_url
+                 logger.info(f"Inferred company_url set to clean base URL: {clean_base_url} (from top score {all_scored_docs[0]['score']})")
+                 msg.append(f"🔗 **Inlferred Company URL** set to: {clean_base_url}")
             else:
-                logger.warning(f"Top scored URL '{inferred_url}' was invalid, skipping URL inference.")
-
-        # --- End NEW LOGIC ---
+                 logger.warning(f"Top scored URL '{inferred_url}' was invalid, skipping URL inference.")
+        elif best_url:
+            logger.info(f"Using provided company_url: {best_url}")
+        else:
+            logger.warning("No company_url provided and no documents found to infer from.")
+        # --- End FIX ---
 
 
         # Update state with collection message

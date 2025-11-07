@@ -36,20 +36,8 @@ class FLWAnalyzer(BaseResearcher):
         logger.info(f"Starting FLW/Sustainability analysis for {company}")
 
         try:
-            # v2: Updated query generation prompt for more specific ReFED signals
-            queries = await self.generate_queries(
-                state,
-                f"""
-                Generate specific search queries to understand '{company}'s efforts related to food loss and waste (FLW) and sustainability. Focus on:
-                - **ESG Reports:** Search for '"{company}" ESG Report 2024 2025' or '"{company}" Sustainability Report 2024 2025'.
-                - **Methane Goals:** Queries for '"{company}" methane reduction' or '"{company}" climate goals methane'.
-                - **FLW Initiatives:** "food waste reduction", "prevention", "rescue", "recycling".
-                - **Sustainable Packaging:** "sustainable packaging", "packaging materials", "circularity".
-                - **Food Donation:** "food donation programs", "food rescue partnerships".
-                - **Supply Chain FLW:** "supply chain food waste", "cold chain", "forecasting".
-                - **Certifications:** '"{company}" B Corp', '"{company}" UN SDGs'.
-                """
-            )
+            # Get the generated queries from state
+            queries = state.get('research_queries', {}).get(self.analyst_type, [])
 
             # Add generated queries to state messages for transparency
             subqueries_msg = "🔍 Subqueries for FLW/Sustainability analysis:\n" + "\n".join([f"• {query}" for query in queries])
@@ -82,7 +70,7 @@ class FLWAnalyzer(BaseResearcher):
 
             # Execute searches for the generated queries
             logger.info(f"Searching documents for {len(queries)} FLW/Sustainability queries.")
-            documents_found = await self.search_documents(state, queries)
+            documents_found = await self.search_documents(state)
 
             if documents_found:
                 # Add found documents, associating each with its query
