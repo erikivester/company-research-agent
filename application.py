@@ -22,8 +22,8 @@ from backend.services.websocket_manager import WebSocketManager
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
 from backend.airtable_uploader import update_airtable_record
 from backend.utils.gdrive_uploader import upload_context_to_gdrive, inspect_drive_folder  # Add GDrive import
-# --- FIX: REMOVE DEBUG IMPORTS ---
-# from backend.debug_airtable import run_airtable_debug_test 
+# --- FIX: ADDED THIS IMPORT BACK ---
+from backend.debug_airtable import run_airtable_debug_test 
 # --- END FIX ---
 
 # Load environment variables from .env file at startup
@@ -464,6 +464,26 @@ async def debug_gdrive_folder_info(
         logger.error(f"GDrive folder inspection failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 # --- End Debug Endpoints ---
+
+# --- FIX: ADDED THIS NEW ENDPOINT ---
+@app.post("/webhook/debug/run-final-nodes")
+async def debug_run_final_nodes(record_id: Optional[str] = None):
+    """
+    Triggers the Tagger and Airtable/GDrive Upload nodes using mock data.
+    This tests the final part of the graph without using Tavily credits.
+    """
+    try:
+        logger.info("--- Triggering final nodes (Tagger, Uploader) via debug endpoint ---")
+        # This function runs the Tagger and the Graph's airtable_upload_node
+        result = await run_airtable_debug_test(record_id)
+        return result
+    except Exception as e:
+        logger.error(f"Error during final nodes debug run: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to run final nodes: {str(e)}"
+        )
+# --- END FIX ---
 
 @app.get("/")
 async def ping():

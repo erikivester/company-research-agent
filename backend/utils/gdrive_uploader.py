@@ -13,7 +13,8 @@ from googleapiclient.http import MediaIoBaseUpload
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SERVICE_ACCOUNT_FILE = os.path.join(PROJECT_ROOT, 'gdrive_credentials.json')
 # --- END MODIFICATION ---
 
 # Define the scopes required for Google Drive API

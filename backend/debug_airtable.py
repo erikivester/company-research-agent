@@ -25,6 +25,9 @@ mock_state_before_tagger: ResearchState = {
     'industry': 'Food & Beverage Manufacturing', # Industry Hint
     'job_id': 'test-job-debug-api-1',
     'airtable_record_id': None, # Set to None to test INSERT
+
+    'google_drive_folder_url': "https://drive.google.com/drive/folders/12PPnCJhI3Z1ZaHXxKqSSLs7Nr0De9w7J", # Or your folder URL
+    
     'messages': [
         AIMessage(content="Simulated initial message"), 
         AIMessage(content="Simulated curation message"), 
