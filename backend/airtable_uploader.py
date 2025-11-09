@@ -1,9 +1,11 @@
 # backend/airtable_uploader.py
 import os
+import json
 import logging
 from airtable import Airtable
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from .utils.airtable_mappings import REVENUE_BAND_MAPPINGS
 
 logger = logging.getLogger(__name__)
 
@@ -74,20 +76,20 @@ def _find_contact_record(contacts_airtable: Airtable, name: str, company_record_
             return records[0]['id']
         return None
         
-            except Exception as e:
-                logger.error(f"Error searching for contact record: {e}")
-                return None
+    except Exception as e:
+        logger.error(f"Error searching for contact record: {e}")
+        return None
 
-def _format_contacts_lookup(contacts_airtable: Airtable, company_record_id: str) -> str:
+def _get_contact_record_ids(contacts_airtable: Airtable, company_record_id: str) -> List[str]:
     """
-    Generates a formatted list of all contacts linked to a company for the lookup field.
+    Gets the record IDs of all contacts linked to a company.
     
     Args:
         contacts_airtable: Airtable instance for the contacts table
         company_record_id: The Airtable record ID of the company
     
     Returns:
-        Formatted string containing all linked contacts
+        List of contact record IDs
     """
     try:
         # Build formula to find all contacts linked to this company
@@ -99,38 +101,19 @@ def _format_contacts_lookup(contacts_airtable: Airtable, company_record_id: str)
             formula=filter_formula
         )
         
-        if not records:
-            return ""
-            
-        # Format each contact as "Name (Title)"
-        contact_lines = []
-        for record in records:
-            fields = record.get('fields', {})
-            name = fields.get('Name', '')
-            title = fields.get('Title', '')
-            if name:
-                contact_lines.append(f"{name}{f' ({title})' if title else ''}")
-                
-        return "\n".join(contact_lines)
+        # Extract record IDs for linking
+        contact_ids = [record['id'] for record in records if record.get('id')]
+        logger.info(f"Found {len(contact_ids)} linked contact records for company {company_record_id}")
+        return contact_ids
         
     except Exception as e:
-        logger.error(f"Error generating contacts lookup: {e}")
-        return "[Error retrieving contacts]"
+        logger.error(f"Error getting contact record IDs: {e}")
+        return []
 
 def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict[str, Any]:
     """
     Creates or updates contact records in a separate Airtable table and links them to the company.
     Also updates the Key Contacts lookup field in the company record.
-    
-    Args:
-        contacts_json: JSON string containing an array of contact objects
-        company_record_id: The Airtable record ID of the company to link contacts to
-    
-    Returns:
-        Dict with status information about the operation
-    """def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict[str, Any]:
-    """
-    Creates or updates contact records in a separate Airtable table and links them to the company.
     
     Args:
         contacts_json: JSON string containing an array of contact objects
@@ -148,10 +131,13 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
         return {"status": "Skipped", "error": "Required environment variables not set"}
 
     try:
+        logger.info(f"Attempting to parse contacts JSON: {contacts_json}")
         # Parse contacts JSON
         contacts = json.loads(contacts_json)
         if not isinstance(contacts, list):
+            logger.error(f"Invalid contacts format - expected list but got {type(contacts)}")
             raise ValueError("Contacts data must be a JSON array")
+        logger.info(f"Successfully parsed {len(contacts)} contacts from JSON")
         
         contacts_airtable = Airtable(
             base_id=base_id,
@@ -214,8 +200,8 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
 
         # After all contacts are processed, update the lookup field in the company record
         try:
-            # Get formatted contacts list
-            contacts_lookup = _format_contacts_lookup(contacts_airtable, company_record_id)
+            # Get contact record IDs for linking
+            contact_record_ids = _get_contact_record_ids(contacts_airtable, company_record_id)
             
             # Get Airtable instance for main company table
             company_airtable = Airtable(
@@ -224,10 +210,10 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                 api_key=airtable_key
             )
             
-            # Update the Key Contacts lookup field
+            # Update the Key Contacts field with linked records
             company_airtable.update(
                 company_record_id,
-                {'Key Contacts': contacts_lookup}
+                {'Key Contacts': contact_record_ids}
             )
             logger.info(f"Updated company record with Key Contacts lookup field")
             
@@ -302,12 +288,17 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
 
 
     # --- 1. v2: Map all fields to Airtable format ---
+    # Map revenue band to exact Airtable option
+    revenue_tag = report_data.get('revenue_tags')
+    if revenue_tag:
+        revenue_tag = REVENUE_BAND_MAPPINGS.get(revenue_tag, revenue_tag)
+
     fields_to_send = {
         'Organization': company_name, 
         'Website': report_data.get('company_url', ''),
         'Industries': report_data.get('industries_tags', []),
         'Country/Region': report_data.get('region_tags', []),
-        'Revenue Band (est.)': report_data.get('revenue_tags'),
+        'Revenue Band (est.)': revenue_tag,
         'ReFED Alignment': report_data.get('refed_alignment_tags', []), 
         'Markdown Report': (report_data.get('report_markdown') or '')[:10000],
         'Company Briefing': (report_data.get('company_brief_briefing') or '')[:8000],

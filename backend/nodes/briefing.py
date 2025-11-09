@@ -126,26 +126,27 @@ Key Requirements:
 4. NEVER state "no information found".
 5. Provide only the briefing content in markdown format. No explanations or commentary.
 """,
-            'contact': f"""Extract key contacts from {company} in JSON format.
-Key Requirements:
-1. You MUST return a valid JSON array containing contact objects.
-2. Each contact object MUST have exactly these keys:
-   - "name": Full name of the contact
-   - "title": Current job title at {company}
-   - "summary": 1-2 sentence description of their role or relevance
-3. Include relevant mid-level contacts (e.g., in Sustainability, Impact, CSR, Community Relations).
-4. Do NOT include C-suite (CEO, COO, CFO) unless their role directly relates to sustainability or impact.
-5. If no contacts are found, return an empty array: []
-6. Return ONLY the JSON array. No markdown, no headers, no explanatory text.
+            'contact': f"""You are a JSON-only contact extractor. You must output ONLY a valid JSON array and nothing else.
 
-Example format:
+For the provided documents about {company}, extract relevant contacts and output them as JSON.
+
+Output Format:
 [
   {{
-    "name": "Jane Smith",
-    "title": "Director of Sustainability",
-    "summary": "Leads company-wide sustainability initiatives and food waste reduction programs. Key point person for environmental partnerships."
+    "name": "Full Name",
+    "title": "Exact Title",
+    "summary": "Brief role description"
   }}
-]""",
+]
+
+Rules:
+1. Return ONLY raw JSON array - no markdown, no backticks, no explanation text
+2. Include sustainability/impact/CSR/ESG mid-level managers and directors
+3. Skip C-suite unless directly sustainability-related
+4. Return empty array [] if no relevant contacts found
+5. Ensure output is valid JSON with proper escaping
+
+Critical: Output MUST start with [ and end with ] - absolutely no other text or formatting""",
             'engagement': f"""Create an "Engagements & Affiliations" briefing for {company}.
 Key Requirements:
 1. Structure using the exact header: ### Engagements & Affiliations
@@ -215,8 +216,18 @@ Key Requirements:
                   )
              return {'content': ''}
 
-        # --- v2: Add Polishing Instructions to main prompt ---
-        full_prompt = f"""{prompt_template}
+        # --- v2: Add appropriate instructions based on category ---
+        if category == 'contact':
+            # For contacts, just provide the documents without markdown polishing instructions
+            full_prompt = f"""{prompt_template}
+
+---
+Documents for Analysis:
+{separator.join(doc_texts)}
+---"""
+        else:
+            # For all other categories, include markdown polishing instructions
+            full_prompt = f"""{prompt_template}
 
 ---
 Documents for Analysis:
@@ -228,7 +239,7 @@ As you write the briefing, ensure clean markdown, remove any redundancies, and w
 This briefing will be used directly in a report, so do not include any preamble, conversation, or meta-commentary.
 Output ONLY the requested markdown content.
 """
-        # --- End v2 Polishing ---
+        # --- End v2 Instructions ---
         
         logger.debug(f"Prompt length for {category}: {len(full_prompt)} characters.")
 
