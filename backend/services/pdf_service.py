@@ -5,7 +5,8 @@ import os
 from datetime import datetime
 from typing import Dict, Any, Tuple
 
-from backend.utils.utils import generate_pdf_from_md # Uses the existing util
+from backend.utils.utils import generate_pdf_from_md
+from backend.utils.enhanced_pdf import create_enhanced_research_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,16 @@ class PDFService:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{safe_name}_research_report_{timestamp}.pdf"
 
-    def generate_pdf_stream(
-        self, markdown_content: str, company_name: str = "Company"
+    async def generate_pdf_stream(
+        self, content: str | Dict[str, Any], company_name: str = "Company"
     ) -> Tuple[bool, Any]:
         """
-        Generates a PDF from markdown and returns it as a BytesIO stream.
-
+        Generates a PDF and returns it as a BytesIO stream.
+        
+        Args:
+            content: Either markdown content (str) or research data dictionary
+            company_name: Name of the company for the filename
+        
         Returns:
             Tuple[bool, Any]: (success, result)
             On success: (True, (BytesIO, str)) - The stream and the filename
@@ -39,8 +44,13 @@ class PDFService:
             pdf_buffer = io.BytesIO()
             filename = self._generate_filename(company_name)
 
-            # Use the utility function to generate the PDF into the buffer
-            generate_pdf_from_md(markdown_content, pdf_buffer)
+            # Choose the appropriate PDF generation method
+            if isinstance(content, dict):
+                # Use enhanced PDF generation for research data
+                await create_enhanced_research_pdf(content, pdf_buffer)
+            else:
+                # Use simple markdown conversion for markdown content
+                generate_pdf_from_md(content, pdf_buffer)
 
             # Rewind the buffer to the beginning so it can be read
             pdf_buffer.seek(0)

@@ -16,11 +16,20 @@ class InputState(TypedDict, total=False):
 
 # --- UPDATED ResearchState ---
 
-# This is the correct reducer function for pass-through keys
-# It just takes the first value (a) and ignores the second (b)
-# since they are identical in all parallel branches.
+# Define reducer functions for different merge scenarios
 def _first_value(a, b):
+    """Take first value for pass-through keys"""
     return a
+
+def _merge_dicts(a, b):
+    """Merge dictionaries, keeping first seen values"""
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return a if a else b
+    result = a.copy()
+    for k, v in b.items():
+        if k not in result:
+            result[k] = v
+    return result
 
 
 def _prefer_non_empty(a, b):
@@ -46,6 +55,8 @@ def _prefer_non_empty(a, b):
         return a
 
 class ResearchState(TypedDict):
+    # --- v2: Add research_queries with dict merge strategy to ensure content preservation ---
+    research_queries: Annotated[Dict[str, List[str]], _merge_dicts]
     # --- Input fields (pass-through) ---
     # Use Annotated to tell LangGraph how to merge these when parallel branches join.
     # We now use our correct _first_value reducer

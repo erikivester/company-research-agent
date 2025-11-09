@@ -26,8 +26,11 @@ class Briefing:
 
         # Configure Gemini
         genai.configure(api_key=self.gemini_key)
-        self.gemini_model = genai.GenerativeModel('gemini-2.5-flash') 
-        logger.info("Briefing node initialized with Gemini model.")
+        self.gemini_model = genai.GenerativeModel('gemini-2.5-flash', generation_config=genai.types.GenerationConfig(
+            temperature=0.1,
+            max_output_tokens=8192
+        ))
+        logger.info("Briefing node initialized with Gemini 2.5 Flash model")
     
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
@@ -123,15 +126,26 @@ Key Requirements:
 4. NEVER state "no information found".
 5. Provide only the briefing content in markdown format. No explanations or commentary.
 """,
-            'contact': f"""Create a "Potential Contacts" briefing for {company}.
+            'contact': f"""Extract key contacts from {company} in JSON format.
 Key Requirements:
-1. Structure using the exact header: ### Key Contacts
-2. List relevant mid-level contacts (e.g., in Sustainability, Impact, CSR, Community Relations) found in the documents.
-3. Format as: `* **[Name]:** [Title] - [Brief 1-2 sentence summary of their role or relevance from the text].`
-4. Do NOT include C-suite (CEO, COO, CFO) unless their role is *directly* tied to sustainability or impact.
-5. If no relevant contacts are found, OMIT the header and output nothing.
-6. Provide only the briefing content in markdown format. No explanations or commentary.
-""",
+1. You MUST return a valid JSON array containing contact objects.
+2. Each contact object MUST have exactly these keys:
+   - "name": Full name of the contact
+   - "title": Current job title at {company}
+   - "summary": 1-2 sentence description of their role or relevance
+3. Include relevant mid-level contacts (e.g., in Sustainability, Impact, CSR, Community Relations).
+4. Do NOT include C-suite (CEO, COO, CFO) unless their role directly relates to sustainability or impact.
+5. If no contacts are found, return an empty array: []
+6. Return ONLY the JSON array. No markdown, no headers, no explanatory text.
+
+Example format:
+[
+  {{
+    "name": "Jane Smith",
+    "title": "Director of Sustainability",
+    "summary": "Leads company-wide sustainability initiatives and food waste reduction programs. Key point person for environmental partnerships."
+  }}
+]""",
             'engagement': f"""Create an "Engagements & Affiliations" briefing for {company}.
 Key Requirements:
 1. Structure using the exact header: ### Engagements & Affiliations
@@ -220,21 +234,9 @@ Output ONLY the requested markdown content.
 
         try:
             logger.info(f"Sending prompt to Gemini for {category} briefing ({len(doc_texts)} docs).")
-            generation_config = genai.types.GenerationConfig(
-                 temperature=0.1, 
-                 max_output_tokens=8192
-            )
-            safety_settings = { 
-                 'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
-                 'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
-                 'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
-                 'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
-            }
             response = await self.gemini_model.generate_content_async( 
-                 full_prompt,
-                 generation_config=generation_config,
-                 safety_settings=safety_settings,
-                 request_options={'timeout': 300} 
+                full_prompt,
+                request_options={'timeout': 300} 
             )
 
             content = ""

@@ -1,7 +1,10 @@
 # backend/graph.py
+import asyncio
 import logging
 from typing import Any, AsyncIterator, Dict
 from datetime import datetime
+
+from backend.utils.context_polisher import ContextPolisher
 
 from langchain_core.messages import AIMessage # Used in simple_report_compiler_node
 from langchain_core.messages import SystemMessage
@@ -27,8 +30,11 @@ from .nodes.researchers.engagement_finder import EngagementFinderNode # NEW: Add
 
 from backend.airtable_uploader import upload_to_airtable
 from backend.utils.references import format_references_section
-# --- NEW: Import for Google Drive Utility (we will create this file later) ---
-from backend.utils.gdrive_uploader import upload_context_to_gdrive
+# --- Import for Google Drive Utility ---
+from backend.utils.gdrive_uploader import (
+    upload_context_to_gdrive, 
+    upload_research_with_pdf
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,21 +151,181 @@ class Graph:
             # --- 1. Google Drive Context Upload ---
             google_drive_folder_url = state.get("google_drive_folder_url")
             if google_drive_folder_url:
-                logger.info(f"Google Drive URL found. Compiling full context for upload...")
-                # Consolidate all enriched data from the 5 nodes
-                full_context = {}
-                full_context.update(state.get('curated_company_brief_data', {}))
-                full_context.update(state.get('curated_news_signal_data', {}))
-                full_context.update(state.get('curated_flw_data', {}))
-                full_context.update(state.get('curated_contact_finder_data', {}))
-                full_context.update(state.get('curated_engagement_finder_data', {}))
+                logger.info(f"Google Drive URL found. Compiling comprehensive research context for upload...")
+                
+                # Create comprehensive context with all available content
+                full_context = {
+                    "company_identity": {
+                        "name": state.get("company"),
+                        "headquarters": state.get("hq_location"),
+                        "website": state.get("company_url"),
+                        "industry": state.get("classified_industry"),
+                        "region": state.get("classified_region"),
+                        "scale": state.get("classified_revenue"),
+                        "sustainability_role": state.get("classified_flw_role"),
+                        "partnership_fit": state.get("classified_refed_alignment")
+                    },
+                    "official_content": {
+                        "company_information": {
+                            source_url: {
+                                "title": data.get("title", ""),
+                                "raw_content": data.get("raw_content", ""),
+                                "content": data.get("content", ""),
+                                "source_type": data.get("doc_type", ""),
+                                "relevance": data.get("score", 0),
+                                "timestamp": data.get("timestamp", ""),
+                                "query_context": data.get("query", "")
+                            }
+                            for source_url, data in state.get("company_brief_data", {}).items()
+                            if data.get("raw_content") or data.get("content")
+                        },
+                        "sustainability_reporting": {
+                            source_url: {
+                                "title": data.get("title", ""),
+                                "raw_content": data.get("raw_content", ""),
+                                "content": data.get("content", ""),
+                                "source_type": data.get("doc_type", ""),
+                                "relevance": data.get("score", 0),
+                                "timestamp": data.get("timestamp", ""),
+                                "query_context": data.get("query", "")
+                            }
+                            for source_url, data in state.get("flw_data", {}).items()
+                            if data.get("raw_content") or data.get("content")
+                        }
+                    },
+                    "recent_developments": {
+                        "news_coverage": {
+                            source_url: {
+                                "title": data.get("title", ""),
+                                "raw_content": data.get("raw_content", ""),
+                                "content": data.get("content", ""),
+                                "source_type": data.get("doc_type", ""),
+                                "relevance": data.get("score", 0),
+                                "timestamp": data.get("timestamp", ""),
+                                "query_context": data.get("query", "")
+                            }
+                            for source_url, data in state.get("news_signal_data", {}).items()
+                            if data.get("raw_content") or data.get("content")
+                        }
+                    },
+                    "key_personnel": {
+                        "identified_contacts": {
+                            source_url: {
+                                "title": data.get("title", ""),
+                                "raw_content": data.get("raw_content", ""),
+                                "content": data.get("content", ""),
+                                "source_type": data.get("doc_type", ""),
+                                "relevance": data.get("score", 0),
+                                "timestamp": data.get("timestamp", ""),
+                                "extracted_contacts": data.get("extracted_contacts", []),
+                                "query_context": data.get("query", "")
+                            }
+                            for source_url, data in state.get("contact_finder_data", {}).items()
+                            if data.get("raw_content") or data.get("content")
+                        }
+                    },
+                    "engagement_signals": {
+                        "partnerships_and_initiatives": {
+                            source_url: {
+                                "title": data.get("title", ""),
+                                "raw_content": data.get("raw_content", ""),
+                                "content": data.get("content", ""),
+                                "source_type": data.get("doc_type", ""),
+                                "relevance": data.get("score", 0),
+                                "timestamp": data.get("timestamp", ""),
+                                "query_context": data.get("query", "")
+                            }
+                            for source_url, data in state.get("engagement_finder_data", {}).items()
+                            if data.get("raw_content") or data.get("content")
+                        }
+                    },
+                    "source_credibility": {
+                        "reference_info": state.get("reference_info", {}),
+                        "reference_titles": state.get("reference_titles", {}),
+                        "source_metrics": {
+                            "total_analyzed": len(state.get("company_brief_data", {})) + 
+                                           len(state.get("news_signal_data", {})) +
+                                           len(state.get("flw_data", {})) +
+                                           len(state.get("contact_finder_data", {})) +
+                                           len(state.get("engagement_finder_data", {})),
+                            "relevant_sources": len(state.get("curated_company_brief_data", {})) +
+                                             len(state.get("curated_news_signal_data", {})) +
+                                             len(state.get("curated_flw_data", {})) +
+                                             len(state.get("curated_contact_finder_data", {})) +
+                                             len(state.get("curated_engagement_finder_data", {}))
+                        }
+                    },
+                    "communication_insights": {
+                        "company_voice": {
+                            "mission_statement": next((
+                                data.get("content") 
+                                for data in state.get("company_brief_data", {}).values()
+                                if "mission" in (data.get("title", "") + data.get("content", "")).lower()
+                            ), ""),
+                            "sustainability_language": next((
+                                data.get("content")
+                                for data in state.get("flw_data", {}).values()
+                                if "sustainability" in (data.get("title", "") + data.get("content", "")).lower()
+                            ), "")
+                        },
+                        "key_initiatives": [
+                            {
+                                "title": data.get("title", ""),
+                                "description": data.get("content", ""),
+                                "source": url
+                            }
+                            for url, data in state.get("engagement_finder_data", {}).items()
+                            if "initiative" in (data.get("title", "") + data.get("content", "")).lower()
+                            or "program" in (data.get("title", "") + data.get("content", "")).lower()
+                        ],
+                        "notable_quotes": [
+                            {
+                                "text": data.get("content", ""),
+                                "source": url,
+                                "context": data.get("title", "")
+                            }
+                            for url, data in {
+                                **state.get("company_brief_data", {}),
+                                **state.get("flw_data", {}),
+                                **state.get("news_signal_data", {})
+                            }.items()
+                            if data.get("content") and '"' in data.get("content", "")
+                        ]
+                    },
+                    "research_meta": {
+                        "timestamp": datetime.now().isoformat(),
+                        "queries_used": state.get("research_queries", {}),
+                        "successful_extractions": {
+                            "contacts_found": len([
+                                1 for data in state.get("contact_finder_data", {}).values()
+                                if data.get("extracted_contacts")
+                            ]),
+                            "initiatives_identified": len([
+                                1 for data in state.get("engagement_finder_data", {}).values()
+                                if "initiative" in (data.get("title", "") + data.get("content", "")).lower()
+                            ])
+                        }
+                    }
+                }
                 
                 if full_context:
                     try:
-                        # Call the new utility function
-                        file_name = f"{company_name.replace(' ', '_')}_research_context.json"
-                        await upload_context_to_gdrive(full_context, google_drive_folder_url, file_name)
-                        logger.info(f"Successfully uploaded full context to Google Drive: {file_name}")
+                        # Polish the context before upload
+                        polisher = ContextPolisher()
+                        polished_data = await polisher.polish_context(full_context)
+                        
+                        # Upload both JSON and PDF versions
+                        upload_results = await upload_research_with_pdf(
+                            polished_data,
+                            google_drive_folder_url,
+                            company_name
+                        )
+                        
+                        logger.info(f"Successfully uploaded research files to Google Drive: {upload_results}")
+                        
+                        # Add file URLs to state for reference
+                        state['gdrive_uploads'] = upload_results
+                        
                     except Exception as gdrive_exc:
                         logger.error(f"Failed to upload context to Google Drive: {gdrive_exc}", exc_info=True)
                         # Don't stop the flow; log this error in process notes
@@ -244,12 +410,42 @@ class Graph:
             ]}
             logger.info(f"DEBUG: Data prepared for Airtable: {loggable_report_data}")
 
-            # Call the uploader function
+            # Step 1: Upload main company record
             upload_result = upload_to_airtable(report_data, job_id, record_id)
             logger.info(f"Airtable upload result: {upload_result}")
 
+            # Step 2: If company upload successful, process contacts
             if upload_result.get("status") == "Success" and upload_result.get("airtable_record_id"):
-                 state["airtable_record_id"] = upload_result.get("airtable_record_id")
+                state["airtable_record_id"] = upload_result.get("airtable_record_id")
+                
+                # Get the contact briefing JSON string
+                contact_briefing = state.get("contact_briefing")
+                if contact_briefing:
+                    try:
+                        # Process contacts in their own table
+                        from backend.airtable_uploader import create_and_link_contacts
+                        contact_result = await asyncio.to_thread(
+                            create_and_link_contacts,
+                            contact_briefing,
+                            state["airtable_record_id"]
+                        )
+                        logger.info(f"Contact processing result: {contact_result}")
+                        
+                        # Store contact processing results in state
+                        state["contact_processing_results"] = contact_result
+                        
+                        if contact_result.get("status") != "Success":
+                            logger.error(f"Failed to process contacts: {contact_result.get('error')}")
+                            state.setdefault("messages", []).append(
+                                AIMessage(content=f"⚠️ Contact processing failed: {contact_result.get('error')}")
+                            )
+                    except Exception as contact_exc:
+                        logger.error(f"Error during contact processing: {contact_exc}")
+                        state.setdefault("messages", []).append(
+                            AIMessage(content=f"⚠️ Contact processing error: {str(contact_exc)}")
+                        )
+                else:
+                    logger.info("No contact briefing found in state, skipping contact processing")
 
         except Exception as e:
             logger.error(f"Error during Airtable upload node: {e}", exc_info=True)

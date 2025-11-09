@@ -56,6 +56,198 @@ def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
         return {"status": "Failure", "error": f"Airtable update failed: {str(e)}"}
 
 # --- NEW/MODIFIED Core Logic for UPSERT ---
+def _find_contact_record(contacts_airtable: Airtable, name: str, company_record_id: str) -> Optional[str]:
+    """Searches for a contact by name that's already linked to the given company."""
+    try:
+        # Build a formula that checks both name and company link
+        name_safe = name.replace("'", "\\'")
+        filter_formula = f"AND({{Name}} = '{name_safe}', FIND('{company_record_id}', {{Organization}}) > 0)"
+        
+        records = contacts_airtable.get_all(
+            view='Grid view',
+            max_records=1,
+            fields=['Name'],
+            formula=filter_formula
+        )
+        
+        if records and records[0].get('id'):
+            return records[0]['id']
+        return None
+        
+            except Exception as e:
+                logger.error(f"Error searching for contact record: {e}")
+                return None
+
+def _format_contacts_lookup(contacts_airtable: Airtable, company_record_id: str) -> str:
+    """
+    Generates a formatted list of all contacts linked to a company for the lookup field.
+    
+    Args:
+        contacts_airtable: Airtable instance for the contacts table
+        company_record_id: The Airtable record ID of the company
+    
+    Returns:
+        Formatted string containing all linked contacts
+    """
+    try:
+        # Build formula to find all contacts linked to this company
+        filter_formula = f"FIND('{company_record_id}', {{Organization}}) > 0"
+        
+        records = contacts_airtable.get_all(
+            view='Grid view',
+            fields=['Name', 'Title'],
+            formula=filter_formula
+        )
+        
+        if not records:
+            return ""
+            
+        # Format each contact as "Name (Title)"
+        contact_lines = []
+        for record in records:
+            fields = record.get('fields', {})
+            name = fields.get('Name', '')
+            title = fields.get('Title', '')
+            if name:
+                contact_lines.append(f"{name}{f' ({title})' if title else ''}")
+                
+        return "\n".join(contact_lines)
+        
+    except Exception as e:
+        logger.error(f"Error generating contacts lookup: {e}")
+        return "[Error retrieving contacts]"
+
+def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict[str, Any]:
+    """
+    Creates or updates contact records in a separate Airtable table and links them to the company.
+    Also updates the Key Contacts lookup field in the company record.
+    
+    Args:
+        contacts_json: JSON string containing an array of contact objects
+        company_record_id: The Airtable record ID of the company to link contacts to
+    
+    Returns:
+        Dict with status information about the operation
+    """def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict[str, Any]:
+    """
+    Creates or updates contact records in a separate Airtable table and links them to the company.
+    
+    Args:
+        contacts_json: JSON string containing an array of contact objects
+        company_record_id: The Airtable record ID of the company to link contacts to
+    
+    Returns:
+        Dict with status information about the operation
+    """
+    airtable_key = os.getenv('AIRTABLE_API_KEY')
+    base_id = os.getenv('AIRTABLE_BASE_ID')
+    contacts_table = os.getenv('AIRTABLE_CONTACTS_TABLE_NAME')
+
+    if not all([airtable_key, base_id, contacts_table]):
+        logger.warning("Contacts upload skipped: Environment variables not fully set")
+        return {"status": "Skipped", "error": "Required environment variables not set"}
+
+    try:
+        # Parse contacts JSON
+        contacts = json.loads(contacts_json)
+        if not isinstance(contacts, list):
+            raise ValueError("Contacts data must be a JSON array")
+        
+        contacts_airtable = Airtable(
+            base_id=base_id,
+            table_name=contacts_table,
+            api_key=airtable_key
+        )
+
+        results = {
+            "total": len(contacts),
+            "new": 0,
+            "existing": 0,
+            "errors": 0,
+            "details": []
+        }
+
+        for contact in contacts:
+            try:
+                name = contact.get('name')
+                if not name:
+                    continue
+                
+                # Check if contact already exists and is linked
+                existing_id = _find_contact_record(contacts_airtable, name, company_record_id)
+                
+                if existing_id:
+                    # Contact exists and is already linked
+                    logger.info(f"Contact {name} already exists and is linked to company")
+                    results["existing"] += 1
+                    results["details"].append({
+                        "name": name,
+                        "status": "existing",
+                        "record_id": existing_id
+                    })
+                else:
+                    # Create new contact record
+                    fields = {
+                        "Name": name,
+                        "Title": contact.get('title', ''),
+                        "Summary": contact.get('summary', ''),
+                        "Organization": [company_record_id]  # Link to company record
+                    }
+                    
+                    new_record = contacts_airtable.insert(fields)
+                    results["new"] += 1
+                    results["details"].append({
+                        "name": name,
+                        "status": "created",
+                        "record_id": new_record['id']
+                    })
+                    logger.info(f"Created new contact record for {name}")
+                    
+            except Exception as e:
+                logger.error(f"Error processing contact {contact.get('name', 'Unknown')}: {e}")
+                results["errors"] += 1
+                results["details"].append({
+                    "name": contact.get('name', 'Unknown'),
+                    "status": "error",
+                    "error": str(e)
+                })
+
+        # After all contacts are processed, update the lookup field in the company record
+        try:
+            # Get formatted contacts list
+            contacts_lookup = _format_contacts_lookup(contacts_airtable, company_record_id)
+            
+            # Get Airtable instance for main company table
+            company_airtable = Airtable(
+                base_id=base_id,
+                table_name=os.getenv('AIRTABLE_TABLE_NAME'),
+                api_key=airtable_key
+            )
+            
+            # Update the Key Contacts lookup field
+            company_airtable.update(
+                company_record_id,
+                {'Key Contacts': contacts_lookup}
+            )
+            logger.info(f"Updated company record with Key Contacts lookup field")
+            
+        except Exception as lookup_exc:
+            logger.error(f"Error updating Key Contacts lookup field: {lookup_exc}")
+            results["lookup_field_error"] = str(lookup_exc)
+
+        logger.info(f"Contacts processing completed: {results['new']} new, {results['existing']} existing, {results['errors']} errors")
+        return {
+            "status": "Success",
+            "results": results
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid contacts JSON data: {e}")
+        return {"status": "Failure", "error": f"Invalid JSON data: {str(e)}"}
+    except Exception as e:
+        logger.error(f"Error processing contacts: {e}")
+        return {"status": "Failure", "error": str(e)}
+
 def _find_record_by_company(airtable: Airtable, company_name: str) -> Optional[str]:
     """Searches Airtable for a record matching the Organization name."""
     if not company_name:
@@ -121,7 +313,6 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
         'Company Briefing': (report_data.get('company_brief_briefing') or '')[:8000],
         'News & Signals Briefing': (report_data.get('news_signal_briefing') or '')[:8000],
         'FLW and Sustainability Briefing': (report_data.get('flw_sustainability_briefing') or '')[:8000],
-        'Potential Contacts Briefing': (report_data.get('contact_briefing') or '')[:8000],
         'Engagements Briefing': (report_data.get('engagement_briefing') or '')[:8000],
         'Research Status': 'Completed', 
         'Process Notes': (report_data.get('process_notes') or '')[:10000],

@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import asyncio
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from google.oauth2 import service_account
@@ -103,7 +104,7 @@ def _extract_folder_id_from_url(folder_url: str) -> Optional[str]:
 
 # --- CORE ASYNC UPLOAD FUNCTION ---
 async def upload_context_to_gdrive(
-    context: Dict[str, Any], 
+    context: Dict[str, Any] | bytes | io.BytesIO, 
     folder_url: str, 
     file_name: str,
     content_type: str = 'application/json'
@@ -127,7 +128,10 @@ async def upload_context_to_gdrive(
         if content_type == 'application/json':
             content = json.dumps(context, indent=2).encode('utf-8')
         elif content_type == 'application/pdf':
-            content = context.encode('utf-8') if isinstance(context, str) else context
+            if isinstance(context, io.BytesIO):
+                content = context.getvalue()
+            else:
+                content = context.encode('utf-8') if isinstance(context, str) else context
         else:
             content = context.encode('utf-8') if isinstance(context, str) else str(context).encode('utf-8')
         
@@ -192,6 +196,64 @@ async def upload_context_to_gdrive(
     finally:
         media_buffer.close()
 
+
+async def upload_research_with_pdf(
+    research_data: Dict[str, Any],
+    folder_url: str,
+    company_name: str
+) -> Dict[str, str]:
+    """
+    Uploads both JSON research data and a PDF version to Google Drive.
+    
+    Args:
+        research_data: The complete research data dictionary
+        folder_url: Google Drive folder URL
+        company_name: Name of the company for file naming
+    
+    Returns:
+        Dict with file IDs for both JSON and PDF uploads
+    """
+    from backend.services.pdf_service import PDFService
+    
+    results = {}
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # 1. Upload JSON data
+    json_filename = f"{company_name.lower().replace(' ', '_')}_research_{timestamp}.json"
+    try:
+        await upload_context_to_gdrive(
+            research_data,
+            folder_url,
+            json_filename,
+            'application/json'
+        )
+        results['json_file'] = json_filename
+    except Exception as e:
+        logger.error(f"Failed to upload JSON research data: {e}")
+        raise
+
+    # 2. Generate and upload PDF
+    try:
+        pdf_service = PDFService({"pdf_output_dir": "pdfs"})
+        success, pdf_result = await pdf_service.generate_pdf_stream(research_data, company_name)
+        
+        if success:
+            pdf_buffer, pdf_filename = pdf_result
+            await upload_context_to_gdrive(
+                pdf_buffer,
+                folder_url,
+                pdf_filename,
+                'application/pdf'
+            )
+            results['pdf_file'] = pdf_filename
+        else:
+            logger.error(f"Failed to generate PDF: {pdf_result}")
+            
+    except Exception as e:
+        logger.error(f"Failed to upload PDF version: {e}")
+        # Don't raise here - we still uploaded the JSON successfully
+
+    return results
 
 def inspect_drive_folder(folder_url: str) -> Dict[str, Any]:
     """Return metadata for a Drive folder (works with Shared Drives)."""
