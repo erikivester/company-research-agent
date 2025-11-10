@@ -12,6 +12,12 @@ class Config:
         self.USE_MOCK_DATA = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
         self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
         
+        # Security settings
+        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development")
+        self.ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+        self.RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
+        self.RATE_LIMIT_PERIOD = int(os.getenv("RATE_LIMIT_PERIOD", "3600"))  # 1 hour in seconds
+        
         # Log configuration state
         if self.USE_MOCK_DATA:
             logger.info("🔧 Running in MOCK mode - using sample data for research")
@@ -21,6 +27,9 @@ class Config:
                 self.USE_MOCK_DATA = True
             else:
                 logger.info("🔧 Running in LIVE mode - using Tavily API for research")
+                
+        # Log security configuration
+        logger.info(f"🔒 Security enabled - Rate limit: {self.RATE_LIMIT_REQUESTS} requests per {self.RATE_LIMIT_PERIOD}s")
 
     @property
     def is_mock_mode(self) -> bool:

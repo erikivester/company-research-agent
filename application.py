@@ -8,8 +8,12 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
+import prometheus_client
+from prometheus_client import start_http_server
 
+from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
+from backend.config import config  # Import the singleton config instance
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -39,17 +43,72 @@ if env_path.exists():
 # Set email templates folder ID
 os.environ["EMAIL_TEMPLATES_FOLDER_ID"] = "1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
-logger.addHandler(console_handler)
+# Configure logging using our custom configuration
+setup_logging(
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_file=os.getenv("LOG_FILE", "logs/app.log")
+)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Tavily Company Research API")
+from backend.utils.security import (
+    JWTBearer, SecurityConfig, limiter,
+    sanitize_input, validate_folder_url, get_current_user
+)
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from fastapi.security import HTTPBearer
 
+# Initialize FastAPI with security config
+security_config = SecurityConfig(
+    secret_key=config.JWT_SECRET_KEY,
+    allowed_origins=config.ALLOWED_ORIGINS,
+    rate_limit_requests=config.RATE_LIMIT_REQUESTS,
+    rate_limit_period=config.RATE_LIMIT_PERIOD
+)
+
+app = FastAPI(
+    title="Company Research and Outreach API",
+    description="""
+    API for generating highly personalized outreach emails using AI. 
+    Combines email templates, research context, and Airtable data.
+    
+    ## Features
+    
+    * AI-powered email generation
+    * Template management
+    * Research context integration
+    * Airtable integration
+    
+    ## Authentication
+    
+    All endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer your-jwt-token
+    ```
+    
+    ## Rate Limiting
+    
+    Endpoints are rate-limited to ensure fair usage. Default limit is 100 requests per hour.
+    """,
+    version="1.0.0",
+    contact={
+        "name": "API Support",
+        "email": "support@example.com"
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT"
+    }
+)
+
+# Add rate limiter
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=security_config.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -118,6 +177,7 @@ async def _update_airtable_status_queued(record_id: str, status_text: str):
         logger.debug(f"Airtable status update successful for record {record_id} to {status_text}")
     except Exception as e:
         logger.error(f"Airtable status update failed for record {record_id} to {status_text}: {e}", exc_info=True)
+        metrics_collector.track_error("airtable_update")
 
 
 # --- v2 MODIFIED: Added google_drive_folder_url parameter ---
@@ -138,6 +198,7 @@ async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_re
         
     except Exception as e:
         logger.error(f"Job {job_id} failed during execution: {e}")
+        metrics_collector.track_error("job_execution")
     finally:
         # 4. Release the semaphore (executed even if process_research fails)
         job_semaphore.release()
@@ -155,94 +216,105 @@ async def preflight():
 # --- v2 MODIFIED: process_research signature ---
 async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None, google_drive_folder_url: str | None = None):
     try:
-        if mongodb:
-            # Include airtable_record_id in MongoDB job details
-            job_details = data.dict()
-            job_details['airtable_record_id'] = airtable_record_id
-            job_details['google_drive_folder_url'] = google_drive_folder_url # Add GDrive URL to log
-            mongodb.create_job(job_id, job_details)
-            
-        await asyncio.sleep(1)  # Allow WebSocket connection
-
-        await manager.send_status_update(job_id, status="processing", message="Starting research")
-
-        # --- v2 MODIFIED: Pass google_drive_folder_url to Graph constructor ---
-        graph = Graph(
-            company=data.company,
-            url=data.company_url,
-            industry=data.industry,
-            hq_location=data.hq_location,
-            websocket_manager=manager,
-            job_id=job_id,
-            google_drive_folder_url=google_drive_folder_url # <-- PASS GDrive URL
-        )
-
-        # --- FIX: Pass ALL input data to the Graph's thread config as top-level keys ---
-        # LangGraph/StateGraph expects the config keys at the top-level so nodes
-        # can access them directly via state.get('company'), etc.
-        thread_config = {
-            # Add all the fields from the 'data' object
-            "company": data.company,
-            "company_url": data.company_url,
-            "industry": data.industry,
-            "hq_location": data.hq_location,
-            "job_id": job_id # Pass the job_id as well
-        }
-
-        # Add the optional fields only if they exist
-        if airtable_record_id:
-            thread_config["airtable_record_id"] = airtable_record_id
-        if google_drive_folder_url:
-            thread_config["google_drive_folder_url"] = google_drive_folder_url
-        # --- End Fix ---
-
-        state = {}
-        async for s in graph.run(thread=thread_config): # Pass the config here
-            state.update(s)
-        
-        # Look for the compiled report. 'editor' key is no longer used, but keeping check is safe.
-        report_content = state.get('report') or (state.get('editor') or {}).get('report')
-        
-        # Airtable upload is handled inside the graph.run() call
-
-        if report_content:
-            logger.info(f"Found report in final state (length: {len(report_content)})")
-
-            # Update job status and MongoDB
-            job_status[job_id].update({
-                "status": "completed",
-                "report": report_content,
-                "company": data.company,
-                "last_update": datetime.now().isoformat()
-            })
+        with metrics_collector.generation_timer(template_type="research"):
             if mongodb:
-                mongodb.update_job(job_id=job_id, status="completed")
-                mongodb.store_report(job_id=job_id, report_data={"report": report_content})
+                # Include airtable_record_id in MongoDB job details
+                job_details = data.dict()
+                job_details['airtable_record_id'] = airtable_record_id
+                job_details['google_drive_folder_url'] = google_drive_folder_url # Add GDrive URL to log
+                mongodb.create_job(job_id, job_details)
             
-            # Simplified final WebSocket message
-            await manager.send_status_update(
+            await asyncio.sleep(1)  # Allow WebSocket connection
+
+            await manager.send_status_update(job_id, status="processing", message="Starting research")
+
+            # --- v2 MODIFIED: Pass google_drive_folder_url to Graph constructor ---
+            graph = Graph(
+                company=data.company,
+                url=data.company_url,
+                industry=data.industry,
+                hq_location=data.hq_location,
+                websocket_manager=manager,
                 job_id=job_id,
-                status="completed",
-                message="Research completed successfully.",
-                result={
+                google_drive_folder_url=google_drive_folder_url # <-- PASS GDrive URL
+            )
+
+            # --- FIX: Pass ALL input data to the Graph's thread config as top-level keys ---
+            # LangGraph/StateGraph expects the config keys at the top-level so nodes
+            # can access them directly via state.get('company'), etc.
+            thread_config = {
+                # Add all the fields from the 'data' object
+                "company": data.company,
+                "company_url": data.company_url,
+                "industry": data.industry,
+                "hq_location": data.hq_location,
+                "job_id": job_id # Pass the job_id as well
+            }
+
+            # Add the optional fields only if they exist
+            if airtable_record_id:
+                thread_config["airtable_record_id"] = airtable_record_id
+            if google_drive_folder_url:
+                thread_config["google_drive_folder_url"] = google_drive_folder_url
+            # --- End Fix ---
+
+            state = {}
+            async for s in graph.run(thread=thread_config): # Pass the config here
+                state.update(s)
+            
+            # Look for the compiled report. 'editor' key is no longer used, but keeping check is safe.
+            report_content = state.get('report') or (state.get('editor') or {}).get('report')
+            
+            # Airtable upload is handled inside the graph.run() call
+
+            if report_content:
+                logger.info(f"Found report in final state (length: {len(report_content)})")
+
+                # Update job status and MongoDB
+                job_status[job_id].update({
+                    "status": "completed",
                     "report": report_content,
-                    "company": data.company
-                }
-            )
-        else:
-            logger.error(f"Research completed without finding report. State keys: {list(state.keys())}")
-            
-            # Check if there was a specific error in the state
-            error_message = "No report found"
-            if error := state.get('error'):
-                error_message = f"Error: {error}"
-            
-            await manager.send_status_update(
-                job_id=job_id,
-                status="failed",
-                message="Research completed but no report was generated",
-                error=error_message
-            )
+                    "company": data.company,
+                    "last_update": datetime.now().isoformat()
+                })
+                if mongodb:
+                    mongodb.update_job(job_id=job_id, status="completed")
+                    mongodb.store_report(job_id=job_id, report_data={"report": report_content})
+                
+                # Simplified final WebSocket message
+                await manager.send_status_update(
+                    job_id=job_id,
+                    status="completed",
+                    message="Research completed successfully.",
+                    result={
+                        "report": report_content,
+                        "company": data.company
+                    }
+                )
+            else:
+                logger.error(f"Research completed without finding report. State keys: {list(state.keys())}")
+                
+                # Check if there was a specific error in the state
+                error_message = "No report found"
+                if error := state.get('error'):
+                    error_message = f"Error: {error}"
+                
+                await manager.send_status_update(
+                    job_id=job_id,
+                    status="failed",
+                    message="Research completed but no report was generated",
+                    error=error_message
+                )
+    except Exception as e:
+        logger.error(f"Research failed: {str(e)}")
+        await manager.send_status_update(
+            job_id=job_id,
+            status="failed",
+            message=f"Research failed: {str(e)}",
+            error=str(e)
+        )
+        if mongodb:
+            mongodb.update_job(job_id=job_id, status="failed", error=str(e))
 
     except Exception as e:
         logger.error(f"Research failed: {str(e)}")
@@ -502,25 +574,127 @@ def get_email_service() -> EmailGeneratorService:
     """Get the singleton email service instance."""
     return EmailGeneratorService()
 
-@app.get("/templates")
-async def list_email_templates():
-    """Get a list of available email templates."""
+@app.get("/templates",
+         responses={
+             200: {
+                 "description": "List of available templates",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "CGF_METHANE_CALL": "Template for methane reduction initiatives",
+                             "SUSTAINABILITY_INTRO": "Introduction template for sustainability prospects"
+                         }
+                     }
+                 }
+             },
+             401: {"description": "Not authenticated"},
+             429: {"description": "Rate limit exceeded"},
+             500: {"description": "Internal server error"}
+         },
+         tags=["Email Templates"])
+@limiter.limit(f"{security_config.rate_limit_requests}/hour")
+async def list_email_templates(
+    current_user: dict = Depends(JWTBearer(secret_key=config.JWT_SECRET_KEY))
+):
+    """
+    Get a list of available email templates.
+    
+    Rate limited and requires JWT authentication.
+    
+    This endpoint returns a list of all available email templates with their descriptions.
+    Templates are stored in a shared Google Drive folder and are dynamically updated.
+    
+    Returns:
+        Dict[str, str]: Dictionary mapping template types to their descriptions
+        
+    Raises:
+        HTTPException: If templates cannot be fetched or rate limit is exceeded
+    """
     try:
+        logger.info(f"Listing templates (requested by: {current_user.get('email', 'unknown')})")
+        
         # Get template manager and refresh templates from Google Drive
         template_manager = get_template_manager()
         await template_manager.refresh_templates()
-        return template_manager.list_templates()
+        
+        templates = template_manager.list_templates()
+        logger.info(f"Found {len(templates)} templates")
+        
+        return templates
+        
+    except RateLimitExceeded as e:
+        logger.warning(f"Rate limit exceeded for user: {current_user.get('email', 'unknown')}")
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please try again later."
+        )
     except Exception as e:
-        logger.error(f"Error listing templates: {e}")
+        logger.error(
+            f"Error listing templates: {e}, "
+            f"User: {current_user.get('email', 'unknown')}",
+            exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Failed to fetch email templates")
 
-@app.post("/generate-outreach")
-async def generate_outreach_email(data: EmailGenerationRequest):
+@app.post("/generate-outreach", 
+         responses={
+             200: {"description": "Successfully generated email"},
+             401: {"description": "Not authenticated"},
+             404: {"description": "Template not found"},
+             422: {"description": "Invalid input data"},
+             429: {"description": "Rate limit exceeded"},
+             500: {"description": "Internal server error"}
+         },
+         tags=["Email Generation"])
+@limiter.limit(f"{security_config.rate_limit_requests}/hour")
+async def generate_outreach_email(
+    data: EmailGenerationRequest,
+    current_user: dict = Depends(JWTBearer(secret_key=config.JWT_SECRET_KEY))
+):
     """
     Generate a personalized outreach email by synthesizing template, research, and Airtable context.
+    
+    Rate limited and requires JWT authentication.
+    
+    This endpoint combines three sources of information:
+    1. Email template from a shared Google Drive folder
+    2. Research context from a prospect-specific Google Drive folder
+    3. Context from an Airtable record
+    
+    The AI model processes these inputs to create a compelling, personalized email.
+    
+    Args:
+        data: The request data containing template type, contact info, and context
+        current_user: Authenticated user information (from JWT token)
+        
+    Returns:
+        EmailGenerationResponse containing the generated email and usage info
+        
+    Raises:
+        HTTPException: For various error conditions (see response codes)
     """
     try:
-        logger.info(f"Generating outreach email for contact: {data.contact_name} using template: {data.template_type}")
+        # Sanitize and validate inputs
+        contact_name = sanitize_input(data.contact_name)
+        if not contact_name:
+            raise HTTPException(
+                status_code=422,
+                detail="Contact name is required and cannot be empty"
+            )
+            
+        # Validate Google Drive folder URL
+        if not validate_folder_url(str(data.google_drive_folder_url)):
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid Google Drive folder URL format"
+            )
+            
+        # Log request with user context
+        logger.info(
+            f"Generating outreach email for contact: {contact_name} "
+            f"using template: {data.template_type} "
+            f"(requested by: {current_user.get('email', 'unknown')})"
+        )
         
         # Get email service instance
         email_service = get_email_service()
@@ -542,11 +716,17 @@ async def generate_outreach_email(data: EmailGenerationRequest):
             logger.warning(f"No research context found in folder: {data.google_drive_folder_url}")
         
         # 3. Generate email using template, research, and Airtable context
+        # Sanitize Airtable context fields
+        airtable_context = {
+            k: sanitize_input(v) if isinstance(v, str) else v 
+            for k, v in data.airtable_context.dict().items()
+        }
+        
         email_text = await email_service.generate_email(
             template_content=template_content,
             research_context=research_context,
-            airtable_context=data.airtable_context.dict(),
-            contact_name=data.contact_name
+            airtable_context=airtable_context,
+            contact_name=contact_name
         )
         
         if not email_text:
@@ -568,8 +748,18 @@ async def generate_outreach_email(data: EmailGenerationRequest):
 
     except HTTPException:
         raise
+    except RateLimitExceeded as e:
+        logger.warning(f"Rate limit exceeded for user: {current_user.get('email', 'unknown')}")
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please try again later."
+        )
     except Exception as e:
-        logger.error(f"Error generating outreach email: {e}", exc_info=True)
+        logger.error(
+            f"Error generating outreach email: {e}, "
+            f"User: {current_user.get('email', 'unknown')}", 
+            exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
@@ -652,5 +842,27 @@ async def generate_pdf(data: PDFGenerationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
+@app.get("/metrics")
+async def metrics():
+    """Endpoint for Prometheus metrics."""
+    return JSONResponse(content=performance_monitor.get_metrics())
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "uptime": str(performance_monitor.get_uptime()),
+        "version": "1.0.0"
+    }
+
+def start():
+    """Start the application with monitoring."""
+    # Start Prometheus metrics server
+    start_http_server(8001)  # Metrics available on port 8001
+    
+    # Start the FastAPI application
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    start()

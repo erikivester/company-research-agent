@@ -1,7 +1,7 @@
 """
 Service class for generating personalized outreach emails based on templates and research context.
 """
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import logging
 import os
 import json
@@ -13,11 +13,20 @@ from googleapiclient.errors import HttpError
 from openai import AsyncOpenAI
 import tiktoken
 from backend.utils.email_templates import get_template_manager
+from backend.utils.research_parser import ResearchFileParser
+from backend.utils.exceptions import (
+    EmailGeneratorError,
+    TemplateNotFoundError,
+    DriveServiceError,
+    ResearchContextError,
+    EmailGenerationError
+)
 
 logger = logging.getLogger(__name__)
 
 class EmailGeneratorService:
     _instance = None
+    _cache = {}  # Class-level cache for research context
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -34,6 +43,9 @@ class EmailGeneratorService:
                             If None, will try to use the GOOGLE_APPLICATION_CREDENTIALS env var.
             model: The OpenAI model to use for email generation
             openai_api_key: Optional OpenAI API key. If not provided, will use OPENAI_API_KEY env var.
+            
+        Raises:
+            DriveServiceError: If credentials are missing or invalid
         """
         if self._initialized:
             return
@@ -110,17 +122,27 @@ class EmailGeneratorService:
             logger.error(f"Unexpected error fetching template: {e}")
             return None
 
-    async def fetch_research_context(self, folder_url: str) -> Dict[str, str]:
+    async def fetch_research_context(self, folder_url: str, use_cache: bool = True) -> Dict[str, Any]:
         """
         Fetch and parse research files from a Google Drive folder.
         
         Args:
             folder_url: URL to the Google Drive folder containing research files
+            use_cache: Whether to use cached research context if available
             
         Returns:
             Dictionary containing parsed content from research files
+            
+        Raises:
+            ResearchContextError: If there are issues fetching or parsing research
+            DriveServiceError: If there are issues accessing Drive
         """
         try:
+            # Check cache first if enabled
+            if use_cache and folder_url in self._cache:
+                logger.info(f"Using cached research context for folder: {folder_url}")
+                return self._cache[folder_url]
+
             # Extract folder ID from URL
             folder_id = folder_url.split('/')[-1]
             
@@ -136,58 +158,68 @@ class EmailGeneratorService:
             
             for file in results.get('files', []):
                 try:
-                    # Download and parse content based on file type
+                    # Download file content
                     content = self.drive_service.files().get_media(fileId=file['id']).execute()
                     
-                    if file['name'].endswith('.json'):
-                        research_data[file['name']] = json.loads(content)
-                    elif file['name'].endswith(('.txt', '.md')):
-                        research_data[file['name']] = content.decode('utf-8')
-                    elif file['name'].endswith('.pdf'):
-                        # For now, skip PDFs as we'd need more complex parsing
-                        continue
+                    # Parse content based on file type using ResearchFileParser
+                    parsed_content = ResearchFileParser.parse_file(
+                        file_path=file['name'],
+                        content=content if isinstance(content, str) else content.decode('utf-8')
+                    )
+                    research_data[file['name']] = parsed_content
                         
                 except Exception as e:
                     logger.error(f"Error processing file {file['name']}: {e}")
                     continue
 
+            # Cache the results if cache is enabled
+            if use_cache:
+                self._cache[folder_url] = research_data
+
             return research_data
 
         except HttpError as error:
-            logger.error(f"Error accessing research folder: {error}")
-            return {}
+            raise DriveServiceError(f"Error accessing research folder: {error}")
         except Exception as e:
-            logger.error(f"Unexpected error fetching research context: {e}")
-            return {}
+            if isinstance(e, DriveServiceError):
+                raise
+            raise ResearchContextError(f"Error fetching research context: {e}")
 
-    def _prepare_research_summary(self, research_context: Dict[str, str]) -> str:
+    def _prepare_research_summary(self, research_context: Dict[str, Any]) -> str:
         """
         Prepare a concise summary of research data for the LLM prompt.
+        
+        Args:
+            research_context: Dictionary containing parsed research file contents
+            
+        Returns:
+            Formatted summary string for the prompt
         """
         summary_parts = []
         
-        # Process research context files
-        for filename, content in research_context.items():
-            if isinstance(content, dict):
-                # Handle JSON data
-                if 'company_brief_data' in content:
-                    # Extract key insights from company brief
+        for filename, file_data in research_context.items():
+            content_type = file_data.get('type', 'unknown')
+            content = file_data.get('content', {})
+            
+            if content_type == 'json':
+                if isinstance(content, dict) and 'company_brief_data' in content:
                     summary_parts.append("Company Research Insights:")
                     for url, data in content['company_brief_data'].items():
                         if isinstance(data, dict):
                             if 'title' in data and 'content' in data:
                                 summary_parts.append(f"- {data['title']}: {data['content'][:300]}...")
-            else:
-                # Handle text/markdown content
-                preview = content[:500] + ("..." if len(content) > 500 else "")
-                summary_parts.append(f"From {filename}:")
-                summary_parts.append(preview)
+            
+            elif content_type in ['text', 'markdown', 'pdf']:
+                if isinstance(content, str):
+                    preview = content[:500] + ("..." if len(content) > 500 else "")
+                    summary_parts.append(f"From {filename}:")
+                    summary_parts.append(preview)
         
         return "\n\n".join(summary_parts)
 
     async def generate_email(self, 
                            template_content: str,
-                           research_context: Dict[str, str],
+                           research_context: Dict[str, Any],
                            airtable_context: Dict[str, str],
                            contact_name: str) -> str:
         """
@@ -201,8 +233,19 @@ class EmailGeneratorService:
             
         Returns:
             Generated email text
+            
+        Raises:
+            EmailGenerationError: If there are issues generating the email
         """
         try:
+            # Validate inputs
+            if not template_content:
+                raise EmailGenerationError("Template content is required")
+            if not contact_name:
+                raise EmailGenerationError("Contact name is required")
+            if not airtable_context:
+                raise EmailGenerationError("Airtable context is required")
+            
             # Prepare research summary
             research_summary = self._prepare_research_summary(research_context)
             
@@ -239,18 +282,27 @@ Research Context:
 Generate the complete email maintaining proper formatting and structure. The email should feel personal, well-researched, and strategically aligned with our outreach goals."""
 
             # Call the OpenAI API
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            return response.choices[0].message.content.strip()
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                
+                generated_text = response.choices[0].message.content.strip()
+                if not generated_text:
+                    raise EmailGenerationError("OpenAI API returned empty response")
+                    
+                return generated_text
+
+            except Exception as api_error:
+                raise EmailGenerationError(f"OpenAI API error: {str(api_error)}")
 
         except Exception as e:
-            logger.error(f"Error generating email: {e}")
-            return None
+            if isinstance(e, EmailGenerationError):
+                raise
+            raise EmailGenerationError(f"Error generating email: {str(e)}")

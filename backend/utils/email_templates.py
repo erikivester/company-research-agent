@@ -6,6 +6,8 @@ import os
 import json
 from typing import Dict, List, Optional
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from threading import Lock
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -21,16 +23,21 @@ class EmailTemplate:
     type: str         # Template type (derived from filename)
     description: str  # Description from the first line of the template
 
+from .cache import cached, CacheManager
+
 class EmailTemplateManager:
     """Manages dynamic fetching and caching of email templates from Google Drive."""
     _instance = None
-    
+    _refresh_lock = Lock()
+    _last_refresh = None
+    _refresh_interval = timedelta(minutes=5)  # Refresh templates every 5 minutes
+
     def __new__(cls, folder_id: str = "1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW"):
         if cls._instance is None:
             cls._instance = super(EmailTemplateManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self, folder_id: str = "1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW"):
         """
         Initialize the template manager.
@@ -99,8 +106,17 @@ class EmailTemplateManager:
     async def refresh_templates(self) -> None:
         """
         Fetch and cache all templates from the Google Drive folder.
+        Uses caching to optimize performance and prevent unnecessary Drive API calls.
         """
         try:
+            # Check if refresh is needed based on time interval
+            with self._refresh_lock:
+                now = datetime.now()
+                if (self._last_refresh and 
+                    now - self._last_refresh < self._refresh_interval):
+                    logger.debug("Using cached templates, refresh not needed")
+                    return
+
             await self.ensure_drive_service()
             if not self.drive_service:
                 logger.warning("Drive service not available, using empty template list")
@@ -111,20 +127,31 @@ class EmailTemplateManager:
             import asyncio
             loop = asyncio.get_running_loop()
             
-            # List all files in the templates folder
-            query = f"'{self.folder_id}' in parents and trashed = false"
-            logger.info(f"Searching for files in folder: {self.folder_id}")
-            results = await loop.run_in_executor(None, 
-                lambda: self.drive_service.files().list(
-                    q=query,
-                    spaces='drive',
-                    fields='files(id, name, mimeType)',
-                    supportsAllDrives=True,
-                    includeItemsFromAllDrives=True
-                ).execute()
-            )
+            # Get cache manager
+            cache = CacheManager()
             
-            files = results.get('files', [])
+            # Try to get cached file list first
+            cache_key = f"template_files:{self.folder_id}"
+            files = cache.get(cache_key)
+            
+            if not files:
+                # List all files in the templates folder
+                query = f"'{self.folder_id}' in parents and trashed = false"
+                logger.info(f"Searching for files in folder: {self.folder_id}")
+                results = await loop.run_in_executor(None, 
+                    lambda: self.drive_service.files().list(
+                        q=query,
+                        spaces='drive',
+                        fields='files(id, name, mimeType)',
+                        supportsAllDrives=True,
+                        includeItemsFromAllDrives=True
+                    ).execute()
+                )
+                
+                files = results.get('files', [])
+                # Cache file list for 5 minutes
+                cache.set(cache_key, files, ttl=300)
+                
             logger.info(f"Found {len(files)} files in folder")
             for file in files:
                 logger.info(f"Found file: {file['name']} (type: {file['mimeType']}, id: {file['id']})")
@@ -153,21 +180,28 @@ class EmailTemplateManager:
 
                     logger.info(f"Processing file: {file['name']} (type: {mime_type})")
                     
-                    # Handle Google Docs differently from regular files
-                    if mime_type == 'application/vnd.google-apps.document':
-                        content = await loop.run_in_executor(None,
-                            lambda: self.drive_service.files().export(
-                                fileId=file['id'],
-                                mimeType='text/plain'
-                            ).execute().decode('utf-8')
-                        )
-                    else:
-                        # Regular file download
-                        content = await loop.run_in_executor(None,
-                            lambda: self.drive_service.files().get_media(
-                                fileId=file['id']
-                            ).execute().decode('utf-8')
-                        )
+                    # Try to get content from cache first
+                    content_cache_key = f"template_content:{file['id']}"
+                    content = cache.get(content_cache_key)
+                    
+                    if not content:
+                        # Handle Google Docs differently from regular files
+                        if mime_type == 'application/vnd.google-apps.document':
+                            content = await loop.run_in_executor(None,
+                                lambda: self.drive_service.files().export(
+                                    fileId=file['id'],
+                                    mimeType='text/plain'
+                                ).execute().decode('utf-8')
+                            )
+                        else:
+                            # Regular file download
+                            content = await loop.run_in_executor(None,
+                                lambda: self.drive_service.files().get_media(
+                                    fileId=file['id']
+                                ).execute().decode('utf-8')
+                            )
+                        # Cache content for 1 hour
+                        cache.set(content_cache_key, content, ttl=3600)
                     
                     try:
                         template_type = self._extract_template_type(file['name'])
@@ -189,7 +223,19 @@ class EmailTemplateManager:
                     continue
 
             self.templates = new_templates
+            with self._refresh_lock:
+                self._last_refresh = datetime.now()
             logger.info(f"Refreshed {len(self.templates)} templates from Drive folder")
+            
+            # Clean up cache entries for removed templates
+            cache = CacheManager()
+            current_template_ids = {template.id for template in new_templates.values()}
+            cache_prefix = "template_content:"
+            all_keys = [k for k in cache._cache.keys() if k.startswith(cache_prefix)]
+            for key in all_keys:
+                template_id = key.replace(cache_prefix, "")
+                if template_id not in current_template_ids:
+                    cache.delete(key)
             
         except HttpError as error:
             logger.error(f"Error accessing templates folder: {error}")
