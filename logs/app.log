@@ -1,331 +1,397 @@
-2025-11-09 20:21:11 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:21:11 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:21:11 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-09 20:21:11 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:21:13 - application - INFO - Found 2 templates
-2025-11-09 20:24:34 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:24:34 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:24:35 - application - INFO - Found 2 templates
-2025-11-09 20:24:53 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:24:53 - application - INFO - Found 2 templates
-2025-11-09 20:24:59 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:24:59 - application - INFO - Found 2 templates
-2025-11-09 20:25:55 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:25:55 - application - INFO - Found 2 templates
-2025-11-09 20:28:03 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:28:03 - application - INFO - Found 2 templates
-2025-11-09 20:29:09 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:29:09 - application - INFO - Found 2 templates
-2025-11-09 20:30:18 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:30:18 - application - INFO - Found 2 templates
-2025-11-09 20:32:08 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-09 20:32:08 - backend.services.email_generator - WARNING - GOOGLE_APPLICATION_CREDENTIALS not set, Drive features will be unavailable
-2025-11-09 20:32:08 - backend.services.email_generator - ERROR - Drive service not available
-2025-11-09 20:33:43 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-09 20:33:43 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:33:43 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-09 20:33:43 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:33:44 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:33:44 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:33:45 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:33:45 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:33:45 - googleapiclient.http - WARNING - Encountered 403 Forbidden with reason "fileNotDownloadable"
-2025-11-09 20:33:45 - backend.services.email_generator - ERROR - Error accessing template: <HttpError 403 when requesting https://www.googleapis.com/drive/v3/files/1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ?alt=media returned "Only files with binary content can be downloaded. Use Export with Docs Editors files.". Details: "[{'message': 'Only files with binary content can be downloaded. Use Export with Docs Editors files.', 'domain': 'global', 'reason': 'fileNotDownloadable', 'location': 'alt', 'locationType': 'parameter'}]">
-2025-11-09 20:34:55 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-09 20:34:55 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:34:55 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-09 20:34:55 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:34:57 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-09 20:35:05 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-09 20:35:17 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-09 20:35:17 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-09 20:35:18 - application - INFO - Found 2 templates
-2025-11-09 20:35:22 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-09 20:35:22 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-09 20:35:22 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-09 20:35:23 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-09 20:35:34 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:35:44 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:35:44 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:35:44 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
-2025-11-10 08:35:44 - application - INFO - Found 0 templates
-2025-11-10 08:37:12 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:37:12 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:37:12 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
-2025-11-10 08:37:12 - application - INFO - Found 0 templates
-2025-11-10 08:37:20 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:37:20 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:37:21 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
-2025-11-10 08:37:21 - application - INFO - Found 0 templates
-2025-11-10 08:39:18 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:39:18 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:39:18 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
-2025-11-10 08:39:18 - application - INFO - Found 0 templates
-2025-11-10 08:39:32 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:39:33 - application - INFO - Found 2 templates
-2025-11-10 08:39:40 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:39:40 - application - INFO - Found 2 templates
-2025-11-10 08:39:51 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:39:51 - application - INFO - Found 2 templates
-2025-11-10 08:40:46 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:40:46 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:40:46 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:40:46 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:40:48 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:40:48 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:40:48 - application - INFO - Found 2 templates
-2025-11-10 08:41:08 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:41:08 - application - INFO - Found 2 templates
-2025-11-10 08:41:42 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:41:42 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:41:43 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:41:43 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:41:44 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:41:44 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:41:44 - application - INFO - Found 2 templates
-2025-11-10 08:41:48 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:41:48 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:41:48 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-10 08:41:50 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:42:07 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:43:04 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:43:04 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:43:04 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-10 08:43:04 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:43:06 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:43:19 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:44:22 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:44:22 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:44:23 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:44:23 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:44:24 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:44:24 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:44:24 - application - INFO - Found 2 templates
-2025-11-10 08:44:27 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:44:27 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:44:27 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-10 08:44:28 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:45:02 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - Loaded Google Drive credentials from file: /Users/erikivester/company-research-agent/gdrive_credentials.json
-2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - Google Drive credentials loaded for service account: airtable-drive-creator@gen-lang-client-0733445580.iam.gserviceaccount.com
-2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - ✓ SA can see 1 Shared Drive(s)
-2025-11-10 08:47:46 - backend.utils.gdrive_uploader - INFO - Target folder is in Shared Drive with ID: 0AH84XqkvrUuAUk9PVA
-2025-11-10 08:48:51 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:48:51 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:48:51 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-10 08:48:51 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:48:52 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:48:52 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:48:53 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:48:53 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:48:54 - backend.services.email_generator - INFO - Found 4 files in research folder: 1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:48:54 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_174456.pdf (application/pdf)
-2025-11-10 08:48:55 - backend.services.email_generator - ERROR - Error processing file Walmart_research_report_20251109_174456.pdf: 'utf-8' codec can't decode byte 0x93 in position 10: invalid start byte
-2025-11-10 08:48:55 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_174453.json (application/json)
-2025-11-10 08:48:55 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_173647.pdf (application/pdf)
-2025-11-10 08:48:56 - backend.services.email_generator - ERROR - Error processing file Walmart_research_report_20251109_173647.pdf: 'utf-8' codec can't decode byte 0x93 in position 10: invalid start byte
-2025-11-10 08:48:56 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_173645.json (application/json)
-2025-11-10 08:49:10 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:50:29 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:50:29 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:50:29 - backend.services.email_generator - INFO - Google Drive service initialized successfully
-2025-11-10 08:50:29 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 08:50:29 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 08:50:29 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Found 4 files in research folder: 1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_174456.pdf (application/pdf)
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Skipping PDF file (not yet supported): Walmart_research_report_20251109_174456.pdf
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_174453.json (application/json)
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Successfully processed: walmart_research_20251109_174453.json
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_173647.pdf (application/pdf)
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Skipping PDF file (not yet supported): Walmart_research_report_20251109_173647.pdf
-2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_173645.json (application/json)
-2025-11-10 08:50:33 - backend.services.email_generator - INFO - Successfully processed: walmart_research_20251109_173645.json
-2025-11-10 08:50:45 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 08:52:29 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 08:52:29 - application - INFO - Found 2 templates
-2025-11-10 08:52:32 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
-2025-11-10 08:52:33 - backend.services.email_generator - INFO - Using cached research context for folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
-2025-11-10 08:52:45 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
-2025-11-10 09:17:58 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 09:17:58 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 09:17:59 - application - INFO - Found 2 templates
-2025-11-10 10:08:59 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:08:59 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 10:08:59 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 10:08:59 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 10:09:01 - application - INFO - Found 2 templates
-2025-11-10 10:09:07 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:09:07 - application - INFO - Found 2 templates
-2025-11-10 10:10:21 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:10:21 - application - INFO - Found 2 templates
-2025-11-10 10:10:49 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:10:49 - application - INFO - Found 2 templates
-2025-11-10 10:10:53 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:10:53 - application - INFO - Found 2 templates
-2025-11-10 10:11:10 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:11:10 - application - INFO - Found 2 templates
-2025-11-10 10:22:14 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 10:22:14 - application - INFO - Found 2 templates
-2025-11-10 10:22:35 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:22:35 - application - INFO - Found 2 templates
-2025-11-10 10:22:41 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:22:41 - application - INFO - Found 2 templates
-2025-11-10 10:22:42 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 10:22:42 - application - INFO - Found 2 templates
-2025-11-10 13:27:36 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 13:27:36 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found 2 files in folder
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
-2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
-2025-11-10 13:27:37 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
-2025-11-10 13:27:37 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
-2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
-2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
-2025-11-10 13:27:39 - application - INFO - Found 2 templates
-2025-11-10 14:00:59 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 14:01:00 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 14:01:00 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 14:01:00 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 14:01:00 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
-2025-11-10 14:01:00 - application - INFO - Found 0 templates
-2025-11-10 14:29:34 - application - INFO - Listing templates (requested by: Airtable extension)
-2025-11-10 14:29:34 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
-2025-11-10 14:29:34 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
-2025-11-10 14:29:34 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
-2025-11-10 14:29:35 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
-2025-11-10 14:29:35 - application - INFO - Found 0 templates
+2025-11-10 15:27:48 - application - INFO - DEBUG: Webhook received: company='Walmart', airtable_record_id='recRn1Q3r0Fc5Dor5'
+2025-11-10 15:27:48 - application - INFO - Webhook accepted for Walmart (Airtable ID: recRn1Q3r0Fc5Dor5)
+2025-11-10 15:27:48 - backend.airtable_uploader - INFO - DEBUG: Fields being sent for UPDATE: dict_keys(['Research Status'])
+2025-11-10 15:27:48 - application - INFO - SEMAPHORE ACQUIRED: Job 5f13caec-1754-458f-9def-c1896efa6d19 starting. 4 slots remaining.
+2025-11-10 15:27:48 - backend.airtable_uploader - INFO - Successfully updated Airtable record recRn1Q3r0Fc5Dor5 with fields: ['Research Status']
+2025-11-10 15:27:49 - backend.nodes.query_generator - INFO - Query Generator Node initialized.
+2025-11-10 15:27:49 - backend.nodes.researchers.flw - INFO - FLW/Sustainability Analyzer initialized.
+2025-11-10 15:27:49 - backend.nodes.researchers.contact_finder - INFO - Contact Finder Node initialized.
+2025-11-10 15:27:49 - backend.nodes.researchers.engagement_finder - INFO - Engagement Finder Node initialized.
+2025-11-10 15:27:49 - backend.nodes.curator - INFO - Curator initialized with default threshold: 0.4 and news threshold: 0.3
+2025-11-10 15:27:49 - backend.nodes.briefing - INFO - Briefing node initialized with Gemini 2.5 Flash model
+2025-11-10 15:27:49 - backend.nodes.grounding - INFO - Websocket manager found in state
+2025-11-10 15:27:49 - backend.nodes.query_generator - INFO - Generating all queries for Walmart...
+2025-11-10 15:27:55 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: Populated research_queries with keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: company_brief has 4 queries
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: news_signal has 4 queries
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: flw_analyzer has 4 queries
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: contact_finder has 4 queries
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - QueryGenerator: engagement_finder has 4 queries
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - === Query Generator Debug ===
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - Input state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - New state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - company_brief: 4 queries - ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - news_signal: 4 queries - ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - flw_analyzer: 4 queries - ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - contact_finder: 4 queries - ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - engagement_finder: 4 queries - ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.query_generator - INFO - === End Query Generator Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === BaseResearcher Debug for company_brief ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Full state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries present: True
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries content: {'company_brief': ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model'], 'news_signal': ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025'], 'flw_analyzer': ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025'], 'contact_finder': ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts'], 'engagement_finder': ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Found 4 queries for company_brief: ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End BaseResearcher Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Parameters for company_brief ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Parameters: {'search_depth': 'basic', 'include_raw_content': True, 'max_results': 4}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total queries to search: 4
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Queries:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 1. Walmart annual revenue 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 2. Walmart major financial health signals 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 3. Walmart core products and services
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 4. Walmart primary business model
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Parameters ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === BaseResearcher Debug for news_signal ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Full state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries present: True
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries content: {'company_brief': ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model'], 'news_signal': ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025'], 'flw_analyzer': ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025'], 'contact_finder': ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts'], 'engagement_finder': ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Found 4 queries for news_signal: ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End BaseResearcher Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Parameters for news_signal ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 5, 'topic': 'news'}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total queries to search: 4
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Queries:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 1. Walmart sustainability news 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 2. Walmart FLW climate goals 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 3. Walmart layoffs or boycotts news 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 4. Walmart new VP of sustainability 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Parameters ===
+2025-11-10 15:27:55 - backend.nodes.researchers.flw - INFO - Starting FLW/Sustainability analysis for Walmart
+2025-11-10 15:27:55 - backend.nodes.researchers.flw - INFO - Searching documents for 4 FLW/Sustainability queries.
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === BaseResearcher Debug for flw_analyzer ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Full state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries present: True
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries content: {'company_brief': ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model'], 'news_signal': ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025'], 'flw_analyzer': ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025'], 'contact_finder': ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts'], 'engagement_finder': ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Found 4 queries for flw_analyzer: ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End BaseResearcher Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Parameters for flw_analyzer ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 4}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total queries to search: 4
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Queries:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 1. Walmart ESG Report 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 2. Walmart methane reduction goals 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 3. Walmart food waste prevention initiatives 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 4. Walmart sustainable packaging initiatives 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Parameters ===
+2025-11-10 15:27:55 - backend.nodes.researchers.contact_finder - INFO - Starting contact finding for Walmart
+2025-11-10 15:27:55 - backend.nodes.researchers.contact_finder - INFO - Searching documents for 4 contact queries.
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === BaseResearcher Debug for contact_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Full state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries present: True
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries content: {'company_brief': ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model'], 'news_signal': ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025'], 'flw_analyzer': ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025'], 'contact_finder': ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts'], 'engagement_finder': ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Found 4 queries for contact_finder: ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End BaseResearcher Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Parameters for contact_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total queries to search: 4
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Queries:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 1. Walmart Sustainability Manager contacts
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 2. Walmart Senior Manager Social Impact contacts
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 3. Walmart Director Community Relations contacts
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 4. Walmart VP of Sustainability contacts
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Parameters ===
+2025-11-10 15:27:55 - backend.nodes.researchers.engagement_finder - INFO - Starting engagement finding for Walmart
+2025-11-10 15:27:55 - backend.nodes.researchers.engagement_finder - INFO - Searching documents for 4 engagement queries.
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === BaseResearcher Debug for engagement_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Full state keys: ['research_queries', 'company', 'company_url', 'hq_location', 'industry', 'websocket_manager', 'job_id', 'airtable_record_id', 'google_drive_folder_url', 'site_scrape', 'messages']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries present: True
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries keys: ['company_brief', 'news_signal', 'flw_analyzer', 'contact_finder', 'engagement_finder']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - research_queries content: {'company_brief': ['Walmart annual revenue 2024 2025', 'Walmart major financial health signals 2024 2025', 'Walmart core products and services', 'Walmart primary business model'], 'news_signal': ['Walmart sustainability news 2024 2025', 'Walmart FLW climate goals 2024 2025', 'Walmart layoffs or boycotts news 2024 2025', 'Walmart new VP of sustainability 2024 2025'], 'flw_analyzer': ['Walmart ESG Report 2024 2025', 'Walmart methane reduction goals 2024 2025', 'Walmart food waste prevention initiatives 2024 2025', 'Walmart sustainable packaging initiatives 2024 2025'], 'contact_finder': ['Walmart Sustainability Manager contacts', 'Walmart Senior Manager Social Impact contacts', 'Walmart Director Community Relations contacts', 'Walmart VP of Sustainability contacts'], 'engagement_finder': ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Found 4 queries for engagement_finder: ['Walmart U.S. Food Waste Pact membership', 'Walmart ReFED Summit event sponsorship', 'Walmart sustainability awards 2024 2025', 'Walmart nonprofit partnerships 2024 2025']
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End BaseResearcher Debug ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Parameters for engagement_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total queries to search: 4
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Queries:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 1. Walmart U.S. Food Waste Pact membership
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 2. Walmart ReFED Summit event sponsorship
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 3. Walmart sustainability awards 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - 4. Walmart nonprofit partnerships 2024 2025
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Parameters ===
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for company_brief
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart annual revenue 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': True, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 1 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for company_brief
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart major financial health signals 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': True, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 1 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for company_brief
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart core products and services
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': True, 'max_results': 4}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 1 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for company_brief
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart primary business model
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': True, 'max_results': 4}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 1 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for news_signal
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart sustainability news 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 7, 'topic': 'news'}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for news_signal
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart FLW climate goals 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 7, 'topic': 'news'}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for news_signal
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart layoffs or boycotts news 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 7, 'topic': 'news'}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for news_signal
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart new VP of sustainability 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 7, 'topic': 'news'}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for flw_analyzer
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart ESG Report 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for flw_analyzer
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart methane reduction goals 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for flw_analyzer
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart food waste prevention initiatives 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for flw_analyzer
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart sustainable packaging initiatives 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'advanced', 'include_raw_content': False, 'max_results': 6}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for contact_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart Sustainability Manager contacts
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for contact_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart Senior Manager Social Impact contacts
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for contact_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart Director Community Relations contacts
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for contact_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart VP of Sustainability contacts
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for engagement_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart U.S. Food Waste Pact membership
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for engagement_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart ReFED Summit event sponsorship
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 3}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for engagement_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart sustainability awards 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 5}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - [MOCK DATA] Running mock search for engagement_finder
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Query: Walmart nonprofit partnerships 2024 2025
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Search parameters: {'search_depth': 'basic', 'include_raw_content': False, 'max_results': 5}
+2025-11-10 15:27:55 - backend.utils.mock_tavily - INFO - Found 0 enriched sections in mock data
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Results Summary for company_brief ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total documents found: 2
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Average relevance score: 0.94
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Documents by query:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO -   • Walmart primary business model: 2 documents
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Results Summary ===
+2025-11-10 15:27:55 - backend.nodes.researchers.company - INFO - Found 2 documents from web search.
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Results Summary for news_signal ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total documents found: 1
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Average relevance score: 0.93
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Documents by query:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO -   • Walmart new VP of sustainability 2024 2025: 1 documents
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Results Summary ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Results Summary for flw_analyzer ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total documents found: 1
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Average relevance score: 0.94
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Documents by query:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO -   • Walmart sustainable packaging initiatives 2024 2025: 1 documents
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Results Summary ===
+2025-11-10 15:27:55 - backend.nodes.researchers.flw - INFO - Found 1 documents from web search.
+2025-11-10 15:27:55 - backend.nodes.researchers.flw - INFO - Completed FLW/Sustainability analysis. Total documents collected: 1
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Results Summary for contact_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total documents found: 3
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Average relevance score: 0.87
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Documents by query:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO -   • Walmart VP of Sustainability contacts: 3 documents
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Results Summary ===
+2025-11-10 15:27:55 - backend.nodes.researchers.contact_finder - INFO - Found 3 documents from web search.
+2025-11-10 15:27:55 - backend.nodes.researchers.contact_finder - INFO - Completed contact finding. Total documents collected: 3
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === Search Results Summary for engagement_finder ===
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Total documents found: 1
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Average relevance score: 0.90
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - Documents by query:
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO -   • Walmart nonprofit partnerships 2024 2025: 1 documents
+2025-11-10 15:27:55 - backend.nodes.researchers.base - INFO - === End Search Results Summary ===
+2025-11-10 15:27:55 - backend.nodes.researchers.engagement_finder - INFO - Found 1 documents from web search.
+2025-11-10 15:27:55 - backend.nodes.researchers.engagement_finder - INFO - Completed engagement finding. Total documents collected: 1
+2025-11-10 15:27:55 - backend.nodes.collector - INFO - Inferred company_url set to clean base URL: https://example.com (from top score 0.95)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Starting curation for company: Walmart
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Found 2 unique documents for company_brief_data (company)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Found 1 unique documents for news_signal_data (news)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Found 1 unique documents for flw_data (flw)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Found 3 unique documents for contact_finder_data (contact)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Found 1 unique documents for engagement_finder_data (engagement)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation evaluation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Evaluating 2 documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.9500) for 'Walmart Financial Outlook 2024-2025' (URL: https://example.com/walmart-financial-2024)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.9200) for '[MOCK DATA] Walmart Q4 2024 Earnings Report' (URL: https://example.com/walmart-q4-2024)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Returning 2 evaluated documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Kept 2 documents for company
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation evaluation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Evaluating 1 documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.9300) for 'Walmart Announces New Sustainability Goals' (URL: https://example.com/walmart-sustainability-news)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Returning 1 evaluated documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Kept 1 documents for news
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation evaluation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Evaluating 1 documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 1.0000 (Base: 0.9400, Boost: 0.20)) for 'Walmart Sustainability Report 2024' (URL: https://example.com/walmart-sustainability-2024)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Returning 1 evaluated documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Kept 1 documents for flw
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation evaluation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Evaluating 3 documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.8900) for 'Jane Smith - Senior Sustainability Manager at Walmart' (URL: https://example.com/walmart-sustainability-team)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.8700) for 'Michael Johnson - Director of Supply Chain at Walmart' (URL: https://example.com/walmart-operations-team)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.8500) for 'Sarah Williams - Community Relations Manager at Walmart' (URL: https://example.com/walmart-community-team)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Returning 3 evaluated documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Kept 3 documents for contact
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Sending initial curation evaluation status update for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Evaluating 1 documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Document kept (Score 0.9000) for 'Walmart Partners with Food Banks' (URL: https://example.com/walmart-partnerships)
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Returning 1 evaluated documents
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Kept 1 documents for engagement
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Processing references from all curated data...
+2025-11-10 15:27:55 - backend.utils.references - INFO - Starting to process references from v2 curated search results
+2025-11-10 15:27:55 - backend.utils.references - INFO - Collected a total of 8 references before deduplication
+2025-11-10 15:27:55 - backend.utils.references - INFO - Top 20 references by score before deduplication:
+2025-11-10 15:27:55 - backend.utils.references - INFO - 1. Score: 1.0000 - URL: https://example.com/walmart-sustainability-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 2. Score: 0.9500 - URL: https://example.com/walmart-financial-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 3. Score: 0.9300 - URL: https://example.com/walmart-sustainability-news
+2025-11-10 15:27:55 - backend.utils.references - INFO - 4. Score: 0.9200 - URL: https://example.com/walmart-q4-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 5. Score: 0.9000 - URL: https://example.com/walmart-partnerships
+2025-11-10 15:27:55 - backend.utils.references - INFO - 6. Score: 0.8900 - URL: https://example.com/walmart-sustainability-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 7. Score: 0.8700 - URL: https://example.com/walmart-operations-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 8. Score: 0.8500 - URL: https://example.com/walmart-community-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - Found 8 unique references after deduplication
+2025-11-10 15:27:55 - backend.utils.references - INFO - Unique references by score (sorted):
+2025-11-10 15:27:55 - backend.utils.references - INFO - 1. Score: 1.0000 - URL: https://example.com/walmart-sustainability-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 2. Score: 0.9500 - URL: https://example.com/walmart-financial-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 3. Score: 0.9300 - URL: https://example.com/walmart-sustainability-news
+2025-11-10 15:27:55 - backend.utils.references - INFO - 4. Score: 0.9200 - URL: https://example.com/walmart-q4-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 5. Score: 0.9000 - URL: https://example.com/walmart-partnerships
+2025-11-10 15:27:55 - backend.utils.references - INFO - 6. Score: 0.8900 - URL: https://example.com/walmart-sustainability-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 7. Score: 0.8700 - URL: https://example.com/walmart-operations-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 8. Score: 0.8500 - URL: https://example.com/walmart-community-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - Final top 8 references selected:
+2025-11-10 15:27:55 - backend.utils.references - INFO - 1. Score: 1.0000 - URL: https://example.com/walmart-sustainability-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 2. Score: 0.9500 - URL: https://example.com/walmart-financial-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 3. Score: 0.9300 - URL: https://example.com/walmart-sustainability-news
+2025-11-10 15:27:55 - backend.utils.references - INFO - 4. Score: 0.9200 - URL: https://example.com/walmart-q4-2024
+2025-11-10 15:27:55 - backend.utils.references - INFO - 5. Score: 0.9000 - URL: https://example.com/walmart-partnerships
+2025-11-10 15:27:55 - backend.utils.references - INFO - 6. Score: 0.8900 - URL: https://example.com/walmart-sustainability-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 7. Score: 0.8700 - URL: https://example.com/walmart-operations-team
+2025-11-10 15:27:55 - backend.utils.references - INFO - 8. Score: 0.8500 - URL: https://example.com/walmart-community-team
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Selected top 8 references for the report
+2025-11-10 15:27:55 - backend.nodes.curator - INFO - Curation complete for Walmart. Final counts: {'company': {'initial': 2, 'kept': 2}, 'news': {'initial': 1, 'kept': 1}, 'flw': {'initial': 1, 'kept': 1}, 'contact': {'initial': 3, 'kept': 3}, 'engagement': {'initial': 1, 'kept': 1}}
+2025-11-10 15:27:55 - backend.nodes.enricher - INFO - Fetching content for 2 URLs in 1 batches (category: company).
+2025-11-10 15:27:55 - backend.nodes.enricher - INFO - Fetching content for 1 URLs in 1 batches (category: news).
+2025-11-10 15:27:55 - backend.nodes.enricher - INFO - Fetching content for 1 URLs in 1 batches (category: flw).
+2025-11-10 15:27:55 - backend.nodes.enricher - INFO - Fetching content for 3 URLs in 1 batches (category: contact).
+2025-11-10 15:27:55 - backend.nodes.enricher - INFO - Fetching content for 1 URLs in 1 batches (category: engagement).
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-operations-team. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-operations-team', 'error': 'Failed to fetch content'}], 'response_time': 0.58, 'request_id': '99fe3f14-5f94-459c-8c72-b6734dcd2d14'}
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-sustainability-team. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-sustainability-team', 'error': 'Failed to fetch content'}], 'response_time': 0.6, 'request_id': '6c0b3c2e-d6fe-4c12-8aee-28efb2c67575'}
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-financial-2024. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-financial-2024', 'error': 'Failed to fetch content'}], 'response_time': 0.68, 'request_id': 'f77f6c00-42cd-40e0-a527-45200a56c84b'}
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-sustainability-news. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-sustainability-news', 'error': 'Failed to fetch content'}], 'response_time': 0.73, 'request_id': '4523e69e-1954-4047-a7b7-5433ccd75935'}
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished fetching content for news: 0 successful, 1 failed out of 1 URLs.
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-sustainability-news for news: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished enrichment for 📰 News & Signals: 0 successful, 1 failed out of 1 attempts.
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-community-team. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-community-team', 'error': 'Failed to fetch content'}], 'response_time': 0.57, 'request_id': '310cdfd4-9f09-4644-a6d8-7e317328a86b'}
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished fetching content for contact: 0 successful, 3 failed out of 3 URLs.
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-sustainability-team for contact: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-operations-team for contact: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-community-team for contact: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished enrichment for 👥 Contacts: 0 successful, 3 failed out of 3 attempts.
+2025-11-10 15:27:56 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-q4-2024. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-q4-2024', 'error': 'Failed to fetch content'}], 'response_time': 0.82, 'request_id': '038ef50d-d74c-4f9c-ac06-b761447f5eae'}
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished fetching content for company: 0 successful, 2 failed out of 2 URLs.
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-financial-2024 for company: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-q4-2024 for company: Content fetch failed
+2025-11-10 15:27:56 - backend.nodes.enricher - INFO - Finished enrichment for 🏢 Company Brief: 0 successful, 2 failed out of 2 attempts.
+2025-11-10 15:27:57 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:27:57 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-partnerships. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-partnerships', 'error': 'Failed to fetch content'}], 'response_time': 1.36, 'request_id': 'a198ead6-106c-4cba-b7fb-4ca954c07c89'}
+2025-11-10 15:27:57 - backend.nodes.enricher - INFO - Finished fetching content for engagement: 0 successful, 1 failed out of 1 URLs.
+2025-11-10 15:27:57 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-partnerships for engagement: Content fetch failed
+2025-11-10 15:27:57 - backend.nodes.enricher - INFO - Finished enrichment for 🛰️ Engagements: 0 successful, 1 failed out of 1 attempts.
+2025-11-10 15:28:06 - httpx - INFO - HTTP Request: POST https://api.tavily.com/extract "HTTP/1.1 200 OK"
+2025-11-10 15:28:06 - backend.nodes.enricher - WARNING - Unexpected response structure or empty results from extract for https://example.com/walmart-sustainability-2024. Response: {'results': [], 'failed_results': [{'url': 'https://example.com/walmart-sustainability-2024', 'error': 'Request timed out'}], 'response_time': 10.01, 'request_id': 'e1a7f96c-ac3e-407d-b998-4408fac9d070'}
+2025-11-10 15:28:06 - backend.nodes.enricher - INFO - Finished fetching content for flw: 0 successful, 1 failed out of 1 URLs.
+2025-11-10 15:28:06 - backend.nodes.enricher - WARNING - Failed to enrich https://example.com/walmart-sustainability-2024 for flw: Content fetch failed
+2025-11-10 15:28:06 - backend.nodes.enricher - INFO - Finished enrichment for 🌿 FLW/Sustainability: 0 successful, 1 failed out of 1 attempts.
+2025-11-10 15:28:06 - backend.nodes.enricher - INFO - Content enrichment complete. Successfully enriched 0/8 documents. Failed attempts: 8.
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Creating section briefings for Walmart
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Preparing briefing task for company_brief using 2 documents from curated_company_brief_data
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Preparing briefing task for news_signal using 1 documents from curated_news_signal_data
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Preparing briefing task for flw using 1 documents from curated_flw_data
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Preparing briefing task for contact using 3 documents from curated_contact_finder_data
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Preparing briefing task for engagement using 1 documents from curated_engagement_finder_data
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Starting execution of 5 briefing tasks.
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Generating company_brief briefing for Walmart using 2 documents
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Sending prompt to Gemini for company_brief briefing (2 docs).
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Generating news_signal briefing for Walmart using 1 documents
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Sending prompt to Gemini for news_signal briefing (1 docs).
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Generating flw briefing for Walmart using 1 documents
+2025-11-10 15:28:06 - backend.nodes.briefing - INFO - Sending prompt to Gemini for flw briefing (1 docs).
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Successfully generated news_signal briefing (Length: 150 characters)
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Completed news_signal briefing (150 chars)
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Generating contact briefing for Walmart using 3 documents
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Sending prompt to Gemini for contact briefing (3 docs).
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Successfully generated flw briefing (Length: 309 characters)
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Completed flw briefing (309 chars)
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Generating engagement briefing for Walmart using 1 documents
+2025-11-10 15:28:09 - backend.nodes.briefing - INFO - Sending prompt to Gemini for engagement briefing (1 docs).
+2025-11-10 15:28:11 - backend.nodes.briefing - INFO - Successfully generated engagement briefing (Length: 180 characters)
+2025-11-10 15:28:11 - backend.nodes.briefing - INFO - Completed engagement briefing (180 chars)
+2025-11-10 15:28:13 - backend.nodes.briefing - INFO - Successfully generated contact briefing (Length: 475 characters)
+2025-11-10 15:28:13 - backend.nodes.briefing - INFO - Completed contact briefing (475 chars)
+2025-11-10 15:28:14 - backend.nodes.briefing - INFO - Successfully generated company_brief briefing (Length: 320 characters)
+2025-11-10 15:28:14 - backend.nodes.briefing - INFO - Completed company_brief briefing (320 chars)
+2025-11-10 15:28:14 - backend.nodes.briefing - INFO - Generated 5/5 briefings successfully. Total characters generated: 1434
+2025-11-10 15:28:14 - backend.nodes.briefing - INFO - Finished creating all briefings.
+2025-11-10 15:28:14 - backend.utils.references - INFO - Formatting 8 references for the report
+2025-11-10 15:28:14 - backend.utils.references - INFO - Maintaining reference order based on scores
+2025-11-10 15:28:14 - backend.utils.references - INFO - Completed references section with 8 entries
+2025-11-10 15:28:14 - backend.nodes.tagger - INFO - Starting v2 classification for Walmart...
+2025-11-10 15:28:14 - backend.nodes.tagger - INFO - Requesting OpenAI classification for: Industries
+2025-11-10 15:28:14 - backend.nodes.tagger - INFO - Requesting OpenAI classification for: Country/Region
+2025-11-10 15:28:14 - backend.nodes.tagger - INFO - Requesting OpenAI classification for: Revenue Band (est.)
+2025-11-10 15:28:14 - backend.nodes.tagger - INFO - Requesting OpenAI classification for: ReFED Alignment
+2025-11-10 15:28:16 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - OpenAI response for Revenue Band (est.): $500B-$1B
+2025-11-10 15:28:16 - backend.nodes.tagger - WARNING - OpenAI returned tags for Revenue Band (est.), but none matched allowed options: ['$500B-$1B']
+2025-11-10 15:28:16 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - OpenAI response for Country/Region: North America (US/CA), Global
+2025-11-10 15:28:16 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - OpenAI response for ReFED Alignment: U.S. Food Waste Pact Prospect/Member, Measurement & Disclosure, Solution Adopter (Corporate), Communications & Thought Leadership
+2025-11-10 15:28:16 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - OpenAI response for Industries: Grocery & Food Retail, E-commerce & Marketplaces, Waste & Resource Recovery (Recycling/Compost/AD)
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - Updating state key 'airtable_industries' with tags: ['Grocery & Food Retail', 'E-commerce & Marketplaces', 'Waste & Resource Recovery (Recycling/Compost/AD)']
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - Updating state key 'airtable_country_region' with tags: ['North America (US/CA)', 'Global']
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - No valid tags found for 'Revenue Band (est.)'. Defaulting state key 'airtable_revenue_band_est' to ['Unknown'].
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - Updating state key 'airtable_revenue_band_est' with tags: ['Unknown']
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - Updating state key 'airtable_refed_alignment' with tags: ['U.S. Food Waste Pact Prospect/Member', 'Measurement & Disclosure', 'Solution Adopter (Corporate)', 'Communications & Thought Leadership']
+2025-11-10 15:28:16 - backend.nodes.tagger - INFO - Classification complete for Walmart: {'Industries': ['Grocery & Food Retail', 'E-commerce & Marketplaces', 'Waste & Resource Recovery (Recycling/Compost/AD)'], 'Country/Region': ['North America (US/CA)', 'Global'], 'Revenue Band (est.)': ['Unknown'], 'ReFED Alignment': ['U.S. Food Waste Pact Prospect/Member', 'Measurement & Disclosure', 'Solution Adopter (Corporate)', 'Communications & Thought Leadership']}
+2025-11-10 15:28:16 - backend.graph - INFO - Starting final upload node (Airtable + Google Drive)...
+2025-11-10 15:28:16 - backend.graph - INFO - Google Drive URL found. Compiling comprehensive research context for upload...
+2025-11-10 15:28:16 - backend.utils.context_polisher - INFO - Context Polisher initialized with Gemini 2.5 Flash model

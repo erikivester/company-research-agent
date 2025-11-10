@@ -34,6 +34,7 @@ usage() {
     echo "  extension - Show Airtable extension logs only"
     echo "  ngrok     - Show ngrok logs and get public URL"
     echo "  build     - Rebuild all Docker images"
+    echo "  verify    - Run preflight checks (no containers)"
     echo "  clean     - Stop services and remove containers/volumes"
     echo ""
     exit 1
@@ -91,6 +92,15 @@ start_services() {
     check_env
     check_ngrok
     
+    # Optional preflight before starting (set PRECHECK=1)
+    if [ "${PRECHECK:-0}" = "1" ]; then
+        echo -e "${BLUE}🔎 Running preflight checks (PRECHECK=1)...${NC}"
+        if ! python3 preflight_check.py; then
+            echo -e "${RED}❌ Preflight failed. Aborting start.${NC}"
+            exit 1
+        fi
+    fi
+
     echo -e "${GREEN}🚀 Starting all services...${NC}"
     docker compose up -d
     
@@ -187,6 +197,9 @@ case "${1:-}" in
         ;;
     build)
         build_services
+        ;;
+    verify)
+        python3 preflight_check.py || exit 1
         ;;
     clean)
         clean_services

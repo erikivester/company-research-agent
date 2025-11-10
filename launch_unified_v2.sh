@@ -1,4 +1,4 @@
-#!/bin/bash
+http://localhost:8000#!/bin/bash
 
 # Unified launcher with TWO ngrok tunnels:
 # 1. Unified tunnel through nginx (for production use)

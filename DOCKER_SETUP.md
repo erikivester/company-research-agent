@@ -21,6 +21,25 @@ This Docker setup allows you to run the entire stack including:
 
 ## Quick Start
 
+### 0. Optional: Preflight checks (fast)
+
+Run local checks to catch syntax/import issues before building Docker:
+
+```bash
+# Python + Node checks
+python3 preflight_check.py
+# or
+make preflight
+# or
+./launch_docker.sh verify
+```
+
+If you want preflight to run automatically on start:
+
+```bash
+PRECHECK=1 ./launch_docker.sh start
+```
+
 ### 1. First Time Setup
 
 ```bash

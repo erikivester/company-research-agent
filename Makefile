@@ -16,6 +16,12 @@ help: ## Show this help message
 	@echo ""
 	@echo "Or use: ./launch_docker.sh [command]"
 
+preflight: ## Run Python and Node preflight checks
+	@echo "🔎 Running preflight checks..."
+	@python3 preflight_check.py
+
+verify: preflight ## Alias for preflight
+
 start: ## Start all services
 	@echo "🚀 Starting all services..."
 	@docker compose up -d
