@@ -13,6 +13,11 @@ RUN uv pip install -r requirements.txt --system
 FROM python:3.11-slim
 WORKDIR /app
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create the non-root user FIRST
 RUN useradd -m -u 1000 appuser
 RUN mkdir -p /app/pdfs /secrets
@@ -41,12 +46,12 @@ RUN chown -R appuser:appuser /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080 
+ENV PORT=8000
 
-EXPOSE 8080
+EXPOSE 8000 8001
 
 # Switch to the non-root user AT THE VERY END
 USER appuser
 
-# Start the application
-CMD ["python", "-m", "uvicorn", "application:app", "--host", "0.0.0.0", "--port", "8080"]
+# Start the application via application.py to also start metrics on 8001
+CMD ["python", "application.py"]

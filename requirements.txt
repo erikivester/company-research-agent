@@ -16,6 +16,8 @@ airtable-python-wrapper
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+prometheus-client==0.20.0
+python-dotenv==1.0.1
 pytest==7.4.4
 pytest-asyncio==0.23.4
 pytest-mock==3.12.0

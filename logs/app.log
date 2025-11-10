@@ -317,3 +317,15 @@
 2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
 2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
 2025-11-10 13:27:39 - application - INFO - Found 2 templates
+2025-11-10 14:00:59 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 14:01:00 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 14:01:00 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 14:01:00 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 14:01:00 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
+2025-11-10 14:01:00 - application - INFO - Found 0 templates
+2025-11-10 14:29:34 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 14:29:34 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 14:29:34 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 14:29:34 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 14:29:35 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: ('invalid_grant: Invalid JWT Signature.', {'error': 'invalid_grant', 'error_description': 'Invalid JWT Signature.'})
+2025-11-10 14:29:35 - application - INFO - Found 0 templates

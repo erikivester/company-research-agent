@@ -1,16 +1,68 @@
 services:
+  # FastAPI Backend Service
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+      - "8001:8001"  # Prometheus metrics
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
+      - EMAIL_TEMPLATES_FOLDER_ID=1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH
     volumes:
+      - ./pdfs:/app/pdfs
       - ./reports:/app/reports
       - ./backend:/app/backend
       - ./application.py:/app/application.py
+      - ./gdrive_credentials.json:/secrets/gdrive_credentials.json
+      - ./client_secret.json:/app/client_secret.json
     env_file:
       - .env
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Airtable Extension Development Server
+  airtable-extension:
+    build:
+      context: .
+      dockerfile: Dockerfile.airtable
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./scripting:/app/scripting
+    working_dir: /app/scripting
+    command: npm run start
+    networks:
+      - app-network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ngrok Service for External Access
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: 
+      - "http"
+      - "backend:8000"
+      - "--log=stdout"
+    ports:
+      - "4040:4040"  # ngrok dashboard
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    networks:
+      - app-network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  app-network:
+    driver: bridge

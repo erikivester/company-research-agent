@@ -1,0 +1,26 @@
+# Dockerfile for Airtable Extension Development Server
+FROM node:18-slim
+
+WORKDIR /app
+
+# Install the Airtable Blocks CLI globally
+RUN npm install -g @airtable/blocks-cli
+
+# Copy package files and npm config early for better caching
+COPY scripting/package*.json ./scripting/
+COPY scripting/.npmrc ./scripting/.npmrc
+
+# Install dependencies
+WORKDIR /app/scripting
+# Install dependencies (generate lockfile consistent with downgraded eslint)
+RUN npm install --legacy-peer-deps
+
+# Copy the entire scripting directory
+COPY scripting/ ./
+
+# Expose the Airtable block development server port
+EXPOSE 9000
+
+# Start the Airtable block development server
+# The block run command starts a local dev server on port 9000
+CMD ["npx", "block", "run", "--port", "9000"]

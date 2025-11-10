@@ -123,7 +123,7 @@ echo "   ✅ Extension server running (PID: $EXT_PID)"
 # 4. Start ngrok for Extension on different port (since 4040 is used)
 echo ""
 echo "4️⃣  Creating ngrok tunnel for Extension..."
-ngrok http https://localhost:$EXT_PORT --log=stdout > ngrok-extension.log 2>&1 &
+ngrok http https://localhost:$EXT_PORT --domain="" --log=stdout > ngrok-extension.log 2>&1 &
 NGROK_EXT_PID=$!
 sleep 4
 
