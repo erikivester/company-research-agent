@@ -15,3 +15,6 @@ airtable-python-wrapper
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+pytest==7.4.4
+pytest-asyncio==0.23.4
+pytest-mock==3.12.0

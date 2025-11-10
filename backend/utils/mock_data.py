@@ -69,6 +69,20 @@ MOCK_RESEARCH_TEMPLATE = {
                     "title": "Senior Sustainability Manager",
                     "contact": "sustainability@walmart.com"
                 }
+            ],
+            "operations": [
+                {
+                    "name": "Michael Johnson",
+                    "title": "Director of Supply Chain",
+                    "contact": "supply.chain@walmart.com"
+                }
+            ],
+            "community": [
+                {
+                    "name": "Sarah Williams",
+                    "title": "Community Relations Manager",
+                    "contact": "community@walmart.com"
+                }
             ]
         }
     },
@@ -240,6 +254,18 @@ MOCK_SEARCH_RESULTS = {
                     "url": "https://example.com/walmart-sustainability-team",
                     "content": "Jane Smith serves as Senior Sustainability Manager at Walmart, leading food waste reduction initiatives. Contact: sustainability@walmart.com",
                     "score": 0.89
+                },
+                {
+                    "title": "Michael Johnson - Director of Supply Chain at Walmart",
+                    "url": "https://example.com/walmart-operations-team",
+                    "content": "Michael Johnson oversees inventory management and waste reduction in logistics as Director of Supply Chain at Walmart. Contact: supply.chain@walmart.com",
+                    "score": 0.87
+                },
+                {
+                    "title": "Sarah Williams - Community Relations Manager at Walmart",
+                    "url": "https://example.com/walmart-community-team",
+                    "content": "Sarah Williams manages food donation partnerships and community engagement initiatives as Community Relations Manager at Walmart. Contact: community@walmart.com",
+                    "score": 0.85
                 }
             ]
         }

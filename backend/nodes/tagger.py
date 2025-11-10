@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage
 from ..classes import ResearchState
 # Make sure the uploader function can be imported
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from ..utils.status_constants import ResearchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,7 @@ Output only the selected category names, separated by commas.
             if airtable_record_id:
                 logger.info(f"Sending 'Classifying' status update to Airtable record: {airtable_record_id}")
                 asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, "Classifying")
+                    self._update_airtable_status(airtable_record_id, ResearchStatus.CLASSIFYING)
                 )
 
             state = await self.classify_company(state)
@@ -306,7 +307,7 @@ Output only the selected category names, separated by commas.
             if airtable_record_id:
                 logger.info(f"Sending 'Tagger Failed' status update to Airtable record: {airtable_record_id}")
                 asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, f"Tagger Failed: {str(e)[:50]}")
+                    self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_CLASSIFICATION, str(e)))
                 )
             
             # --- v2: Ensure ALL keys exist on failure ---

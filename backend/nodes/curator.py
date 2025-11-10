@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage
 from ..classes import ResearchState
 from ..utils.references import process_references_from_search_results
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from ..utils.status_constants import ResearchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,7 @@ class Curator:
 
         if airtable_record_id:
             asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, "Curating Documents")
+                self._update_airtable_status(airtable_record_id, ResearchStatus.CURATING_DOCUMENTS)
             )
 
         websocket_manager = state.get('websocket_manager')
@@ -343,7 +344,7 @@ class Curator:
             state.setdefault('messages', []).append(AIMessage(content=error_msg))
             if airtable_record_id:
                 asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, f"Curation Failed: {str(e)[:50]}")
+                    self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_CURATION, str(e)))
                 )
             
             # --- v2 MODIFICATION: Ensure all new v2 keys exist on failure ---

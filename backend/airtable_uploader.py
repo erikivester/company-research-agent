@@ -62,14 +62,14 @@ def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
 def _find_contact_record(contacts_airtable: Airtable, name: str, company_record_id: str, company_name: str) -> Optional[str]:
     """Searches for a contact by name that's already linked to the given company."""
     try:
-        # Build a formula that checks both name and company link
+        # Build a formula that checks name and company link
         name_safe = name.replace("'", "\\'")
-        filter_formula = f"AND({{Name}} = '{name_safe}', FIND('{company_record_id}', {{Organization}}) > 0)"
+        filter_formula = f"AND({{Name}} = '{name_safe}', FIND('{company_record_id}', ARRAYJOIN({{Organization}})) > 0)"
         
         records = contacts_airtable.get_all(
             view='Grid view',
             max_records=1,
-            fields=['Name', 'Company Name', 'Organization'],
+            fields=['Name', 'Organization'],
             formula=filter_formula
         )
         
@@ -89,7 +89,7 @@ def _find_contact_record(contacts_airtable: Airtable, name: str, company_record_
 
 def _get_contact_record_ids(contacts_airtable: Airtable, company_record_id: str) -> List[str]:
     """
-    Gets the record IDs of all contacts linked to a company.
+    Gets the record IDs of all contacts for a company.
     
     Args:
         contacts_airtable: Airtable instance for the contacts table
@@ -100,17 +100,17 @@ def _get_contact_record_ids(contacts_airtable: Airtable, company_record_id: str)
     """
     try:
         # Build formula to find all contacts linked to this company
-        filter_formula = f"FIND('{company_record_id}', {{Organization}}) > 0"
+        filter_formula = f"FIND('{company_record_id}', ARRAYJOIN({{Organization}})) > 0"
         
         records = contacts_airtable.get_all(
             view='Grid view',
-            fields=['Name', 'Title'],
+            fields=['Name', 'Title', 'Organization'],
             formula=filter_formula
         )
         
-        # Extract record IDs for linking
-        contact_ids = [record['id'] for record in records if record.get('id')]
-        logger.info(f"Found {len(contact_ids)} linked contact records for company {company_record_id}")
+        # Extract unique record IDs for linking
+        contact_ids = list(set(record['id'] for record in records if record.get('id')))
+        logger.info(f"Found {len(contact_ids)} unique linked contact records for company {company_record_id}")
         return contact_ids
         
     except Exception as e:
@@ -139,8 +139,23 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
 
     try:
         logger.info(f"Attempting to parse contacts JSON: {contacts_json}")
+        # Clean the input string - remove markdown code block markers, json markers, and whitespace
+        cleaned_json = contacts_json.strip()
+        if cleaned_json.startswith('```'):
+            # Remove opening markdown block and any 'json' language identifier
+            first_newline = cleaned_json.find('\n')
+            if first_newline != -1:
+                cleaned_json = cleaned_json[first_newline:].strip()
+            # Remove closing markdown block if it exists
+            if '```' in cleaned_json:
+                cleaned_json = cleaned_json[:cleaned_json.rfind('```')]
+        cleaned_json = cleaned_json.strip()
+        logger.info(f"Cleaned contacts JSON: {cleaned_json}")
+        
+        logger.info(f"Cleaned JSON string: {cleaned_json}")
+        
         # Parse contacts JSON
-        contacts = json.loads(contacts_json)
+        contacts = json.loads(cleaned_json)
         if not isinstance(contacts, list):
             logger.error(f"Invalid contacts format - expected list but got {type(contacts)}")
             raise ValueError("Contacts data must be a JSON array")
@@ -166,7 +181,7 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                 if not name:
                     continue
                 
-                # Get company name first
+                # Get company name from company record
                 company_airtable = Airtable(
                     base_id=base_id,
                     table_name=os.getenv('AIRTABLE_TABLE_NAME'),
@@ -174,7 +189,7 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                 )
                 company_record = company_airtable.get(company_record_id)
                 company_name = company_record['fields'].get('Organization', 'Unknown')
-                
+
                 # Check if contact already exists and is linked
                 existing_id = _find_contact_record(contacts_airtable, name, company_record_id, company_name)
                 
@@ -188,7 +203,7 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                         "record_id": existing_id
                     })
                 else:
-                    # Get company name from company record for the Organization text field
+                    # Use the company name we already retrieved
                     company_airtable = Airtable(
                         base_id=base_id,
                         table_name=os.getenv('AIRTABLE_TABLE_NAME'),
@@ -197,30 +212,37 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                     company_record = company_airtable.get(company_record_id)
                     company_name = company_record['fields'].get('Organization', 'Unknown')
 
-                    # Create new contact record with both linked record and text fields
+                    # Create new contact record with Organization as a linked record
                     fields = {
                         "Name": name,
                         "Title": contact.get('title', ''),
                         "Summary": contact.get('summary', ''),
-                        "Organization": [company_record_id],  # Linked record field
-                        "Company Name": company_name  # Text field to maintain company name
+                        "Organization": [company_record_id]  # Must be an array of record IDs for linked record field
                     }
                     
                     new_record = contacts_airtable.insert(fields)
                     new_record_id = new_record['id']
+                    logger.info(f"Created new contact record with ID: {new_record_id}")
                     
-                    # Get existing contact links
-                    existing_company = company_airtable.get(company_record_id)
-                    existing_contacts = existing_company.get('fields', {}).get('Contacts', [])
-                    
-                    # Add new contact to the list
-                    updated_contacts = existing_contacts + [new_record_id]
-                    
-                    # Update company record with new contact link
-                    company_airtable.update(
-                        company_record_id,
-                        {'Contacts': updated_contacts}
-                    )
+                    # Get existing contact links and ensure unique IDs
+                    try:
+                        existing_company = company_airtable.get(company_record_id)
+                        existing_contacts = existing_company.get('fields', {}).get('Contacts', [])
+                        logger.info(f"Found existing contacts: {existing_contacts}")
+                        
+                        # Add new contact to the list, ensuring no duplicates
+                        unique_contacts = list(set(existing_contacts + [new_record_id]))
+                        logger.info(f"Updated contact list: {unique_contacts}")
+                        
+                        # Update company record with unique contact links
+                        company_airtable.update(
+                            company_record_id,
+                            {'Contacts': unique_contacts}
+                        )
+                        logger.info(f"Updated company record with contacts: {unique_contacts}")
+                    except Exception as e:
+                        logger.error(f"Error linking contact to company: {str(e)}")
+                        # Continue processing even if linking fails
                     
                     results["new"] += 1
                     results["details"].append({
@@ -239,26 +261,40 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                     "error": str(e)
                 })
 
-            # After all contacts are processed, update the linked records in the company record
+            # Final verification and update of contact links
             try:
-                # Get contact record IDs for linking
-                contact_record_ids = _get_contact_record_ids(contacts_airtable, company_record_id)
-                
-                # Get Airtable instance for main company table
-                company_airtable = Airtable(
-                    base_id=base_id,
-                    table_name=os.getenv('AIRTABLE_TABLE_NAME'),
-                    api_key=airtable_key
-                )
-                
-                # Update the Contacts linked records field
-                company_airtable.update(
-                    company_record_id,
-                    {'Contacts': contact_record_ids}
-                )
-                logger.info(f"Updated company record with linked contact records: {len(contact_record_ids)} contacts")
+                # Get all contact record IDs that should be linked
+                contact_record_ids = []
+                for detail in results["details"]:
+                    if detail.get("record_id"):
+                        contact_record_ids.append(detail["record_id"])
+                        
+                if contact_record_ids:
+                    # Get Airtable instance for main company table
+                    company_airtable = Airtable(
+                        base_id=base_id,
+                        table_name=os.getenv('AIRTABLE_TABLE_NAME'),
+                        api_key=airtable_key
+                    )
+                    
+                    # Get existing contacts to merge with new ones
+                    existing_company = company_airtable.get(company_record_id)
+                    existing_contacts = existing_company.get('fields', {}).get('Contacts', [])
+                    
+                    # Combine existing and new contacts, ensure uniqueness
+                    all_contacts = list(set(existing_contacts + contact_record_ids))
+                    
+                    # Update the Contacts linked records field
+                    company_airtable.update(
+                        company_record_id,
+                        {'Contacts': all_contacts}
+                    )
+                    logger.info(f"Final update: Company record now has {len(all_contacts)} linked contacts")
+                else:
+                    logger.warning("No contact record IDs found to link to company")
+                    
             except Exception as lookup_exc:
-                logger.error(f"Error updating company contact links: {lookup_exc}")
+                logger.error(f"Error in final contact link verification: {lookup_exc}")
                 results["lookup_field_error"] = str(lookup_exc)
 
         logger.info(f"Contacts processing completed: {results['new']} new, {results['existing']} existing, {results['errors']} errors")

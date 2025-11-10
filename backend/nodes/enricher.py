@@ -10,6 +10,7 @@ from tavily import AsyncTavilyClient
 
 from ..classes import ResearchState
 from backend.airtable_uploader import update_airtable_record
+from ..utils.status_constants import ResearchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +182,7 @@ class Enricher:
 
         if airtable_record_id:
             asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, "Enriching Content")
+                self._update_airtable_status(airtable_record_id, ResearchStatus.ENRICHING_CONTENT)
             )
 
         if websocket_manager and job_id:
@@ -376,7 +377,7 @@ class Enricher:
             state.setdefault('messages', []).append(AIMessage(content=f"⚠️ Enrichment node failed: {error_msg}"))
             if airtable_record_id:
                  asyncio.create_task(
-                     self._update_airtable_status(airtable_record_id, "Enrichment Failed")
+                     self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_ENRICHMENT, str(e)))
                  )
             
             # --- v2 MODIFICATION: Ensure all new v2 keys exist on failure ---

@@ -6,6 +6,7 @@ from urllib.parse import urlparse # Ensure urlparse is imported
 
 from ..classes import ResearchState
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from ..utils.status_constants import ResearchStatus
 
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,6 @@ class Collector:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
             asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, "Collecting Data")
+                self._update_airtable_status(airtable_record_id, ResearchStatus.COLLECTING_DATA)
             )
         return await self.collect(state)

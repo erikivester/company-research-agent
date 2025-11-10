@@ -8,6 +8,8 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
+
+from backend.utils.status_constants import ResearchStatus
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -18,6 +20,9 @@ from backend.graph import Graph
 from backend.services.mongodb import MongoDBService
 from backend.services.pdf_service import PDFService
 from backend.services.websocket_manager import WebSocketManager
+from backend.services.email_generator import EmailGeneratorService
+from backend.classes.email_models import EmailGenerationRequest, EmailGenerationResponse
+from backend.utils.email_templates import get_template_manager
 
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
 from backend.airtable_uploader import update_airtable_record
@@ -30,6 +35,9 @@ from backend.debug_airtable import run_airtable_debug_test
 env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(dotenv_path=env_path, override=True)
+
+# Set email templates folder ID
+os.environ["EMAIL_TEMPLATES_FOLDER_ID"] = "1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
 
 # Configure logging
 logger = logging.getLogger()
@@ -49,6 +57,10 @@ app.add_middleware(
 
 manager = WebSocketManager()
 pdf_service = PDFService({"pdf_output_dir": "pdfs"})
+# Initialize services
+manager = WebSocketManager()
+pdf_service = PDFService({"pdf_output_dir": "pdfs"})
+# Email service will be initialized lazily when needed
 
 job_status = defaultdict(lambda: {
     "status": "pending",
@@ -286,7 +298,7 @@ async def start_research_webhook(data: AirtableWebhookInput):
             logger.warning(f"Webhook rejected: Missing or empty company name. Received: {data.company!r}")
             # Immediately update Airtable to "Failed" if we have an ID
             if data.airtable_record_id:
-                asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, "Failed: Missing Company Name"))
+                asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.FAILED_MISSING_COMPANY))
             raise HTTPException(
                 status_code=422, 
                 detail="Company name is required and cannot be empty."
@@ -307,7 +319,7 @@ async def start_research_webhook(data: AirtableWebhookInput):
         
         # 1. CRITICAL: Immediately update Airtable status to "Queued" 
         if data.airtable_record_id:
-             asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, "Queued"))
+             asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.QUEUED))
 
         # 2. Start the job using the SEMAPHORE WRAPPER (This is now the non-blocking part)
         # --- v2 MODIFIED: Pass data.google_drive_folder_url ---
@@ -484,6 +496,81 @@ async def debug_run_final_nodes(record_id: Optional[str] = None):
             detail=f"Failed to run final nodes: {str(e)}"
         )
 # --- END FIX ---
+
+# Get email service instance
+def get_email_service() -> EmailGeneratorService:
+    """Get the singleton email service instance."""
+    return EmailGeneratorService()
+
+@app.get("/templates")
+async def list_email_templates():
+    """Get a list of available email templates."""
+    try:
+        # Get template manager and refresh templates from Google Drive
+        template_manager = get_template_manager()
+        await template_manager.refresh_templates()
+        return template_manager.list_templates()
+    except Exception as e:
+        logger.error(f"Error listing templates: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch email templates")
+
+@app.post("/generate-outreach")
+async def generate_outreach_email(data: EmailGenerationRequest):
+    """
+    Generate a personalized outreach email by synthesizing template, research, and Airtable context.
+    """
+    try:
+        logger.info(f"Generating outreach email for contact: {data.contact_name} using template: {data.template_type}")
+        
+        # Get email service instance
+        email_service = get_email_service()
+        
+        # 1. Fetch email template
+        template_result = await email_service.fetch_template(data.template_type)
+        if not template_result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Email template '{data.template_type}' not found"
+            )
+        template_name, template_content = template_result
+        
+        # 2. Fetch research context
+        research_context = await email_service.fetch_research_context(
+            str(data.google_drive_folder_url)
+        )
+        if not research_context:
+            logger.warning(f"No research context found in folder: {data.google_drive_folder_url}")
+        
+        # 3. Generate email using template, research, and Airtable context
+        email_text = await email_service.generate_email(
+            template_content=template_content,
+            research_context=research_context,
+            airtable_context=data.airtable_context.dict(),
+            contact_name=data.contact_name
+        )
+        
+        if not email_text:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate email content"
+            )
+        
+        # 4. Return generated email with context usage info
+        return EmailGenerationResponse(
+            email_text=email_text,
+            template_used=template_name,
+            context_used={
+                "template": bool(template_content),
+                "research": bool(research_context),
+                "airtable": True
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating outreach email: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 async def ping():

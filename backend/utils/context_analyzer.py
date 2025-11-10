@@ -26,24 +26,94 @@ class ContextAnalyzer:
             Enhanced dictionary with AI-optimized structure
         """
         try:
-            # Basic metadata enhancement
+            logger.debug(f"Received research data keys: {research_data.keys() if isinstance(research_data, dict) else 'Not a dictionary'}")
+            
+            # Start with a fresh structure
             enhanced_data = {
-                "metadata": {
-                    "context_type": "company_research",
-                    "data_structure_version": "2.0",
-                    "content_sections": [
-                        "company_identity",
-                        "raw_research",
-                        "processed_research",
-                        "source_analysis"
-                    ],
-                    "data_relationships": {
-                        "queries_to_sources": {},
-                        "sources_to_insights": {},
-                        "cross_references": {}
-                    }
+                "company_identity": {
+                    "name": "Company",
+                    "headquarters": "Not Available",
+                    "industry": "Not Available",
+                    "region": "Not Available",
+                    "scale": "Not Available",
+                    "website": "Not Available"
+                },
+                "research_meta": {
+                    "queries_used": {},
+                    "successful_extractions": {
+                        "total_analyzed": 0,
+                        "relevant_sources": 0,
+                        "contacts_found": 0
+                    },
+                    "timestamp": ""
+                },
+                "official_content": {
+                    "company_information": {},
+                    "sustainability_reporting": {}
+                },
+                "recent_developments": {
+                    "news_coverage": {}
+                },
+                "key_personnel": {
+                    "identified_contacts": {}
+                },
+                "engagement_signals": {
+                    "partnerships_and_initiatives": {}
+                },
+                "source_credibility": {
+                    "reference_info": {}
                 }
             }
+            
+            # Update with actual data if available
+            if isinstance(research_data, dict):
+                # Extract company identity data
+                company_data = {}
+                for section in research_data.get('official_content', {}).values():
+                    for data in section.values():
+                        if isinstance(data, dict) and data.get('source_type') == 'company_website':
+                            company_data = data
+                            break
+                
+                # Update company identity
+                company_name = (company_data.get('company_name') or 
+                              research_data.get('company_name') or 
+                              research_data.get('name', 'Company'))
+                enhanced_data['company_identity'].update({
+                    "name": company_name,
+                    "headquarters": company_data.get('headquarters', 'Not Available'),
+                    "industry": company_data.get('industry', 'Not Available'),
+                    "region": company_data.get('region', 'Not Available'),
+                    "scale": company_data.get('scale', 'Not Available'),
+                    "website": company_data.get('website', 'Not Available')
+                })
+                
+                # Update with actual data if available
+                if 'research_meta' in research_data:
+                    enhanced_data['research_meta'].update(research_data['research_meta'])
+                    logger.debug(f"Updated research_meta with keys: {research_data['research_meta'].keys()}")
+                
+                # Update content sections
+                for section in ['official_content', 'recent_developments', 'key_personnel', 
+                              'engagement_signals', 'source_credibility']:
+                    if section in research_data:
+                        enhanced_data[section].update(research_data[section])
+                        logger.debug(f"Updated section '{section}' with keys: {research_data[section].keys()}")
+                    else:
+                        logger.warning(f"Missing section in research data: {section}")
+                
+                # Include final summary if available
+                if 'final_summary' in research_data:
+                    enhanced_data['final_summary'] = research_data['final_summary']
+                    logger.debug("Added final_summary to enhanced data")
+                else:
+                    logger.warning("Missing final_summary in research data")
+                
+                # Log final structure
+                logger.debug(f"Final enhanced data structure keys: {enhanced_data.keys()}")
+                logger.debug(f"Number of sources in official_content: {len(enhanced_data['official_content'].get('company_information', {}))}")
+                logger.debug(f"Number of news items: {len(enhanced_data['recent_developments'].get('news_coverage', {}))}")
+                logger.debug(f"Number of contacts: {len(enhanced_data['key_personnel'].get('identified_contacts', {}))}")
 
             # Track relationships between queries and their results
             for query_type, queries in research_data.get('research_meta', {}).get('queries_used', {}).items():

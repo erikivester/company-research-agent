@@ -7,6 +7,7 @@ from tavily import AsyncTavilyClient
 
 from ..classes import InputState, ResearchState
 from backend.airtable_uploader import update_airtable_record # synchronous function
+from ..utils.status_constants import ResearchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ class GroundingNode:
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
             # AWAIT the critical initial status update
-            await self._update_airtable_status(airtable_record_id, "In Progress")
+            await self._update_airtable_status(airtable_record_id, ResearchStatus.IN_PROGRESS)
         
         # Pass the original state object to be modified
         return await self.initial_search(state)
