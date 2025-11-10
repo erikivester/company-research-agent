@@ -1,0 +1,319 @@
+2025-11-09 20:21:11 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:21:11 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:21:11 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-09 20:21:11 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:21:12 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:21:13 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:21:13 - application - INFO - Found 2 templates
+2025-11-09 20:24:34 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:24:34 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:24:34 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:24:35 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:24:35 - application - INFO - Found 2 templates
+2025-11-09 20:24:53 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:24:53 - application - INFO - Found 2 templates
+2025-11-09 20:24:59 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:24:59 - application - INFO - Found 2 templates
+2025-11-09 20:25:55 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:25:55 - application - INFO - Found 2 templates
+2025-11-09 20:28:03 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:28:03 - application - INFO - Found 2 templates
+2025-11-09 20:29:09 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:29:09 - application - INFO - Found 2 templates
+2025-11-09 20:30:18 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:30:18 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:30:18 - application - INFO - Found 2 templates
+2025-11-09 20:32:08 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-09 20:32:08 - backend.services.email_generator - WARNING - GOOGLE_APPLICATION_CREDENTIALS not set, Drive features will be unavailable
+2025-11-09 20:32:08 - backend.services.email_generator - ERROR - Drive service not available
+2025-11-09 20:33:43 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-09 20:33:43 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:33:43 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-09 20:33:43 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:33:43 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:33:44 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:33:44 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:33:45 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:33:45 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:33:45 - googleapiclient.http - WARNING - Encountered 403 Forbidden with reason "fileNotDownloadable"
+2025-11-09 20:33:45 - backend.services.email_generator - ERROR - Error accessing template: <HttpError 403 when requesting https://www.googleapis.com/drive/v3/files/1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ?alt=media returned "Only files with binary content can be downloaded. Use Export with Docs Editors files.". Details: "[{'message': 'Only files with binary content can be downloaded. Use Export with Docs Editors files.', 'domain': 'global', 'reason': 'fileNotDownloadable', 'location': 'alt', 'locationType': 'parameter'}]">
+2025-11-09 20:34:55 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-09 20:34:55 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:34:55 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-09 20:34:55 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:34:55 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:34:56 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:34:57 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-09 20:35:05 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-09 20:35:17 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-09 20:35:17 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-09 20:35:17 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-09 20:35:18 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-09 20:35:18 - application - INFO - Found 2 templates
+2025-11-09 20:35:22 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-09 20:35:22 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-09 20:35:22 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-09 20:35:23 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-09 20:35:34 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:35:44 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:35:44 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:35:44 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
+2025-11-10 08:35:44 - application - INFO - Found 0 templates
+2025-11-10 08:37:12 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:37:12 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:37:12 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
+2025-11-10 08:37:12 - application - INFO - Found 0 templates
+2025-11-10 08:37:20 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:37:20 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:37:21 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
+2025-11-10 08:37:21 - application - INFO - Found 0 templates
+2025-11-10 08:39:18 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:39:18 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:39:18 - backend.utils.email_templates - ERROR - Unexpected error refreshing templates: [Errno 32] Broken pipe
+2025-11-10 08:39:18 - application - INFO - Found 0 templates
+2025-11-10 08:39:32 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:39:32 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:39:33 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:39:33 - application - INFO - Found 2 templates
+2025-11-10 08:39:40 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:39:40 - application - INFO - Found 2 templates
+2025-11-10 08:39:51 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:39:51 - application - INFO - Found 2 templates
+2025-11-10 08:40:46 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:40:46 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:40:46 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:40:46 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:40:47 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:40:48 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:40:48 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:40:48 - application - INFO - Found 2 templates
+2025-11-10 08:41:08 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:41:08 - application - INFO - Found 2 templates
+2025-11-10 08:41:42 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:41:42 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:41:42 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:41:43 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:41:43 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:41:44 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:41:44 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:41:44 - application - INFO - Found 2 templates
+2025-11-10 08:41:48 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:41:48 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:41:48 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-10 08:41:50 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:42:07 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:43:04 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:43:04 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:43:04 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-10 08:43:04 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:43:04 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:43:05 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:43:06 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:43:19 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:44:22 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:44:22 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:44:22 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:44:23 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:44:23 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:44:24 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:44:24 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:44:24 - application - INFO - Found 2 templates
+2025-11-10 08:44:27 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:44:27 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:44:27 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-10 08:44:28 - application - WARNING - No research context found in folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:45:02 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - Loaded Google Drive credentials from file: /Users/erikivester/company-research-agent/gdrive_credentials.json
+2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - Google Drive credentials loaded for service account: airtable-drive-creator@gen-lang-client-0733445580.iam.gserviceaccount.com
+2025-11-10 08:47:45 - backend.utils.gdrive_uploader - INFO - ✓ SA can see 1 Shared Drive(s)
+2025-11-10 08:47:46 - backend.utils.gdrive_uploader - INFO - Target folder is in Shared Drive with ID: 0AH84XqkvrUuAUk9PVA
+2025-11-10 08:48:51 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:48:51 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:48:51 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-10 08:48:51 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:48:51 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:48:52 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:48:52 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:48:53 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:48:53 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:48:54 - backend.services.email_generator - INFO - Found 4 files in research folder: 1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:48:54 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_174456.pdf (application/pdf)
+2025-11-10 08:48:55 - backend.services.email_generator - ERROR - Error processing file Walmart_research_report_20251109_174456.pdf: 'utf-8' codec can't decode byte 0x93 in position 10: invalid start byte
+2025-11-10 08:48:55 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_174453.json (application/json)
+2025-11-10 08:48:55 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_173647.pdf (application/pdf)
+2025-11-10 08:48:56 - backend.services.email_generator - ERROR - Error processing file Walmart_research_report_20251109_173647.pdf: 'utf-8' codec can't decode byte 0x93 in position 10: invalid start byte
+2025-11-10 08:48:56 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_173645.json (application/json)
+2025-11-10 08:49:10 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:50:29 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:50:29 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:50:29 - backend.services.email_generator - INFO - Google Drive service initialized successfully
+2025-11-10 08:50:29 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 08:50:29 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 08:50:29 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 08:50:30 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 08:50:31 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Found 4 files in research folder: 1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_174456.pdf (application/pdf)
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Skipping PDF file (not yet supported): Walmart_research_report_20251109_174456.pdf
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_174453.json (application/json)
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Successfully processed: walmart_research_20251109_174453.json
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: Walmart_research_report_20251109_173647.pdf (application/pdf)
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Skipping PDF file (not yet supported): Walmart_research_report_20251109_173647.pdf
+2025-11-10 08:50:32 - backend.services.email_generator - INFO - Processing research file: walmart_research_20251109_173645.json (application/json)
+2025-11-10 08:50:33 - backend.services.email_generator - INFO - Successfully processed: walmart_research_20251109_173645.json
+2025-11-10 08:50:45 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 08:52:29 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 08:52:29 - application - INFO - Found 2 templates
+2025-11-10 08:52:32 - application - INFO - Generating outreach email for contact: Jane Smith using template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH
+2025-11-10 08:52:33 - backend.services.email_generator - INFO - Using cached research context for folder: https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3
+2025-11-10 08:52:45 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-11-10 09:17:58 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 09:17:58 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 09:17:58 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 09:17:59 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 09:17:59 - application - INFO - Found 2 templates
+2025-11-10 10:08:59 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:08:59 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 10:08:59 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 10:08:59 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 10:09:00 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 10:09:01 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 10:09:01 - application - INFO - Found 2 templates
+2025-11-10 10:09:07 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:09:07 - application - INFO - Found 2 templates
+2025-11-10 10:10:21 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:10:21 - application - INFO - Found 2 templates
+2025-11-10 10:10:49 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:10:49 - application - INFO - Found 2 templates
+2025-11-10 10:10:53 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:10:53 - application - INFO - Found 2 templates
+2025-11-10 10:11:10 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:11:10 - application - INFO - Found 2 templates
+2025-11-10 10:22:14 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 10:22:14 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 10:22:14 - application - INFO - Found 2 templates
+2025-11-10 10:22:35 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:22:35 - application - INFO - Found 2 templates
+2025-11-10 10:22:41 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:22:41 - application - INFO - Found 2 templates
+2025-11-10 10:22:42 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 10:22:42 - application - INFO - Found 2 templates
+2025-11-10 13:27:36 - application - INFO - Listing templates (requested by: Airtable extension)
+2025-11-10 13:27:36 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Google Drive service initialized successfully
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Searching for files in folder: 1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found 2 files in folder
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document, id: 1bwwY-5DIgKR7NoTqlJeeoF_k9GP3JaBq77we4ozJGvQ)
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Found file: STANDARD_INTRO.md (type: text/markdown, id: 1QRYxOlfnjf7NBVyFIo88unmm7-fdXxVn)
+2025-11-10 13:27:36 - backend.utils.email_templates - INFO - Processing file: CGF Methane Open Call Corporate Outreach (type: application/vnd.google-apps.document)
+2025-11-10 13:27:37 - backend.utils.email_templates - INFO - Successfully loaded template: CGF_METHANE_OPEN_CALL_CORPORATE_OUTREACH from CGF Methane Open Call Corporate Outreach
+2025-11-10 13:27:37 - backend.utils.email_templates - INFO - Processing file: STANDARD_INTRO.md (type: text/markdown)
+2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Successfully loaded template: STANDARD_INTRO from STANDARD_INTRO.md
+2025-11-10 13:27:39 - backend.utils.email_templates - INFO - Refreshed 2 templates from Drive folder
+2025-11-10 13:27:39 - application - INFO - Found 2 templates

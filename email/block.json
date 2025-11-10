@@ -1,0 +1,6 @@
+{
+    "version": "1.0",
+    "frontendEntry": "./frontend/index.js",
+    "name": "AI Email Generator",
+    "description": "Generate personalized outreach emails using AI with templates from Google Drive and research context"
+}

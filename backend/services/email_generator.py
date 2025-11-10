@@ -64,16 +64,30 @@ class EmailGeneratorService:
         if self.drive_service is not None:
             return
 
+        # Try to get credentials from either file path or JSON string
         credentials_path = self.credentials_path or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not credentials_path:
-            logger.warning("GOOGLE_APPLICATION_CREDENTIALS not set, Drive features will be unavailable")
+        credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
+        
+        if not credentials_path and not credentials_json:
+            logger.warning("No Google Drive credentials found (GOOGLE_APPLICATION_CREDENTIALS or GDRIVE_CREDENTIALS_JSON), Drive features will be unavailable")
             return
 
         try:
-            credentials = service_account.Credentials.from_service_account_file(
-                credentials_path,
-                scopes=['https://www.googleapis.com/auth/drive.readonly']
-            )
+            if credentials_json:
+                # Load credentials from JSON string
+                import json
+                credentials_info = json.loads(credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(
+                    credentials_info,
+                    scopes=['https://www.googleapis.com/auth/drive.readonly']
+                )
+            else:
+                # Load credentials from file
+                credentials = service_account.Credentials.from_service_account_file(
+                    credentials_path,
+                    scopes=['https://www.googleapis.com/auth/drive.readonly']
+                )
+            
             self.drive_service = build('drive', 'v3', credentials=credentials)
             logger.info("Google Drive service initialized successfully")
         except Exception as e:
@@ -107,13 +121,31 @@ class EmailGeneratorService:
                 logger.error(f"Template not found: {template_type}")
                 return None
 
+            # Get template metadata to check file type
+            template = template_manager.templates.get(template_type.upper())
+            if not template:
+                logger.error(f"Template metadata not found: {template_type}")
+                return None
+
             # Get the template content asynchronously
             loop = asyncio.get_running_loop()
-            content = await loop.run_in_executor(None,
-                lambda: self.drive_service.files().get_media(fileId=template_id).execute()
-            )
-            template = template_manager.templates.get(template_type.upper())
-            return template.name, content.decode('utf-8')
+            
+            # Check if it's a Google Doc (needs export) or a regular file (needs download)
+            if 'google-apps' in template.name.lower() or template_id.startswith('1'):
+                # Export Google Docs as plain text
+                content = await loop.run_in_executor(None,
+                    lambda: self.drive_service.files().export(
+                        fileId=template_id,
+                        mimeType='text/plain'
+                    ).execute()
+                )
+            else:
+                # Download regular files
+                content = await loop.run_in_executor(None,
+                    lambda: self.drive_service.files().get_media(fileId=template_id).execute()
+                )
+            
+            return template.name, content.decode('utf-8') if isinstance(content, bytes) else content
 
         except HttpError as error:
             logger.error(f"Error accessing template: {error}")
@@ -146,27 +178,66 @@ class EmailGeneratorService:
             # Extract folder ID from URL
             folder_id = folder_url.split('/')[-1]
             
-            # List all files in the folder
+            # Ensure Drive service is initialized
+            self.ensure_drive_service()
+            if not self.drive_service:
+                logger.warning("Drive service not available for research context")
+                return {}
+            
+            # List all files in the folder (including Shared Drive files)
             query = f"'{folder_id}' in parents and trashed = false"
             results = self.drive_service.files().list(
                 q=query,
                 spaces='drive',
-                fields='files(id, name, mimeType)'
+                fields='files(id, name, mimeType)',
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True
             ).execute()
 
+            files = results.get('files', [])
+            logger.info(f"Found {len(files)} files in research folder: {folder_id}")
+            
             research_data = {}
             
-            for file in results.get('files', []):
+            for file in files:
                 try:
-                    # Download file content
-                    content = self.drive_service.files().get_media(fileId=file['id']).execute()
+                    logger.info(f"Processing research file: {file['name']} ({file['mimeType']})")
+                    
+                    # Skip PDFs and binary files for now - they need special handling
+                    if file['mimeType'] == 'application/pdf':
+                        logger.info(f"Skipping PDF file (not yet supported): {file['name']}")
+                        continue
+                    
+                    # Download file content based on type
+                    if 'google-apps' in file['mimeType']:
+                        # Export Google Docs/Sheets as plain text
+                        content = self.drive_service.files().export(
+                            fileId=file['id'],
+                            mimeType='text/plain'
+                        ).execute()
+                    else:
+                        # Download regular files
+                        content = self.drive_service.files().get_media(
+                            fileId=file['id']
+                        ).execute()
+                    
+                    # Decode content
+                    if isinstance(content, bytes):
+                        try:
+                            content_str = content.decode('utf-8')
+                        except UnicodeDecodeError:
+                            # Try with a more forgiving encoding
+                            content_str = content.decode('utf-8', errors='ignore')
+                    else:
+                        content_str = content
                     
                     # Parse content based on file type using ResearchFileParser
                     parsed_content = ResearchFileParser.parse_file(
                         file_path=file['name'],
-                        content=content if isinstance(content, str) else content.decode('utf-8')
+                        content=content_str
                     )
                     research_data[file['name']] = parsed_content
+                    logger.info(f"Successfully processed: {file['name']}")
                         
                 except Exception as e:
                     logger.error(f"Error processing file {file['name']}: {e}")

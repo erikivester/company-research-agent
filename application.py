@@ -10,11 +10,12 @@ import uvicorn
 from dotenv import load_dotenv
 import prometheus_client
 from prometheus_client import start_http_server
+import httpx
 
 from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
 from backend.config import config  # Import the singleton config instance
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -26,7 +27,9 @@ from backend.services.pdf_service import PDFService
 from backend.services.websocket_manager import WebSocketManager
 from backend.services.email_generator import EmailGeneratorService
 from backend.classes.email_models import EmailGenerationRequest, EmailGenerationResponse
+from backend.classes.auth_models import TokenRequest, Token
 from backend.utils.email_templates import get_template_manager
+from backend.utils.api_key import verify_api_key
 
 # ⬇️ This import remains as it's used by the GRAPH, not directly here ⬇️
 from backend.airtable_uploader import update_airtable_record
@@ -108,7 +111,7 @@ app.add_middleware(SlowAPIMiddleware)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=security_config.allowed_origins,
+    allow_origins=["*"],  # Allow all origins for Airtable compatibility
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -574,6 +577,15 @@ def get_email_service() -> EmailGeneratorService:
     """Get the singleton email service instance."""
     return EmailGeneratorService()
 
+@app.options("/templates")
+async def templates_options():
+    """Handle CORS preflight requests for /templates endpoint."""
+    response = JSONResponse(content=None)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
 @app.get("/templates",
          responses={
              200: {
@@ -587,15 +599,12 @@ def get_email_service() -> EmailGeneratorService:
                      }
                  }
              },
-             401: {"description": "Not authenticated"},
              429: {"description": "Rate limit exceeded"},
              500: {"description": "Internal server error"}
          },
          tags=["Email Templates"])
 @limiter.limit(f"{security_config.rate_limit_requests}/hour")
-async def list_email_templates(
-    current_user: dict = Depends(JWTBearer(secret_key=config.JWT_SECRET_KEY))
-):
+async def list_email_templates(request: Request):
     """
     Get a list of available email templates.
     
@@ -611,7 +620,7 @@ async def list_email_templates(
         HTTPException: If templates cannot be fetched or rate limit is exceeded
     """
     try:
-        logger.info(f"Listing templates (requested by: {current_user.get('email', 'unknown')})")
+        logger.info("Listing templates (requested by: Airtable extension)")
         
         # Get template manager and refresh templates from Google Drive
         template_manager = get_template_manager()
@@ -619,27 +628,43 @@ async def list_email_templates(
         
         templates = template_manager.list_templates()
         logger.info(f"Found {len(templates)} templates")
-        
-        return templates
+
+        # Clean BOM characters from template descriptions
+        cleaned_templates = {
+            key: value.replace('\ufeff', '').strip() 
+            for key, value in templates.items()
+        }
+
+        # Enable CORS for Airtable
+        response = JSONResponse(content=cleaned_templates)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
         
     except RateLimitExceeded as e:
-        logger.warning(f"Rate limit exceeded for user: {current_user.get('email', 'unknown')}")
+        logger.warning("Rate limit exceeded for Airtable extension request")
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Please try again later."
         )
     except Exception as e:
-        logger.error(
-            f"Error listing templates: {e}, "
-            f"User: {current_user.get('email', 'unknown')}",
-            exc_info=True
-        )
+        logger.error(f"Error listing templates: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch email templates")
+
+@app.options("/generate-outreach")
+async def generate_outreach_options():
+    """Handle CORS preflight requests for /generate-outreach endpoint."""
+    response = JSONResponse(content=None)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Max-Age"] = "3600"
+    return response
 
 @app.post("/generate-outreach", 
          responses={
              200: {"description": "Successfully generated email"},
-             401: {"description": "Not authenticated"},
              404: {"description": "Template not found"},
              422: {"description": "Invalid input data"},
              429: {"description": "Rate limit exceeded"},
@@ -648,8 +673,8 @@ async def list_email_templates(
          tags=["Email Generation"])
 @limiter.limit(f"{security_config.rate_limit_requests}/hour")
 async def generate_outreach_email(
-    data: EmailGenerationRequest,
-    current_user: dict = Depends(JWTBearer(secret_key=config.JWT_SECRET_KEY))
+    request: Request,
+    data: EmailGenerationRequest
 ):
     """
     Generate a personalized outreach email by synthesizing template, research, and Airtable context.
@@ -689,11 +714,10 @@ async def generate_outreach_email(
                 detail="Invalid Google Drive folder URL format"
             )
             
-        # Log request with user context
+        # Log request
         logger.info(
             f"Generating outreach email for contact: {contact_name} "
-            f"using template: {data.template_type} "
-            f"(requested by: {current_user.get('email', 'unknown')})"
+            f"using template: {data.template_type}"
         )
         
         # Get email service instance
@@ -736,7 +760,7 @@ async def generate_outreach_email(
             )
         
         # 4. Return generated email with context usage info
-        return EmailGenerationResponse(
+        response = JSONResponse(content=EmailGenerationResponse(
             email_text=email_text,
             template_used=template_name,
             context_used={
@@ -744,20 +768,25 @@ async def generate_outreach_email(
                 "research": bool(research_context),
                 "airtable": True
             }
-        )
+        ).dict())
+
+        # Add CORS headers for Airtable
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
 
     except HTTPException:
         raise
     except RateLimitExceeded as e:
-        logger.warning(f"Rate limit exceeded for user: {current_user.get('email', 'unknown')}")
+        logger.warning("Rate limit exceeded for Airtable extension request")
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Please try again later."
         )
     except Exception as e:
         logger.error(
-            f"Error generating outreach email: {e}, "
-            f"User: {current_user.get('email', 'unknown')}", 
+            f"Error generating outreach email: {e}", 
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=str(e))
@@ -864,5 +893,101 @@ def start():
     # Start the FastAPI application
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+@app.post("/auth/token", 
+         responses={
+             200: {"description": "Successfully created auth token"},
+             401: {"description": "Invalid API key"},
+             500: {"description": "Internal server error"}
+         },
+         tags=["Authentication"])
+async def get_auth_token(data: TokenRequest):
+    """
+    Create a new JWT auth token using an API key.
+    
+    Args:
+        data: TokenRequest containing email and API key
+        
+    Returns:
+        Token containing the JWT access token
+        
+    Raises:
+        HTTPException: If API key verification fails
+    """
+    try:
+        if not verify_api_key(data.api_key):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid API key"
+            )
+            
+        # Create token with user email embedded
+        token_data = {"email": data.email}
+        token = create_access_token(
+            data=token_data,
+            secret_key=config.JWT_SECRET_KEY
+        )
+        
+        return Token(access_token=token)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating auth token: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 if __name__ == "__main__":
     start()
+
+# ===== AIRTABLE BLOCK PROXY =====
+# Proxy endpoint to forward requests to the local Airtable block dev server
+# This allows Airtable (https://airtable.com) to access the block via the ngrok HTTPS URL
+@app.api_route("/block/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_to_block_server(path: str, request: Request):
+    """
+    Reverse proxy to forward all /block/* requests to the local Airtable block dev server.
+    This resolves CORS issues by exposing the block server through the existing ngrok HTTPS tunnel.
+    """
+    # Target URL for the local block development server
+    target_url = f"http://localhost:9000/{path}"
+    
+    # Get query parameters
+    query_params = str(request.url.query)
+    if query_params:
+        target_url += f"?{query_params}"
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Forward the request to the local block server
+            response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers={k: v for k, v in request.headers.items() 
+                        if k.lower() not in ['host', 'connection']},
+                content=await request.body(),
+                follow_redirects=True
+            )
+            
+            # Create response with the same status code and content
+            proxy_response = JSONResponse(
+                content=response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                status_code=response.status_code
+            )
+            
+            # Copy relevant headers from the block server response
+            for header, value in response.headers.items():
+                if header.lower() not in ['content-encoding', 'content-length', 'transfer-encoding', 'connection']:
+                    proxy_response.headers[header] = value
+            
+            # Ensure CORS headers are set
+            proxy_response.headers["Access-Control-Allow-Origin"] = "*"
+            proxy_response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+            proxy_response.headers["Access-Control-Allow-Headers"] = "*"
+            
+            return proxy_response
+            
+    except httpx.RequestError as e:
+        logger.error(f"Error proxying request to block server: {e}")
+        raise HTTPException(
+            status_code=502, 
+            detail=f"Failed to connect to block development server: {str(e)}"
+        )

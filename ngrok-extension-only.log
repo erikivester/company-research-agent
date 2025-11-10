@@ -1,0 +1,7 @@
+t=2025-11-10T13:52:16-0600 lvl=info msg="no configuration paths supplied"
+t=2025-11-10T13:52:16-0600 lvl=info msg="using configuration at default config path" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml"
+t=2025-11-10T13:52:16-0600 lvl=info msg="open config file" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml" err=nil
+t=2025-11-10T13:52:16-0600 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-11-10T13:52:16-0600 lvl=info msg="client session established" obj=tunnels.session
+t=2025-11-10T13:52:16-0600 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-11-10T13:52:17-0600 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=https://localhost:9002 url=https://futuramic-nonglandulous-senaida.ngrok-free.dev

@@ -24,6 +24,13 @@ node_modules/
 # LangGraph
 .langgraph/
 
+# Nginx and service logs
+nginx.log
+api-server.log
+extension-server.log
+ngrok.log
+server.log
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml

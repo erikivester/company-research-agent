@@ -11,6 +11,7 @@ class Config:
         # Load settings from environment variables
         self.USE_MOCK_DATA = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
         self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+        self.API_KEY = os.getenv("API_KEY", "default-dev-key-please-change")
         
         # Security settings
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development")
