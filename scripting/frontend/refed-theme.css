@@ -1,0 +1,49 @@
+/* ReFED PDF color palette for extension UI */
+:root {
+  --refed-dark: #384954;
+  --refed-green: #48B674;
+  --refed-light-grey: #EFEDEB;
+  --refed-light-green-tint: #D1ECC1;
+}
+
+body {
+  background-color: var(--refed-light-grey);
+  color: var(--refed-dark);
+}
+
+.heading-refed {
+  color: var(--refed-dark);
+}
+
+.button-refed-primary {
+  background-color: var(--refed-green) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.button-refed-dark {
+  background-color: var(--refed-dark) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.button-refed-light {
+  background-color: var(--refed-light-grey) !important;
+  color: var(--refed-dark) !important;
+  border: 1px solid var(--refed-dark) !important;
+}
+
+.status-success {
+  background-color: var(--refed-light-green-tint);
+  color: var(--refed-green);
+}
+
+.status-error {
+  background-color: #ffd6cc;
+  color: #cf222e;
+}
+
+.status-info {
+  background-color: var(--refed-light-grey);
+  color: var(--refed-dark);
+}

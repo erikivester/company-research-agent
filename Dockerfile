@@ -36,10 +36,9 @@ COPY requirements.txt .
 RUN find . \
     -type d -name "__pycache__" -exec rm -r {} +
 
-# --- ADD THIS LINE ---
-# Copy the GDrive credentials to the path expected by gdrive_uploader.py
-COPY gdrive_credentials.json /secrets/gdrive_credentials.json
-# --- END ADDED LINE ---
+# --- OPTIONAL: Copy GDrive credentials if building locally ---
+# In production, this will be mounted from Secret Manager
+# COPY gdrive_credentials.json /secrets/gdrive_credentials.json
 
 # Change ownership of all code
 RUN chown -R appuser:appuser /app

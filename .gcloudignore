@@ -18,6 +18,11 @@ __pycache__/
 # Frontend
 node_modules/
 
+# Docker files (Cloud Run uses default Dockerfile only)
+Dockerfile.airtable
+docker-compose.yml
+docker-compose.*.yml
+
 # ADD THIS:
 secrets/
 

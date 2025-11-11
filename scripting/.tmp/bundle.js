@@ -61994,7 +61994,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
     const globalConfig = (0, import_ui.useGlobalConfig)();
     const [isShowingSettings, setIsShowingSettings] = (0, import_react.useState)(false);
     (0, import_ui.useSettingsButton)(() => {
-      setIsShowingSettings(!isShowingSettings);
+      setIsShowingSettings((prev) => !prev);
     });
     const apiEndpoint = globalConfig.get(SETTINGS_KEYS.API_ENDPOINT) || DEFAULT_API_ENDPOINT;
     const tableId = globalConfig.get(SETTINGS_KEYS.TABLE_ID);
@@ -62002,24 +62002,24 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
     if (isShowingSettings || !tableId) {
       return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(SettingsPanel, { globalConfig, base }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 59,
+        lineNumber: 60,
         columnNumber: 16
       }, this);
     }
     if (!table) {
       return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 3, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "red", children: "Selected table no longer exists. Please reconfigure." }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 65,
+        lineNumber: 66,
         columnNumber: 17
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 64,
+        lineNumber: 65,
         columnNumber: 13
       }, this);
     }
-    return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(MainPanel, { table, globalConfig, apiEndpoint }, void 0, false, {
+    return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(MainPanel, { table, globalConfig, apiEndpoint, setIsShowingSettings }, void 0, false, {
       fileName: "frontend/index.js",
-      lineNumber: 70,
+      lineNumber: 71,
       columnNumber: 12
     }, this);
   }
@@ -62038,16 +62038,16 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
     return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 3, children: [
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "large", children: "\u2699\uFE0F Settings" }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 91,
+        lineNumber: 92,
         columnNumber: 13
       }, this),
       !canSetConfig && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "yellowLight2", borderRadius: "default", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "orange", children: "\u26A0\uFE0F You need creator/owner permissions to change settings" }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 94,
+        lineNumber: 95,
         columnNumber: 21
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 93,
+        lineNumber: 94,
         columnNumber: 17
       }, this),
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, children: [
@@ -62064,7 +62064,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 99,
+              lineNumber: 100,
               columnNumber: 21
             },
             this
@@ -62082,101 +62082,110 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 105,
+              lineNumber: 106,
               columnNumber: 21
             },
             this
           )
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 98,
+          lineNumber: 99,
           columnNumber: 17
         }, this),
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Table", description: "Select the table with your prospect records", marginTop: 3, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.TablePickerSynced, { globalConfigKey: SETTINGS_KEYS.TABLE_ID }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 116,
+          lineNumber: 117,
           columnNumber: 21
         }, this) }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 115,
+          lineNumber: 116,
           columnNumber: 17
         }, this),
         table && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_jsx_dev_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "small", marginTop: 3, children: "Field Mappings" }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 121,
+            lineNumber: 122,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Contact Name Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.CONTACT_NAME_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 124,
+            lineNumber: 125,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 123,
+            lineNumber: 124,
+            columnNumber: 25
+          }, this),
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Contact Email Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.CONTACT_EMAIL_FIELD_ID }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 129,
+            columnNumber: 29
+          }, this) }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 128,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Company Name Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.COMPANY_NAME_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 128,
+            lineNumber: 133,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 127,
+            lineNumber: 132,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Contact Title Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.CONTACT_TITLE_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 132,
+            lineNumber: 137,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 131,
+            lineNumber: 136,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Company Summary Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.SUMMARY_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 136,
+            lineNumber: 141,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 135,
+            lineNumber: 140,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Angle for Outreach Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.ANGLE_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 140,
+            lineNumber: 145,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 139,
+            lineNumber: 144,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Note Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.NOTE_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 144,
+            lineNumber: 149,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 143,
+            lineNumber: 148,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Research Folder URL Field", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.RESEARCH_FOLDER_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 148,
+            lineNumber: 153,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 147,
+            lineNumber: 152,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Email Draft Field (output)", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FieldPickerSynced, { table, globalConfigKey: SETTINGS_KEYS.DRAFT_FIELD_ID }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 152,
+            lineNumber: 157,
             columnNumber: 29
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 151,
+            lineNumber: 156,
             columnNumber: 25
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Template Type Field (optional)", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
@@ -62190,41 +62199,75 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 156,
+              lineNumber: 161,
               columnNumber: 29
             },
             this
           ) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 155,
+            lineNumber: 160,
             columnNumber: 25
           }, this)
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 120,
+          lineNumber: 121,
           columnNumber: 21
         }, this),
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, padding: 2, backgroundColor: "lightGray1", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "gray", children: "\u{1F4A1} Tip: Set up all field mappings to enable email generation. The Template Type field is optional - if not set, you'll select templates manually." }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 166,
+          lineNumber: 171,
           columnNumber: 21
         }, this) }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 165,
+          lineNumber: 170,
           columnNumber: 17
         }, this)
       ] }, void 0, true, {
         fileName: "frontend/index.js",
-        lineNumber: 97,
+        lineNumber: 98,
         columnNumber: 13
       }, this)
     ] }, void 0, true, {
       fileName: "frontend/index.js",
-      lineNumber: 90,
+      lineNumber: 91,
       columnNumber: 9
     }, this);
   }
-  function MainPanel({ table, globalConfig, apiEndpoint }) {
+  function MainPanel({ table, globalConfig, apiEndpoint, setIsShowingSettings }) {
+    const handleCopyToClipboard = () => {
+      if (lastGeneratedEmail) {
+        if (navigator && navigator.clipboard) {
+          navigator.clipboard.writeText(lastGeneratedEmail);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = lastGeneratedEmail;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
+      }
+    };
+    const handleOpenGmailDraft = () => {
+      if (lastGeneratedEmail && lastRecordData) {
+        const contactEmail = lastRecordData.contactEmail || "";
+        const subject = encodeURIComponent(lastRecordData.subject || "");
+        const body = encodeURIComponent(lastGeneratedEmail);
+        const to = encodeURIComponent(contactEmail);
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${to}&su=${subject}&body=${body}`, "_blank");
+      }
+    };
+    const handleOpenLocalClient = () => {
+      if (lastGeneratedEmail && lastRecordData) {
+        const contactEmail = lastRecordData.contactEmail || "";
+        const subject = encodeURIComponent(lastRecordData.subject || "");
+        const body = encodeURIComponent(lastGeneratedEmail);
+        const to = encodeURIComponent(contactEmail);
+        window.open(`mailto:${to}?subject=${subject}&body=${body}`);
+      }
+    };
+    const [lastGeneratedEmail, setLastGeneratedEmail] = (0, import_react.useState)("");
+    const [lastRecordData, setLastRecordData] = (0, import_react.useState)(null);
     const [selectedRecordIds, setSelectedRecordIds] = (0, import_react.useState)([]);
     const [recordInput, setRecordInput] = (0, import_react.useState)("");
     const [templates, setTemplates] = (0, import_react.useState)({});
@@ -62235,9 +62278,18 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
     const [success, setSuccess] = (0, import_react.useState)(null);
     const [progress, setProgress] = (0, import_react.useState)({ current: 0, total: 0 });
     const records = (0, import_ui.useRecords)(table);
+    const contactNameFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_NAME_FIELD_ID);
+    const contactEmailFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_EMAIL_FIELD_ID);
+    const companyNameFieldId = globalConfig.get(SETTINGS_KEYS.COMPANY_NAME_FIELD_ID);
+    const contactTitleFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_TITLE_FIELD_ID);
+    const summaryFieldId = globalConfig.get(SETTINGS_KEYS.SUMMARY_FIELD_ID);
+    const angleFieldId = globalConfig.get(SETTINGS_KEYS.ANGLE_FIELD_ID);
+    const noteFieldId = globalConfig.get(SETTINGS_KEYS.NOTE_FIELD_ID);
+    const researchFolderFieldId = globalConfig.get(SETTINGS_KEYS.RESEARCH_FOLDER_FIELD_ID);
     const draftFieldId = globalConfig.get(SETTINGS_KEYS.DRAFT_FIELD_ID);
+    const templateFieldId = globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID);
     const draftField = draftFieldId ? table.getFieldByIdIfExists(draftFieldId) : null;
-    const canUpdateRecords = draftField ? table.hasPermissionToUpdateRecord(void 0, draftField) : true;
+    const canUpdateRecords = true;
     (0, import_react.useEffect)(() => {
       fetchTemplates();
     }, [apiEndpoint]);
@@ -62261,15 +62313,15 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
       }
     };
     const syncTemplateField = async () => {
-      const templateFieldId = globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID);
-      if (!templateFieldId) {
+      const templateFieldId2 = globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID);
+      if (!templateFieldId2) {
         setError("Template field not configured. Go to Settings to set it up.");
         return;
       }
       setIsSyncing(true);
       setError(null);
       try {
-        const field = table.getFieldById(templateFieldId);
+        const field = table.getFieldById(templateFieldId2);
         if (field.type !== "singleSelect") {
           throw new Error("Template field must be a Single Select field");
         }
@@ -62314,27 +62366,9 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
       }
     };
     const generateEmails = async () => {
-      if (selectedRecordIds.length === 0) {
-        setError("Please select at least one record");
-        return;
-      }
-      if (!selectedTemplate && !globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID)) {
-        setError("Please select a template");
-        return;
-      }
       setIsLoading(true);
       setError(null);
       setSuccess(null);
-      setProgress({ current: 0, total: selectedRecordIds.length });
-      const contactNameFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_NAME_FIELD_ID);
-      const companyNameFieldId = globalConfig.get(SETTINGS_KEYS.COMPANY_NAME_FIELD_ID);
-      const contactTitleFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_TITLE_FIELD_ID);
-      const summaryFieldId = globalConfig.get(SETTINGS_KEYS.SUMMARY_FIELD_ID);
-      const angleFieldId = globalConfig.get(SETTINGS_KEYS.ANGLE_FIELD_ID);
-      const noteFieldId = globalConfig.get(SETTINGS_KEYS.NOTE_FIELD_ID);
-      const researchFolderFieldId = globalConfig.get(SETTINGS_KEYS.RESEARCH_FOLDER_FIELD_ID);
-      const draftFieldId2 = globalConfig.get(SETTINGS_KEYS.DRAFT_FIELD_ID);
-      const templateFieldId = globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID);
       let successCount = 0;
       let errorCount = 0;
       for (let i = 0; i < selectedRecordIds.length; i++) {
@@ -62343,13 +62377,14 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
         if (!record) continue;
         setProgress({ current: i + 1, total: selectedRecordIds.length });
         try {
-          const contactName = record.getCellValueAsString(contactNameFieldId) || "";
-          const companyName = record.getCellValueAsString(companyNameFieldId) || "";
-          const contactTitle = record.getCellValueAsString(contactTitleFieldId) || "";
-          const summary = record.getCellValueAsString(summaryFieldId) || "";
-          const angle = record.getCellValueAsString(angleFieldId) || "";
-          const note = record.getCellValueAsString(noteFieldId) || "";
-          let researchFolder = record.getCellValueAsString(researchFolderFieldId) || "";
+          const contactName = contactNameFieldId ? record.getCellValueAsString(contactNameFieldId) || "" : "";
+          const contactEmail = contactEmailFieldId ? record.getCellValueAsString(contactEmailFieldId) || "" : "";
+          const companyName = companyNameFieldId ? record.getCellValueAsString(companyNameFieldId) || "" : "";
+          const contactTitle = contactTitleFieldId ? record.getCellValueAsString(contactTitleFieldId) || "" : "";
+          const summary = summaryFieldId ? record.getCellValueAsString(summaryFieldId) || "" : "";
+          const angle = angleFieldId ? record.getCellValueAsString(angleFieldId) || "" : "";
+          const note = noteFieldId ? record.getCellValueAsString(noteFieldId) || "" : "";
+          let researchFolder = researchFolderFieldId ? record.getCellValueAsString(researchFolderFieldId) || "" : "";
           if (!researchFolder) {
             researchFolder = "https://drive.google.com/drive/folders/1lTGhNVVzG4cj_USBew3yuAPMmp0_cbC3";
           }
@@ -62383,12 +62418,23 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             throw new Error(`API error: ${response.status}`);
           }
           const result = await response.json();
-          await table.updateRecordAsync(record.id, {
-            [draftFieldId2]: result.email_text
-          });
+          if (draftFieldId) {
+            await table.updateRecordAsync(record.id, {
+              [draftFieldId]: result.email_text
+            });
+          }
           successCount++;
+          if (selectedRecordIds.length === 1) {
+            setLastGeneratedEmail(result.email_text);
+            setLastRecordData({
+              contactEmail,
+              companyName,
+              contactName,
+              subject: result.subject || `Following up - ${companyName}`
+            });
+          }
         } catch (err) {
-          console.error(`Error for record ${record.id}:`, err);
+          console.error(`Error for record ${record ? record.id : recordId}:`, err);
           errorCount++;
         }
       }
@@ -62405,12 +62451,26 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
       label: name
     }));
     const hasTemplateField = !!globalConfig.get(SETTINGS_KEYS.TEMPLATE_FIELD_ID);
-    return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 3, children: [
+    const logoPath = "/backend/assets/refed_logo.png";
+    return /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 3, backgroundColor: "#EFEDEB", minHeight: "100vh", children: [
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3, children: [
-        /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "large", children: "\u2709\uFE0F AI Email Generator" }, void 0, false, {
+        /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", alignItems: "center", gap: 2, children: [
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)("img", { src: logoPath, alt: "ReFED Logo", style: { height: 40, width: "auto", marginRight: 16 }, onError: (e) => {
+            e.target.style.display = "none";
+          } }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 447,
+            columnNumber: 17
+          }, this),
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "large", textColor: "#384954", children: "\u2709\uFE0F AI Email Generator" }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 448,
+            columnNumber: 17
+          }, this)
+        ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 407,
-          columnNumber: 17
+          lineNumber: 446,
+          columnNumber: 13
         }, this),
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
           import_ui.Button,
@@ -62418,73 +62478,97 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             size: "small",
             icon: "cog",
             variant: "secondary",
-            onClick: () => window.location.reload(),
+            onClick: () => setIsShowingSettings(true),
+            style: { backgroundColor: "#48B674", color: "#fff", border: "none" },
             children: "Settings"
           },
           void 0,
           false,
           {
             fileName: "frontend/index.js",
-            lineNumber: 408,
-            columnNumber: 17
+            lineNumber: 450,
+            columnNumber: 13
           },
           this
         )
       ] }, void 0, true, {
         fileName: "frontend/index.js",
-        lineNumber: 406,
-        columnNumber: 13
+        lineNumber: 445,
+        columnNumber: 9
+      }, this),
+      /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginBottom: 3, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
+        import_ui.Button,
+        {
+          icon: "link",
+          variant: "primary",
+          style: { backgroundColor: "#48B674", color: "#fff", border: "none" },
+          onClick: () => window.open("https://drive.google.com/drive/folders/1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW", "_blank"),
+          children: "Open Template Folder"
+        },
+        void 0,
+        false,
+        {
+          fileName: "frontend/index.js",
+          lineNumber: 463,
+          columnNumber: 13
+        },
+        this
+      ) }, void 0, false, {
+        fileName: "frontend/index.js",
+        lineNumber: 462,
+        columnNumber: 9
       }, this),
       draftField && !canUpdateRecords && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "yellowLight2", borderRadius: "default", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "orange", children: "\u26A0\uFE0F You need edit permissions to update records. You can still configure settings but won't be able to generate emails." }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 421,
+        lineNumber: 476,
         columnNumber: 21
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 420,
+        lineNumber: 475,
         columnNumber: 17
       }, this),
-      error && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "redLight2", borderRadius: "default", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "red", children: error }, void 0, false, {
+      error && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "#ffd6cc", borderRadius: "default", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "#cf222e", children: error }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 431,
+        lineNumber: 486,
         columnNumber: 21
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 430,
+        lineNumber: 485,
         columnNumber: 17
       }, this),
-      success && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "greenLight2", borderRadius: "default", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "green", children: success }, void 0, false, {
+      success && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "#D1ECC1", borderRadius: "default", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "#1a7f37", children: success }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 436,
+        lineNumber: 491,
         columnNumber: 21
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 435,
+        lineNumber: 490,
         columnNumber: 17
       }, this),
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginBottom: 3, children: [
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2, children: [
-          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "small", children: "\uFFFD Templates" }, void 0, false, {
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "small", textColor: "#384954", children: "Templates" }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 443,
-            columnNumber: 21
+            lineNumber: 498,
+            columnNumber: 17
           }, this),
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", gap: 1, children: [
             /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
               import_ui.Button,
               {
                 size: "small",
-                icon: "reload",
-                onClick: fetchTemplates,
+                icon: "redo",
+                onClick: () => fetchTemplates(),
                 disabled: isLoading,
+                style: { backgroundColor: "#384954", color: "#fff", border: "none" },
                 children: "Refresh"
               },
               void 0,
               false,
               {
                 fileName: "frontend/index.js",
-                lineNumber: 445,
-                columnNumber: 25
+                lineNumber: 500,
+                columnNumber: 21
               },
               this
             ),
@@ -62494,36 +62578,37 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
                 size: "small",
                 icon: "sync",
                 variant: "primary",
-                onClick: syncTemplateField,
+                onClick: () => syncTemplateField(),
                 disabled: isSyncing || isLoading,
+                style: { backgroundColor: "#48B674", color: "#fff", border: "none" },
                 children: isSyncing ? "Syncing..." : "Sync Field"
               },
               void 0,
               false,
               {
                 fileName: "frontend/index.js",
-                lineNumber: 454,
-                columnNumber: 29
+                lineNumber: 510,
+                columnNumber: 25
               },
               this
             )
           ] }, void 0, true, {
             fileName: "frontend/index.js",
-            lineNumber: 444,
-            columnNumber: 21
+            lineNumber: 499,
+            columnNumber: 17
           }, this)
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 442,
-          columnNumber: 17
+          lineNumber: 497,
+          columnNumber: 13
         }, this),
         Object.keys(templates).length === 0 ? /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "lightGray1", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "gray", children: "No templates found. Check API connection." }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 469,
+          lineNumber: 526,
           columnNumber: 25
         }, this) }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 468,
+          lineNumber: 525,
           columnNumber: 21
         }, this) : /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_jsx_dev_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "gray", marginBottom: 2, children: [
@@ -62531,7 +62616,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             " template(s) available"
           ] }, void 0, true, {
             fileName: "frontend/index.js",
-            lineNumber: 473,
+            lineNumber: 530,
             columnNumber: 25
           }, this),
           !hasTemplateField && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Select template for all records", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
@@ -62546,102 +62631,86 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 478,
+              lineNumber: 535,
               columnNumber: 33
             },
             this
           ) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 477,
+            lineNumber: 534,
             columnNumber: 29
           }, this),
           hasTemplateField && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 2, backgroundColor: "cyanLight2", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { children: [
             /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Icon, { name: "info", marginRight: 1 }, void 0, false, {
               fileName: "frontend/index.js",
-              lineNumber: 489,
+              lineNumber: 546,
               columnNumber: 37
             }, this),
             "Using template from each record's Template Type field"
           ] }, void 0, true, {
             fileName: "frontend/index.js",
-            lineNumber: 488,
+            lineNumber: 545,
             columnNumber: 33
           }, this) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 487,
+            lineNumber: 544,
             columnNumber: 29
           }, this)
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 472,
+          lineNumber: 529,
           columnNumber: 21
         }, this)
       ] }, void 0, true, {
         fileName: "frontend/index.js",
-        lineNumber: 441,
-        columnNumber: 13
+        lineNumber: 496,
+        columnNumber: 9
       }, this),
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginBottom: 3, children: [
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Heading, { size: "small", marginBottom: 2, children: "\u{1F465} Select Records" }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 500,
+          lineNumber: 557,
           columnNumber: 17
         }, this),
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { padding: 3, border: "default", borderRadius: "default", backgroundColor: "lightGray1", children: [
           /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { marginBottom: 2, children: [
             /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Icon, { name: "info", marginRight: 1 }, void 0, false, {
               fileName: "frontend/index.js",
-              lineNumber: 503,
+              lineNumber: 560,
               columnNumber: 25
             }, this),
-            "Select records in the Airtable table, then use the Record IDs below:"
+            "Select one or more records by name:"
           ] }, void 0, true, {
             fileName: "frontend/index.js",
-            lineNumber: 502,
+            lineNumber: 559,
             columnNumber: 21
           }, this),
-          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Record IDs (comma-separated)", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
-            import_ui.Input,
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.FormField, { label: "Record Names", marginBottom: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
+            import_ui.Select,
             {
-              value: recordInput,
-              onChange: (e) => setRecordInput(e.target.value),
-              placeholder: "rec123abc, rec456def, rec789ghi"
+              options: records.map((r) => ({ value: r.id, label: r.name || r.getCellValueAsString("Name") || r.id })),
+              value: selectedRecordIds[0] || "",
+              onChange: (id) => setSelectedRecordIds(id ? [id] : []),
+              width: "100%",
+              isMulti: false,
+              placeholder: "Select a record by name"
             },
             void 0,
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 507,
+              lineNumber: 564,
               columnNumber: 25
             },
             this
           ) }, void 0, false, {
             fileName: "frontend/index.js",
-            lineNumber: 506,
+            lineNumber: 563,
             columnNumber: 21
-          }, this),
-          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
-            import_ui.Button,
-            {
-              size: "small",
-              onClick: () => {
-                const ids = recordInput.split(",").map((id) => id.trim()).filter(Boolean);
-                setSelectedRecordIds(ids);
-              },
-              children: "Set Record IDs"
-            },
-            void 0,
-            false,
-            {
-              fileName: "frontend/index.js",
-              lineNumber: 513,
-              columnNumber: 21
-            },
-            this
-          )
+          }, this)
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 501,
+          lineNumber: 558,
           columnNumber: 17
         }, this),
         /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2, children: [
@@ -62650,7 +62719,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             " record(s) selected"
           ] }, void 0, true, {
             fileName: "frontend/index.js",
-            lineNumber: 524,
+            lineNumber: 575,
             columnNumber: 21
           }, this),
           selectedRecordIds.length > 0 && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
@@ -62659,7 +62728,6 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
               size: "small",
               onClick: () => {
                 setSelectedRecordIds([]);
-                setRecordInput("");
               },
               children: "Clear selection"
             },
@@ -62667,31 +62735,31 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
             false,
             {
               fileName: "frontend/index.js",
-              lineNumber: 528,
+              lineNumber: 579,
               columnNumber: 25
             },
             this
           )
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 523,
+          lineNumber: 574,
           columnNumber: 17
         }, this),
         selectedRecordIds.length > 0 && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 2, padding: 2, backgroundColor: "cyanLight2", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { size: "small", children: [
-          "Selected IDs: ",
-          selectedRecordIds.join(", ")
+          "Selected: ",
+          records.find((r) => r.id === selectedRecordIds[0])?.name || records.find((r) => r.id === selectedRecordIds[0])?.getCellValueAsString("Name") || selectedRecordIds[0]
         ] }, void 0, true, {
           fileName: "frontend/index.js",
-          lineNumber: 541,
+          lineNumber: 591,
           columnNumber: 25
         }, this) }, void 0, false, {
           fileName: "frontend/index.js",
-          lineNumber: 540,
+          lineNumber: 590,
           columnNumber: 21
         }, this)
       ] }, void 0, true, {
         fileName: "frontend/index.js",
-        lineNumber: 499,
+        lineNumber: 556,
         columnNumber: 13
       }, this),
       /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(
@@ -62709,37 +62777,73 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
         false,
         {
           fileName: "frontend/index.js",
-          lineNumber: 550,
+          lineNumber: 600,
           columnNumber: 17
         },
         this
       ) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 549,
+        lineNumber: 599,
         columnNumber: 13
       }, this),
       isLoading && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", justifyContent: "center", marginTop: 2, children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Loader, {}, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 567,
+        lineNumber: 617,
         columnNumber: 21
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 566,
+        lineNumber: 616,
         columnNumber: 17
       }, this),
-      /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, padding: 2, backgroundColor: "lightGray1", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "gray", size: "small", children: "\u{1F4A1} Select one or more records, choose a template, and click Generate to create personalized emails using AI with your research context from Google Drive." }, void 0, false, {
+      lastGeneratedEmail && /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, padding: 2, backgroundColor: "#D1ECC1", borderRadius: "default", children: [
+        /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { size: "small", marginBottom: 2, textColor: "#384954", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)("b", { children: "What do you want to do with the generated email?" }, void 0, false, {
+          fileName: "frontend/index.js",
+          lineNumber: 625,
+          columnNumber: 25
+        }, this) }, void 0, false, {
+          fileName: "frontend/index.js",
+          lineNumber: 624,
+          columnNumber: 21
+        }, this),
+        /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { display: "flex", flexDirection: "row", style: { gap: 12 }, children: [
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Button, { size: "small", icon: "copy", onClick: handleCopyToClipboard, variant: "primary", style: { backgroundColor: "#384954", color: "#fff", border: "none" }, children: "Copy to Clipboard" }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 628,
+            columnNumber: 25
+          }, this),
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Button, { size: "small", icon: "mail", onClick: handleOpenGmailDraft, variant: "secondary", style: { backgroundColor: "#48B674", color: "#fff", border: "none" }, children: "Open in Gmail" }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 629,
+            columnNumber: 25
+          }, this),
+          /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Button, { size: "small", icon: "email", onClick: handleOpenLocalClient, variant: "secondary", style: { backgroundColor: "#EFEDEB", color: "#384954", border: "1px solid #384954" }, children: "Open in Email Client" }, void 0, false, {
+            fileName: "frontend/index.js",
+            lineNumber: 630,
+            columnNumber: 25
+          }, this)
+        ] }, void 0, true, {
+          fileName: "frontend/index.js",
+          lineNumber: 627,
+          columnNumber: 21
+        }, this)
+      ] }, void 0, true, {
         fileName: "frontend/index.js",
-        lineNumber: 573,
+        lineNumber: 623,
+        columnNumber: 17
+      }, this),
+      /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Box, { marginTop: 3, padding: 2, backgroundColor: "#EFEDEB", borderRadius: "default", children: /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(import_ui.Text, { textColor: "#384954", size: "small", children: "\u{1F4A1} Select one or more records, choose a template, and click Generate to create personalized emails using AI with your research context from Google Drive." }, void 0, false, {
+        fileName: "frontend/index.js",
+        lineNumber: 637,
         columnNumber: 17
       }, this) }, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 572,
+        lineNumber: 636,
         columnNumber: 13
       }, this)
     ] }, void 0, true, {
       fileName: "frontend/index.js",
-      lineNumber: 405,
-      columnNumber: 9
+      lineNumber: 444,
+      columnNumber: 5
     }, this);
   }
   var import_ui, import_react, import_jsx_dev_runtime, SETTINGS_KEYS, DEFAULT_API_ENDPOINT;
@@ -62753,6 +62857,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
         API_ENDPOINT: "apiEndpoint",
         TABLE_ID: "tableId",
         CONTACT_NAME_FIELD_ID: "contactNameFieldId",
+        CONTACT_EMAIL_FIELD_ID: "contactEmailFieldId",
         COMPANY_NAME_FIELD_ID: "companyNameFieldId",
         CONTACT_TITLE_FIELD_ID: "contactTitleFieldId",
         SUMMARY_FIELD_ID: "summaryFieldId",
@@ -62765,7 +62870,7 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_liter
       DEFAULT_API_ENDPOINT = "https://futuramic-nonglandulous-senaida.ngrok-free.dev";
       (0, import_ui.initializeBlock)(() => /* @__PURE__ */ (0, import_jsx_dev_runtime.jsxDEV)(EmailGeneratorApp, {}, void 0, false, {
         fileName: "frontend/index.js",
-        lineNumber: 582,
+        lineNumber: 646,
         columnNumber: 23
       }));
     }

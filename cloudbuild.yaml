@@ -1,0 +1,47 @@
+# Google Cloud Build configuration for automated deployment
+# This file enables CI/CD pipeline for Cloud Run
+
+steps:
+  # Step 1: Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/company-research-agent:$COMMIT_SHA', '.']
+    id: 'build-image'
+
+  # Step 2: Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/company-research-agent:$COMMIT_SHA']
+    id: 'push-image'
+    waitFor: ['build-image']
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'company-research-agent'
+      - '--image=gcr.io/$PROJECT_ID/company-research-agent:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--timeout=900'
+      - '--concurrency=80'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--set-env-vars=PYTHONUNBUFFERED=1,PORT=8000'
+      - '--set-secrets=.env=research-env:latest,/secrets/gdrive_credentials.json=gdrive-credentials:latest'
+    id: 'deploy-cloud-run'
+    waitFor: ['push-image']
+
+# Store the built image
+images:
+  - 'gcr.io/$PROJECT_ID/company-research-agent:$COMMIT_SHA'
+
+# Timeout for the entire build
+timeout: '1800s'
+
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

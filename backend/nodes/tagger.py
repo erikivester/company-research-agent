@@ -293,9 +293,7 @@ Output only the selected category names, separated by commas.
             # --- Call Airtable Update (Start Status) ---
             if airtable_record_id:
                 logger.info(f"Sending 'Classifying' status update to Airtable record: {airtable_record_id}")
-                asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, ResearchStatus.CLASSIFYING)
-                )
+                await self._update_airtable_status(airtable_record_id, ResearchStatus.CLASSIFYING)
 
             state = await self.classify_company(state)
             return state
@@ -306,9 +304,7 @@ Output only the selected category names, separated by commas.
             state.setdefault('messages', []).append(AIMessage(content=error_msg))
             if airtable_record_id:
                 logger.info(f"Sending 'Tagger Failed' status update to Airtable record: {airtable_record_id}")
-                asyncio.create_task(
-                    self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_CLASSIFICATION, str(e)))
-                )
+                await self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_CLASSIFICATION, str(e)))
             
             # --- v2: Ensure ALL keys exist on failure ---
             state.setdefault('airtable_industries', ['Unknown'])

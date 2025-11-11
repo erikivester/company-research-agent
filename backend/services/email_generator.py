@@ -292,7 +292,7 @@ class EmailGeneratorService:
                            template_content: str,
                            research_context: Dict[str, Any],
                            airtable_context: Dict[str, str],
-                           contact_name: str) -> str:
+                           contact_name: str) -> Tuple[str, str]:
         """
         Generate a personalized email using AI by combining template, research, and Airtable context.
         
@@ -303,7 +303,7 @@ class EmailGeneratorService:
             contact_name: Name of the contact to email
             
         Returns:
-            Generated email text
+            Tuple of (email_text, subject_line)
             
         Raises:
             EmailGenerationError: If there are issues generating the email
@@ -326,11 +326,23 @@ Your task is to generate a professional email that follows the provided template
 
 Guidelines:
 1. Maintain the core message and purpose from the template
-2. Use research insights to create a strong, personalized opening hook
-3. Integrate strategic talking points naturally into the email body
-4. Keep the tone professional but conversational
-5. Be specific and substantive - avoid generic statements
-6. Ensure all claims are supported by the research context provided"""
+2. LEVERAGE THE RESEARCH DEEPLY: Use specific details, initiatives, programs, partnerships, or commitments mentioned in the research to demonstrate you've done your homework
+3. BE CONCRETE AND SPECIFIC: Reference actual company activities, recent announcements, sustainability goals, or operational details that show genuine understanding of their business
+4. Create a personalized opening that references something specific about their company or recent activities
+5. Integrate strategic talking points naturally, connecting them to specific aspects of the company's operations or goals
+6. Keep the tone professional but conversational - make it clear this isn't a mass email
+7. Avoid generic statements like "I've been following your company" - instead say what specifically you've learned or noticed
+8. When making claims or suggestions, tie them directly to specific information from the research context
+9. Show that you understand their unique position, challenges, or opportunities in their industry
+10. Extract or generate an appropriate subject line that is specific and relevant to the recipient
+
+The goal is to stand out by demonstrating genuine research and understanding of their specific situation, not just sending a templated message.
+
+Important: You must return your response in this exact JSON format:
+{
+  "subject": "The email subject line here",
+  "body": "The full email body here"
+}"""
 
             user_prompt = f"""Generate a personalized email using the following information:
 
@@ -342,15 +354,19 @@ Company: {airtable_context.get('name', 'N/A')}
 2. TEMPLATE STRUCTURE
 {template_content}
 
-3. CONTEXT & RESEARCH INSIGHTS
+3. CONTEXT & RESEARCH INSIGHTS (USE THESE SPECIFICS!)
 Company Summary: {airtable_context.get('summary', 'N/A')}
 Strategic Angle: {airtable_context.get('angle_for_outreach', 'N/A')}
 Additional Notes: {airtable_context.get('note', 'N/A')}
 
-Research Context:
+Research Context (mine this for specific details, programs, initiatives, partnerships, goals, and recent activities):
 {research_summary}
 
-Generate the complete email maintaining proper formatting and structure. The email should feel personal, well-researched, and strategically aligned with our outreach goals."""
+CRITICAL: Use specific details from the research context above. Reference actual programs, partnerships, sustainability commitments, operational initiatives, or recent company activities. Make it clear you understand their specific business and aren't sending a generic template. The more specific and tailored your references, the better.
+
+Generate the complete email maintaining proper formatting and structure. The email should feel personal, well-researched, and strategically aligned with our outreach goals.
+
+Return your response as a JSON object with "subject" and "body" fields."""
 
             # Call the OpenAI API
             try:
@@ -361,14 +377,32 @@ Generate the complete email maintaining proper formatting and structure. The ema
                         {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.7,
-                    max_tokens=2000
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}
                 )
                 
                 generated_text = response.choices[0].message.content.strip()
                 if not generated_text:
                     raise EmailGenerationError("OpenAI API returned empty response")
+                
+                # Parse the JSON response
+                try:
+                    result = json.loads(generated_text)
+                    email_body = result.get('body', '').strip()
+                    subject_line = result.get('subject', '').strip()
                     
-                return generated_text
+                    if not email_body:
+                        raise EmailGenerationError("Generated email body is empty")
+                    if not subject_line:
+                        # Fallback to company name if no subject provided
+                        subject_line = f"Following up - {airtable_context.get('name', 'Quick question')}"
+                    
+                    return email_body, subject_line
+                    
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse JSON response: {e}")
+                    logger.error(f"Raw response: {generated_text}")
+                    raise EmailGenerationError(f"Failed to parse AI response as JSON: {str(e)}")
 
             except Exception as api_error:
                 raise EmailGenerationError(f"OpenAI API error: {str(api_error)}")

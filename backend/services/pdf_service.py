@@ -7,6 +7,7 @@ from typing import Dict, Any, Tuple
 
 from backend.utils.utils import generate_pdf_from_md
 from backend.utils.enhanced_pdf import create_enhanced_research_pdf
+from backend.utils.executive_summary_pdf import create_executive_summary_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,8 @@ class PDFService:
         return f"{safe_name}_research_report_{timestamp}.pdf"
 
     async def generate_pdf_stream(
-        self, content: str | Dict[str, Any], company_name: str = "Company"
+        self, content: str | Dict[str, Any], company_name: str = "Company", 
+        summary_mode: bool = True
     ) -> Tuple[bool, Any]:
         """
         Generates a PDF and returns it as a BytesIO stream.
@@ -34,6 +36,8 @@ class PDFService:
         Args:
             content: Either markdown content (str) or research data dictionary
             company_name: Name of the company for the filename
+            summary_mode: If True, generate 1-2 page executive summary (default).
+                         If False, generate detailed multi-page report.
         
         Returns:
             Tuple[bool, Any]: (success, result)
@@ -46,8 +50,12 @@ class PDFService:
 
             # Choose the appropriate PDF generation method
             if isinstance(content, dict):
-                # Use enhanced PDF generation for research data
-                await create_enhanced_research_pdf(content, pdf_buffer)
+                # Use executive summary for concise 1-2 page report (default)
+                if summary_mode:
+                    await create_executive_summary_pdf(content, pdf_buffer)
+                else:
+                    # Use enhanced PDF for detailed multi-page report
+                    await create_enhanced_research_pdf(content, pdf_buffer)
             else:
                 # Use simple markdown conversion for markdown content
                 generate_pdf_from_md(content, pdf_buffer)

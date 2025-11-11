@@ -25,6 +25,7 @@ class EmailGenerationRequest(BaseModel):
 class EmailGenerationResponse(BaseModel):
     """Response model for the email generation endpoint."""
     email_text: str = Field(..., description="The generated email text")
+    subject: str = Field(..., description="The email subject line")
     template_used: str = Field(..., description="Name of the template file that was used")
     context_used: Dict[str, bool] = Field(
         ...,

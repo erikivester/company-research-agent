@@ -808,7 +808,7 @@ async def generate_outreach_email(
             for k, v in data.airtable_context.dict().items()
         }
         
-        email_text = await email_service.generate_email(
+        email_text, subject_line = await email_service.generate_email(
             template_content=template_content,
             research_context=research_context,
             airtable_context=airtable_context,
@@ -824,6 +824,7 @@ async def generate_outreach_email(
         # 4. Return generated email with context usage info
         response = JSONResponse(content=EmailGenerationResponse(
             email_text=email_text,
+            subject=subject_line,
             template_used=template_name,
             context_used={
                 "template": bool(template_content),
