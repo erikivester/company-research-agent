@@ -99,7 +99,8 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 
 class Graph:
     def __init__(self, company=None, url=None, hq_location=None, industry=None,
-                 websocket_manager=None, job_id=None, google_drive_folder_url=None): # Added GDrive URL
+                 websocket_manager=None, job_id=None, google_drive_folder_url=None, 
+                 use_local_context=False):  # <-- NEW: flag from Airtable
         self.websocket_manager = websocket_manager
         self.job_id = job_id
 
@@ -112,6 +113,7 @@ class Graph:
             job_id=job_id,
             airtable_record_id=None,
             google_drive_folder_url=google_drive_folder_url, # Pass GDrive URL
+            use_local_context=use_local_context,  # <-- NEW: pass to initial state
             messages=[
                 SystemMessage(content="Expert researcher starting investigation")
             ]

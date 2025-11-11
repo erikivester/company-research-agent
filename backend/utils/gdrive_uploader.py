@@ -102,6 +102,86 @@ def _extract_folder_id_from_url(folder_url: str) -> Optional[str]:
     logger.warning(f"Could not parse Folder ID from URL: {folder_url}")
     return None
 
+
+# --- CORE ASYNC DOWNLOAD FUNCTION ---
+async def download_research_from_gdrive(folder_url: str) -> list[Dict[str, Any]]:
+    """
+    Lists and downloads all JSON research files from a Google Drive folder.
+    
+    Args:
+        folder_url: Google Drive folder URL containing research files
+    
+    Returns:
+        List of dicts with 'filename', 'content' (parsed JSON), and 'created_time'
+    """
+    folder_id = _extract_folder_id_from_url(folder_url)
+    if not folder_id:
+        logger.warning(f"Invalid Google Drive folder URL: {folder_url}")
+        return []
+
+    service = await asyncio.to_thread(get_drive_service)
+    if not service:
+        logger.error("Failed to authenticate Google Drive service")
+        return []
+
+    logger.info(f"📥 Scanning GDrive folder {folder_id} for existing research files...")
+
+    try:
+        def _list_and_download():
+            # List all JSON files in the folder
+            query = f"'{folder_id}' in parents and mimeType='application/json' and trashed = false"
+            
+            results = service.files().list(
+                q=query,
+                fields="files(id, name, createdTime, modifiedTime)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+                orderBy="createdTime desc"  # Most recent first
+            ).execute()
+            
+            files = results.get('files', [])
+            logger.info(f"Found {len(files)} JSON files in GDrive folder")
+            
+            downloaded = []
+            for file_info in files:
+                file_id = file_info['id']
+                file_name = file_info['name']
+                
+                try:
+                    # Download file content
+                    request = service.files().get_media(
+                        fileId=file_id,
+                        supportsAllDrives=True
+                    )
+                    
+                    file_content = request.execute()
+                    
+                    # Parse JSON content
+                    parsed_content = json.loads(file_content.decode('utf-8'))
+                    
+                    downloaded.append({
+                        'filename': file_name,
+                        'content': parsed_content,
+                        'created_time': file_info.get('createdTime'),
+                        'modified_time': file_info.get('modifiedTime')
+                    })
+                    
+                    logger.debug(f"✓ Downloaded and parsed: {file_name}")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to download/parse {file_name}: {e}")
+                    continue
+            
+            return downloaded
+        
+        downloaded_files = await asyncio.to_thread(_list_and_download)
+        logger.info(f"✅ Successfully downloaded {len(downloaded_files)} research files from GDrive")
+        return downloaded_files
+
+    except Exception as e:
+        logger.error(f"Failed to list/download files from GDrive folder: {e}", exc_info=True)
+        return []
+
 # --- CORE ASYNC UPLOAD FUNCTION ---
 async def upload_context_to_gdrive(
     context: Dict[str, Any] | bytes | io.BytesIO, 

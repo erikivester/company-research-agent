@@ -54,14 +54,23 @@ def setup_logging(
     # Create logs directory if it doesn't exist
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
-    # Create JSON formatter
+    # Create JSON formatter for file
     json_formatter = JSONFormatter()
+    
+    # Create human-readable formatter for console
+    console_formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, log_level.upper()))
     
-    # File handler with rotation
+    # Clear any existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+    
+    # File handler with rotation (JSON format)
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
         maxBytes=max_bytes,
@@ -70,9 +79,13 @@ def setup_logging(
     file_handler.setFormatter(json_formatter)
     root_logger.addHandler(file_handler)
     
-    # Console handler for development
+    # Console handler for development (human-readable format)
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(json_formatter)
+    console_handler.setFormatter(console_formatter)
+    console_handler.setLevel(getattr(logging, log_level.upper()))
+    # Force immediate flush for real-time logs
+    import sys
+    console_handler.stream = sys.stdout
     root_logger.addHandler(console_handler)
     
     # Create separate loggers for different components

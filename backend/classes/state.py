@@ -12,7 +12,8 @@ class InputState(TypedDict, total=False):
     websocket_manager: NotRequired[WebSocketManager]
     job_id: NotRequired[str]
     airtable_record_id: NotRequired[str]
-    google_drive_folder_url: NotRequired[str] 
+    google_drive_folder_url: NotRequired[str]
+    use_local_context: NotRequired[bool]  # <-- NEW: Airtable checkbox flag 
 
 # --- UPDATED ResearchState ---
 
@@ -71,6 +72,7 @@ class ResearchState(TypedDict):
     job_id: Annotated[str, _prefer_non_empty]
     airtable_record_id: Annotated[str, _prefer_non_empty]
     google_drive_folder_url: Annotated[str, _prefer_non_empty]
+    use_local_context: Annotated[bool, _first_value]  # <-- NEW: flag to skip Tavily
 
     # --- Grounding node output (pass-through) ---
     site_scrape: Annotated[Dict[str, Any], _first_value]

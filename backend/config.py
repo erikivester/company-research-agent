@@ -12,6 +12,15 @@ class Config:
         self.USE_MOCK_DATA = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
         self.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
         self.API_KEY = os.getenv("API_KEY", "default-dev-key-please-change")
+
+        # Local context settings (to reduce Tavily calls)
+        self.USE_LOCAL_FILES = os.getenv("USE_LOCAL_FILES", "false").lower() == "true"
+        self.USE_LOCAL_ONLY = os.getenv("USE_LOCAL_ONLY", "false").lower() == "true"
+        # Comma-separated list of directories relative to project root
+        self.LOCAL_CONTEXT_DIRS_RAW = os.getenv(
+            "LOCAL_CONTEXT_DIRS",
+            "archive/reports,archive/pdfs,pdfs,archive/docs"
+        )
         
         # Security settings
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development")
@@ -28,6 +37,12 @@ class Config:
                 self.USE_MOCK_DATA = True
             else:
                 logger.info("🔧 Running in LIVE mode - using Tavily API for research")
+        
+        # Log local context configuration
+        if self.USE_LOCAL_FILES:
+            logger.info("📂 Local context enabled - will read existing files before web search")
+        if self.USE_LOCAL_ONLY:
+            logger.info("🚫 Web search disabled - using only local files for context")
                 
         # Log security configuration
         logger.info(f"🔒 Security enabled - Rate limit: {self.RATE_LIMIT_REQUESTS} requests per {self.RATE_LIMIT_PERIOD}s")
@@ -45,6 +60,13 @@ class Config:
         else:
             from tavily import AsyncTavilyClient
             return AsyncTavilyClient(api_key=self.TAVILY_API_KEY)
+
+    def get_local_context_dirs(self):
+        """Return absolute paths for configured local context directories."""
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]  # project root
+        dirs = [d.strip() for d in self.LOCAL_CONTEXT_DIRS_RAW.split(',') if d.strip()]
+        return [str((root / d).resolve()) for d in dirs]
 
 # Create a singleton instance
 config = Config()

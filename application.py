@@ -12,6 +12,11 @@ import prometheus_client
 from prometheus_client import start_http_server
 import httpx
 
+# Load environment variables from .env file FIRST, before any backend imports
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+
 from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
 from backend.config import config  # Import the singleton config instance
@@ -37,11 +42,6 @@ from backend.utils.gdrive_uploader import upload_context_to_gdrive, inspect_driv
 # --- FIX: ADDED THIS IMPORT BACK ---
 from backend.debug_airtable import run_airtable_debug_test 
 # --- END FIX ---
-
-# Load environment variables from .env file at startup
-env_path = Path(__file__).parent / '.env'
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
 
 # Set email templates folder ID
 os.environ["EMAIL_TEMPLATES_FOLDER_ID"] = "1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
@@ -150,9 +150,10 @@ class ResearchRequest(BaseModel):
 
 # --- v2 MODIFIED: Pydantic Model for Webhook Input ---
 class AirtableWebhookInput(ResearchRequest):
-    """Extends ResearchRequest to include Airtable Record ID and Google Drive URL."""
+    """Extends ResearchRequest to include Airtable Record ID, Google Drive URL, and local context flag."""
     airtable_record_id: str | None = None
     google_drive_folder_url: str | None = None # <-- ADDED
+    use_local_context: bool = False  # <-- NEW: Airtable checkbox to bypass Tavily
 # --- END v2 MODIFICATION ---
 
 class PDFGenerationRequest(BaseModel):
@@ -184,28 +185,54 @@ async def _update_airtable_status_queued(record_id: str, status_text: str):
 
 
 # --- v2 MODIFIED: Added google_drive_folder_url parameter ---
-async def run_job_with_semaphore(job_id: str, data: ResearchRequest, airtable_record_id: str | None, google_drive_folder_url: str | None):
-    """Acquires semaphore, runs the core research logic, and releases semaphore."""
-    
-    # 1. Acquire the semaphore (blocks if limit reached)
-    await job_semaphore.acquire()
-    logger.info(f"SEMAPHORE ACQUIRED: Job {job_id} starting. {job_semaphore._value} slots remaining.")
-
+def _log_task_exception(task):
+    """Callback to log any exceptions from background tasks."""
     try:
-        # 2. **CRITICAL:** Update status from 'Queued' to 'In Progress' (via Grounding node)
-        # We don't need an explicit update here as the GroundingNode handles the first "In Progress" status.
-        
-        # 3. Run the actual research logic
-        # --- v2 MODIFIED: Pass google_drive_folder_url ---
-        await process_research(job_id, data, airtable_record_id, google_drive_folder_url)
-        
+        task.result()
     except Exception as e:
-        logger.error(f"Job {job_id} failed during execution: {e}")
-        metrics_collector.track_error("job_execution")
-    finally:
-        # 4. Release the semaphore (executed even if process_research fails)
-        job_semaphore.release()
-        logger.info(f"SEMAPHORE RELEASED: Job {job_id} finished. {job_semaphore._value} slots available.")
+        logger.error(f"🔥 Background task failed with exception: {e}", exc_info=True)
+        import sys
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+
+async def run_job_with_semaphore(
+    job_id: str, 
+    data: ResearchRequest, 
+    airtable_record_id: str | None, 
+    google_drive_folder_url: str | None,
+    use_local_context: bool = False  # <-- NEW: flag from Airtable
+):
+    """Acquire semaphore, run research logic, release semaphore."""
+    import sys
+    try:
+        print(f"\n🚀 STARTING JOB: {job_id} for {data.company}", flush=True)
+        # Acquire semaphore
+        await job_semaphore.acquire()
+        print(f"✅ Semaphore acquired for {data.company}", flush=True)
+        logger.info(f"🚀 SEMAPHORE ACQUIRED: Job {job_id} starting research for {data.company}")
+        logger.info(f"   Slots remaining: {job_semaphore._value}/{MAX_CONCURRENT_JOBS}")
+        sys.stdout.flush()
+
+        try:
+            logger.info(f"🔍 Starting research pipeline for {data.company}...")
+            sys.stdout.flush()
+            await process_research(job_id, data, airtable_record_id, google_drive_folder_url, use_local_context)
+        except Exception as e:
+            logger.error(f"❌ Job {job_id} failed during execution: {e}", exc_info=True)
+            metrics_collector.track_error("job_execution")
+        finally:
+            job_semaphore.release()
+            logger.info(f"✅ SEMAPHORE RELEASED: Job {job_id} finished. {job_semaphore._value} slots available.")
+            sys.stdout.flush()
+    except Exception as e:
+        logger.error(f"💥 CRITICAL ERROR in run_job_with_semaphore for job {job_id}: {e}", exc_info=True)
+        sys.stdout.flush()
+        # Best-effort release
+        try:
+            job_semaphore.release()
+        except Exception:
+            pass
 
 
 @app.options("/research")
@@ -217,7 +244,13 @@ async def preflight():
     return response
 
 # --- v2 MODIFIED: process_research signature ---
-async def process_research(job_id: str, data: ResearchRequest, airtable_record_id: str | None = None, google_drive_folder_url: str | None = None):
+async def process_research(
+    job_id: str, 
+    data: ResearchRequest, 
+    airtable_record_id: str | None = None, 
+    google_drive_folder_url: str | None = None,
+    use_local_context: bool = False  # <-- NEW: flag to skip Tavily
+):
     try:
         with metrics_collector.generation_timer(template_type="research"):
             if mongodb:
@@ -225,6 +258,7 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
                 job_details = data.dict()
                 job_details['airtable_record_id'] = airtable_record_id
                 job_details['google_drive_folder_url'] = google_drive_folder_url # Add GDrive URL to log
+                job_details['use_local_context'] = use_local_context  # <-- NEW
                 mongodb.create_job(job_id, job_details)
             
             await asyncio.sleep(1)  # Allow WebSocket connection
@@ -239,7 +273,8 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
                 hq_location=data.hq_location,
                 websocket_manager=manager,
                 job_id=job_id,
-                google_drive_folder_url=google_drive_folder_url # <-- PASS GDrive URL
+                google_drive_folder_url=google_drive_folder_url, # <-- PASS GDrive URL
+                use_local_context=use_local_context  # <-- NEW: pass flag to Graph
             )
 
             # --- FIX: Pass ALL input data to the Graph's thread config as top-level keys ---
@@ -251,7 +286,8 @@ async def process_research(job_id: str, data: ResearchRequest, airtable_record_i
                 "company_url": data.company_url,
                 "industry": data.industry,
                 "hq_location": data.hq_location,
-                "job_id": job_id # Pass the job_id as well
+                "job_id": job_id, # Pass the job_id as well
+                "use_local_context": use_local_context  # <-- NEW: expose in state
             }
 
             # Add the optional fields only if they exist
@@ -338,7 +374,15 @@ async def research(data: ResearchRequest):
         logger.info(f"Received research request for {data.company}")
         job_id = str(uuid.uuid4())
         # --- v2 MODIFIED: Pass google_drive_folder_url=None for UI runs ---
-        asyncio.create_task(run_job_with_semaphore(job_id, data, airtable_record_id=None, google_drive_folder_url=None)) 
+        task = asyncio.create_task(
+            run_job_with_semaphore(
+                job_id,
+                data,
+                airtable_record_id=None,
+                google_drive_folder_url=None,
+            )
+        )
+        task.add_done_callback(_log_task_exception)
 
         response = JSONResponse(content={
             "status": "accepted",
@@ -363,14 +407,20 @@ async def start_research_webhook(data: AirtableWebhookInput):
     and queues the research pipeline using the semaphore.
     """
     try:
+        # Force flush logs immediately
+        import sys
+        print(f"\n📥 WEBHOOK HIT: {data.company}", flush=True)
+        sys.stdout.flush()
+        
         # --- NEW DEBUG LOGGING ---
         # Use repr() to see the exact string, including quotes and whitespace
-        logger.info(f"DEBUG: Webhook received: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}")
+        logger.info(f"📥 WEBHOOK RECEIVED: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}")
+        sys.stdout.flush()
 
         # --- NEW GUARD CLAUSE (THE FIX) ---
         # Check if data.company is None or just whitespace
         if not data.company or data.company.strip() == "":
-            logger.warning(f"Webhook rejected: Missing or empty company name. Received: {data.company!r}")
+            logger.warning(f"⚠️ Webhook rejected: Missing or empty company name. Received: {data.company!r}")
             # Immediately update Airtable to "Failed" if we have an ID
             if data.airtable_record_id:
                 asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.FAILED_MISSING_COMPANY))
@@ -380,10 +430,13 @@ async def start_research_webhook(data: AirtableWebhookInput):
             )
         
         company_value = data.company.strip() # Use the stripped, validated company name
-        logger.info(f"Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id})")
+        logger.info(f"✅ Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id})")
+        sys.stdout.flush()
         # --- END FIX ---
 
         job_id = str(uuid.uuid4())
+        logger.info(f"🆔 Generated job ID: {job_id}")
+        sys.stdout.flush()
 
         research_data = ResearchRequest(
             company=company_value, # Use the validated 'company_value'
@@ -397,13 +450,22 @@ async def start_research_webhook(data: AirtableWebhookInput):
              asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.QUEUED))
 
         # 2. Start the job using the SEMAPHORE WRAPPER (This is now the non-blocking part)
-        # --- v2 MODIFIED: Pass data.google_drive_folder_url ---
-        asyncio.create_task(run_job_with_semaphore(
-            job_id, 
-            research_data, 
-            data.airtable_record_id, 
-            data.google_drive_folder_url # <-- PASS GDrive URL
-        ))
+        # --- v2 MODIFIED: Pass data.google_drive_folder_url and use_local_context ---
+        logger.info(f"🎯 Queuing research job for {company_value}...")
+        if data.use_local_context:
+            logger.info(f"📂 Local context mode enabled for {company_value} - will use existing files")
+        sys.stdout.flush()
+
+        task = asyncio.create_task(
+            run_job_with_semaphore(
+                job_id,
+                research_data,
+                data.airtable_record_id,
+                data.google_drive_folder_url,  # <-- PASS GDrive URL
+                data.use_local_context  # <-- NEW: pass flag
+            )
+        )
+        task.add_done_callback(_log_task_exception)
 
         return {
             "status": "Accepted",

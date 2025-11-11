@@ -7,6 +7,10 @@ from urllib.parse import urlparse
 from ...classes import ResearchState
 from ...utils.references import clean_title
 from ...config import config
+from pathlib import Path
+import json
+from bs4 import BeautifulSoup
+import markdown
 from ...utils.mock_tavily import MockTavilyClient
 
 logger = logging.getLogger(__name__)
@@ -75,7 +79,138 @@ class BaseResearcher:
                 }
             )
 
-        # Prepare all search parameters upfront
+        # First optionally load context documents from Google Drive to reduce API usage
+        local_docs: Dict[str, Any] = {}
+        use_local_context = state.get('use_local_context', False)  # <-- Check Airtable flag
+        google_drive_folder_url = state.get('google_drive_folder_url')
+        
+        # DEBUG: Log the values
+        logger.info(f"🔧 use_local_context={use_local_context}, google_drive_folder_url={google_drive_folder_url}")
+        
+        # NEW: If use_local_context is enabled and GDrive folder URL is provided, download existing research
+        if use_local_context and google_drive_folder_url:
+            try:
+                from ...utils.gdrive_uploader import download_research_from_gdrive
+                
+                logger.info(f"🔍 Checking Google Drive folder for existing research files...")
+                downloaded_files = await download_research_from_gdrive(google_drive_folder_url)
+                
+                if downloaded_files:
+                    logger.info(f"📥 Found {len(downloaded_files)} research files in Google Drive")
+                    
+                    # Parse downloaded research files into document format
+                    for file_data in downloaded_files:
+                        try:
+                            research_content = file_data['content']
+                            filename = file_data['filename']
+                            
+                            # Extract relevant sections from the research JSON
+                            # The research JSON structure typically has sections like:
+                            # - briefing_report (main content)
+                            # - collected_data (raw research data)
+                            # - research_queries (the queries used)
+                            
+                            # Try to get the most relevant content
+                            content_parts = []
+                            
+                            if 'briefing_report' in research_content:
+                                content_parts.append(research_content['briefing_report'])
+                            
+                            if 'collected_data' in research_content:
+                                collected = research_content['collected_data']
+                                # Extract content from collected documents
+                                if isinstance(collected, dict):
+                                    for url, doc in collected.items():
+                                        if isinstance(doc, dict) and 'content' in doc:
+                                            content_parts.append(doc['content'][:1000])  # Truncate to avoid huge docs
+                            
+                            # Combine content
+                            combined_content = "\n\n".join(content_parts)[:30000]  # Limit total size
+                            
+                            if not combined_content:
+                                # Fallback: use full JSON as string
+                                combined_content = json.dumps(research_content, indent=2)[:30000]
+                            
+                            doc_key = f"gdrive://{filename}"
+                            local_docs[doc_key] = {
+                                "title": filename.replace('.json', '').replace('_', ' ').title(),
+                                "content": combined_content,
+                                "query": "google_drive_context",
+                                "url": doc_key,
+                                "source": "google_drive",
+                                "score": 0.98,  # Very high relevance - it's previous research on same company
+                                "analyst_type": self.analyst_type,
+                                "timestamp": file_data.get('created_time', datetime.now().isoformat()),
+                                "content_length": len(combined_content),
+                                "domain": "google_drive"
+                            }
+                            logger.debug(f"✓ Parsed research file: {filename}")
+                            
+                        except Exception as e:
+                            logger.warning(f"Failed to parse research file {file_data.get('filename')}: {e}")
+                            continue
+                    
+                    if local_docs:
+                        logger.info(f"✅ Loaded {len(local_docs)} documents from Google Drive research files")
+                        logger.info(f"🚫 Skipping Tavily API calls - using existing research from GDrive")
+                else:
+                    logger.info(f"📭 No existing research files found in Google Drive folder")
+                    
+            except Exception as e:
+                logger.warning(f"Failed to download research from Google Drive: {e}", exc_info=True)
+        
+        # FALLBACK: Also check local file system if USE_LOCAL_FILES is enabled
+        if (use_local_context or config.USE_LOCAL_FILES) and not local_docs:
+            try:
+                for directory in config.get_local_context_dirs():
+                    dir_path = Path(directory)
+                    if not dir_path.exists():
+                        continue
+                    for file_path in dir_path.glob("**/*"):
+                        if not file_path.is_file():
+                            continue
+                        # Only ingest small-ish text/json/markdown/pdf summary placeholders for now
+                        if file_path.suffix.lower() in {'.txt', '.md', '.json'}:
+                            try:
+                                raw = file_path.read_text(errors='ignore')[:20000]
+                                content = raw
+                                if file_path.suffix.lower() == '.md':
+                                    try:
+                                        html = markdown.markdown(raw)
+                                        content = BeautifulSoup(html, 'html.parser').get_text(separator='\n')
+                                    except Exception:
+                                        pass
+                                elif file_path.suffix.lower() == '.json':
+                                    try:
+                                        data = json.loads(raw)
+                                        # Flatten simple JSON structures
+                                        if isinstance(data, dict):
+                                            content = json.dumps(data, indent=2)[:20000]
+                                        elif isinstance(data, list):
+                                            content = json.dumps(data[:50], indent=2)[:20000]
+                                    except Exception:
+                                        pass
+                                doc_key = f"local://{file_path.name}"
+                                local_docs[doc_key] = {
+                                    "title": file_path.stem,
+                                    "content": content,
+                                    "query": "local_context",
+                                    "url": doc_key,
+                                    "source": "local_file",
+                                    "score": 0.95,  # High relevance so curator keeps it
+                                    "analyst_type": self.analyst_type,
+                                    "timestamp": datetime.now().isoformat(),
+                                    "content_length": len(content),
+                                    "domain": "local"
+                                }
+                            except Exception as e:
+                                logger.debug(f"Failed to read local file {file_path}: {e}")
+                if local_docs:
+                    logger.info(f"📂 Loaded {len(local_docs)} local context documents for {self.analyst_type}")
+            except Exception as e:
+                logger.warning(f"Failed to load local context directories: {e}")
+
+        # Prepare all search parameters upfront (only if not local-only)
         search_params = {
             "search_depth": "basic",
             "include_raw_content": False,
@@ -124,6 +259,21 @@ class BaseResearcher:
         if isinstance(self.tavily_client, MockTavilyClient):
             self.tavily_client.set_analyst_type(self.analyst_type)
             
+        # If we have local/GDrive documents and use_local_context is enabled, skip Tavily entirely
+        if use_local_context and local_docs:
+            logger.info(f"🚫 Local context mode: returning {len(local_docs)} documents without Tavily calls")
+            return local_docs
+        
+        # If USE_LOCAL_ONLY env var is set and we have docs, also skip Tavily
+        if config.USE_LOCAL_ONLY and local_docs:
+            logger.info(f"🚫 Local-only mode (env): returning {len(local_docs)} local documents without Tavily calls")
+            return local_docs
+        
+        # If use_local_context is enabled but no docs found, warn and continue to Tavily
+        if use_local_context and not local_docs:
+            logger.warning(f"⚠️ Local context mode enabled but no documents found. Falling back to Tavily API.")
+            # Continue to Tavily search below
+
         # Prepare search tasks with error handling
         search_tasks = []
         for query in queries:
@@ -183,7 +333,8 @@ class BaseResearcher:
         merged_docs = {}
         if not results:
             logger.warning(f"No search results returned for {self.analyst_type}")
-            return merged_docs
+            # Still return local docs if available
+            return {**local_docs}
             
         for result_obj in results:
             query = result_obj["query"]
@@ -292,4 +443,7 @@ class BaseResearcher:
                 logger.info(f"  • {query}: {count} documents")
         logger.info("=== End Search Results Summary ===")
         
+        # Merge local docs (if any) with web results, preferring web when URL collides
+        if local_docs:
+            merged_docs = {**local_docs, **merged_docs}
         return merged_docs
