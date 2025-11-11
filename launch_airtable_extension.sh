@@ -185,7 +185,7 @@ echo "════════════════════════�
 echo ""
 
 # Run the extension (this will open browser)
-block run
+block run --port 9000
 
 # If block run exits, cleanup
 cleanup

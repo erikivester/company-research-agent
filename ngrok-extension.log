@@ -1,20 +1,11 @@
-t=2025-11-10T14:22:24-0600 lvl=info msg="no configuration paths supplied"
-t=2025-11-10T14:22:24-0600 lvl=info msg="using configuration at default config path" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml"
-t=2025-11-10T14:22:24-0600 lvl=info msg="open config file" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml" err=nil
-t=2025-11-10T14:22:24-0600 lvl=warn msg="can't bind default web address, trying alternatives" obj=web addr=127.0.0.1:4040
-t=2025-11-10T14:22:24-0600 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4041 allow_hosts=[]
-t=2025-11-10T14:22:25-0600 lvl=info msg="client session established" obj=tunnels.session
-t=2025-11-10T14:22:25-0600 lvl=info msg="tunnel session started" obj=tunnels.session
-t=2025-11-10T14:22:25-0600 lvl=eror msg="session closing" obj=tunnels.session err="failed to start tunnel: The endpoint 'https://futuramic-nonglandulous-senaida.ngrok-free.dev' is already online. Either\n1. stop your existing endpoint first, or\n2. start both endpoints with `--pooling-enabled` to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
-t=2025-11-10T14:22:25-0600 lvl=info msg="accept failed" obj=tunnels.session obj=csess id=889aea0f8879 err="reconnecting session closed"
-t=2025-11-10T14:22:25-0600 lvl=info msg="no more state changes" obj=tunnels.session
-t=2025-11-10T14:22:25-0600 lvl=info msg="received stop request" obj=app stopReq="{err:{Inner:{Inner:0x140001125b0}} restart:false}"
-t=2025-11-10T14:22:25-0600 lvl=eror msg="terminating with error" obj=app err="failed to start tunnel: The endpoint 'https://futuramic-nonglandulous-senaida.ngrok-free.dev' is already online. Either\n1. stop your existing endpoint first, or\n2. start both endpoints with `--pooling-enabled` to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
-t=2025-11-10T14:22:25-0600 lvl=crit msg="command failed" err="failed to start tunnel: The endpoint 'https://futuramic-nonglandulous-senaida.ngrok-free.dev' is already online. Either\n1. stop your existing endpoint first, or\n2. start both endpoints with `--pooling-enabled` to load balance between them.\r\n\r\nERR_NGROK_334\r\n"
-ERROR:  failed to start tunnel: The endpoint 'https://futuramic-nonglandulous-senaida.ngrok-free.dev' is already online. Either
-ERROR:  1. stop your existing endpoint first, or
-ERROR:  2. start both endpoints with `--pooling-enabled` to load balance between them.
-ERROR:  
-ERROR:  ERR_NGROK_334
-ERROR:  https://ngrok.com/docs/errors/err_ngrok_334
-ERROR:  
+t=2025-11-10T16:21:27-0600 lvl=info msg="no configuration paths supplied"
+t=2025-11-10T16:21:27-0600 lvl=info msg="using configuration at default config path" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml"
+t=2025-11-10T16:21:27-0600 lvl=info msg="open config file" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml" err=nil
+t=2025-11-10T16:21:28-0600 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-11-10T16:21:28-0600 lvl=info msg="client session established" obj=tunnels.session
+t=2025-11-10T16:21:28-0600 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-11-10T16:21:28-0600 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=https://localhost:9000 url=https://futuramic-nonglandulous-senaida.ngrok-free.dev
+t=2025-11-10T16:21:56-0600 lvl=info msg="received stop request" obj=app stopReq="{err:<nil> restart:false}"
+t=2025-11-10T16:21:56-0600 lvl=info msg="session closing" obj=tunnels.session err=nil
+t=2025-11-10T16:21:56-0600 lvl=info msg="accept failed" obj=tunnels.session obj=csess id=9dd0adae7783 err="reconnecting session closed"
+t=2025-11-10T16:21:56-0600 lvl=info msg="no more state changes" obj=tunnels.session

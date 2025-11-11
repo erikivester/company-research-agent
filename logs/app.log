@@ -395,3 +395,106 @@
 2025-11-10 15:28:16 - backend.graph - INFO - Starting final upload node (Airtable + Google Drive)...
 2025-11-10 15:28:16 - backend.graph - INFO - Google Drive URL found. Compiling comprehensive research context for upload...
 2025-11-10 15:28:16 - backend.utils.context_polisher - INFO - Context Polisher initialized with Gemini 2.5 Flash model
+2025-11-10 15:28:58 - backend.utils.context_polisher - WARNING - Response is not in JSON format, returning original context
+2025-11-10 15:28:58 - backend.utils.gdrive_uploader - ERROR - CRITICAL: Google Drive credentials file not found at /Users/erikivester/company-research-agent/gdrive_credentials.json and env var not set.
+2025-11-10 15:28:58 - backend.utils.gdrive_uploader - ERROR - Failed to upload JSON research data: Failed to authenticate Google Drive service. Check credentials.
+2025-11-10 15:28:58 - backend.graph - ERROR - Failed to upload context to Google Drive: Failed to authenticate Google Drive service. Check credentials.
+Traceback (most recent call last):
+  File "/Users/erikivester/company-research-agent/backend/graph.py", line 318, in airtable_upload_node
+    upload_results = await upload_research_with_pdf(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/erikivester/company-research-agent/backend/utils/gdrive_uploader.py", line 224, in upload_research_with_pdf
+    await upload_context_to_gdrive(
+    ...<4 lines>...
+    )
+  File "/Users/erikivester/company-research-agent/backend/utils/gdrive_uploader.py", line 123, in upload_context_to_gdrive
+    raise ConnectionError("Failed to authenticate Google Drive service. Check credentials.")
+ConnectionError: Failed to authenticate Google Drive service. Check credentials.
+2025-11-10 15:28:58 - backend.utils.references - INFO - Formatting 8 references for the report
+2025-11-10 15:28:58 - backend.utils.references - INFO - Maintaining reference order based on scores
+2025-11-10 15:28:58 - backend.utils.references - INFO - Completed references section with 8 entries
+2025-11-10 15:28:58 - backend.graph - INFO - DEBUG: Data prepared for Airtable: {'company_name': 'Walmart', 'company_url': 'https://example.com', 'industries_tags': ['Grocery & Food Retail', 'E-commerce & Marketplaces', 'Waste & Resource Recovery (Recycling/Compost/AD)'], 'region_tags': ['North America (US/CA)', 'Global'], 'revenue_tags': 'Unknown', 'refed_alignment_tags': ['U.S. Food Waste Pact Prospect/Member', 'Measurement & Disclosure', 'Solution Adopter (Corporate)', 'Communications & Thought Leadership']}
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Existing Airtable record found for 'Walmart': recRn1Q3r0Fc5Dor5
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - DEBUG: Final payload keys being sent: dict_keys(['Organization', 'Website', 'Industries', 'Country/Region', 'Revenue Band (est.)', 'ReFED Alignment', 'Markdown Report', 'Company Briefing', 'News & Signals Briefing', 'FLW and Sustainability Briefing', 'Engagements Briefing', 'Research Status', 'Process Notes', 'References'])
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Performing UPDATE on Airtable record recRn1Q3r0Fc5Dor5 for job 5f13caec-1754-458f-9def-c1896efa6d19
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - DEBUG: Fields being sent for UPDATE: dict_keys(['Organization', 'Website', 'Industries', 'Country/Region', 'Revenue Band (est.)', 'ReFED Alignment', 'Markdown Report', 'Company Briefing', 'News & Signals Briefing', 'FLW and Sustainability Briefing', 'Engagements Briefing', 'Research Status', 'Process Notes', 'References'])
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Successfully updated Airtable record recRn1Q3r0Fc5Dor5 with fields: ['Organization', 'Website', 'Industries', 'Country/Region', 'Revenue Band (est.)', 'ReFED Alignment', 'Markdown Report', 'Company Briefing', 'News & Signals Briefing', 'FLW and Sustainability Briefing', 'Engagements Briefing', 'Research Status', 'Process Notes', 'References']
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Airtable UPDATE successful: recRn1Q3r0Fc5Dor5
+2025-11-10 15:28:59 - backend.graph - INFO - Airtable upload result: {'status': 'Success', 'airtable_record_id': 'recRn1Q3r0Fc5Dor5', 'operation': 'UPDATE'}
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Attempting to parse contacts JSON: [
+  {
+    "name": "Jane Smith",
+    "title": "Senior Sustainability Manager",
+    "summary": "Leads food waste reduction initiatives."
+  },
+  {
+    "name": "Michael Johnson",
+    "title": "Director of Supply Chain",
+    "summary": "Oversees inventory management and waste reduction in logistics."
+  },
+  {
+    "name": "Sarah Williams",
+    "title": "Community Relations Manager",
+    "summary": "Manages food donation partnerships and community engagement initiatives."
+  }
+]
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Cleaned contacts JSON: [
+  {
+    "name": "Jane Smith",
+    "title": "Senior Sustainability Manager",
+    "summary": "Leads food waste reduction initiatives."
+  },
+  {
+    "name": "Michael Johnson",
+    "title": "Director of Supply Chain",
+    "summary": "Oversees inventory management and waste reduction in logistics."
+  },
+  {
+    "name": "Sarah Williams",
+    "title": "Community Relations Manager",
+    "summary": "Manages food donation partnerships and community engagement initiatives."
+  }
+]
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Cleaned JSON string: [
+  {
+    "name": "Jane Smith",
+    "title": "Senior Sustainability Manager",
+    "summary": "Leads food waste reduction initiatives."
+  },
+  {
+    "name": "Michael Johnson",
+    "title": "Director of Supply Chain",
+    "summary": "Oversees inventory management and waste reduction in logistics."
+  },
+  {
+    "name": "Sarah Williams",
+    "title": "Community Relations Manager",
+    "summary": "Manages food donation partnerships and community engagement initiatives."
+  }
+]
+2025-11-10 15:28:59 - backend.airtable_uploader - INFO - Successfully parsed 3 contacts from JSON
+2025-11-10 15:29:01 - backend.airtable_uploader - INFO - Created new contact record with ID: recjxr8pppuZmAZLx
+2025-11-10 15:29:01 - backend.airtable_uploader - INFO - Found existing contacts: ['recjxr8pppuZmAZLx']
+2025-11-10 15:29:01 - backend.airtable_uploader - INFO - Updated contact list: ['recjxr8pppuZmAZLx']
+2025-11-10 15:29:01 - backend.airtable_uploader - INFO - Updated company record with contacts: ['recjxr8pppuZmAZLx']
+2025-11-10 15:29:01 - backend.airtable_uploader - INFO - Created new contact record for Jane Smith and linked to company
+2025-11-10 15:29:02 - backend.airtable_uploader - INFO - Final update: Company record now has 1 linked contacts
+2025-11-10 15:29:03 - backend.airtable_uploader - INFO - Created new contact record with ID: recvJuTaO4jAjg0zG
+2025-11-10 15:29:03 - backend.airtable_uploader - INFO - Found existing contacts: ['recjxr8pppuZmAZLx', 'recvJuTaO4jAjg0zG']
+2025-11-10 15:29:03 - backend.airtable_uploader - INFO - Updated contact list: ['recvJuTaO4jAjg0zG', 'recjxr8pppuZmAZLx']
+2025-11-10 15:29:03 - backend.airtable_uploader - INFO - Updated company record with contacts: ['recvJuTaO4jAjg0zG', 'recjxr8pppuZmAZLx']
+2025-11-10 15:29:03 - backend.airtable_uploader - INFO - Created new contact record for Michael Johnson and linked to company
+2025-11-10 15:29:04 - backend.airtable_uploader - INFO - Final update: Company record now has 2 linked contacts
+2025-11-10 15:29:05 - backend.airtable_uploader - INFO - Created new contact record with ID: rec5GCW29qk2M5NGL
+2025-11-10 15:29:05 - backend.airtable_uploader - INFO - Found existing contacts: ['recvJuTaO4jAjg0zG', 'recjxr8pppuZmAZLx', 'rec5GCW29qk2M5NGL']
+2025-11-10 15:29:05 - backend.airtable_uploader - INFO - Updated contact list: ['recvJuTaO4jAjg0zG', 'rec5GCW29qk2M5NGL', 'recjxr8pppuZmAZLx']
+2025-11-10 15:29:05 - backend.airtable_uploader - INFO - Updated company record with contacts: ['recvJuTaO4jAjg0zG', 'rec5GCW29qk2M5NGL', 'recjxr8pppuZmAZLx']
+2025-11-10 15:29:05 - backend.airtable_uploader - INFO - Created new contact record for Sarah Williams and linked to company
+2025-11-10 15:29:06 - backend.airtable_uploader - INFO - Final update: Company record now has 3 linked contacts
+2025-11-10 15:29:06 - backend.airtable_uploader - INFO - Contacts processing completed: 3 new, 0 existing, 0 errors
+2025-11-10 15:29:06 - backend.graph - INFO - Contact processing result: {'status': 'Success', 'results': {'total': 3, 'new': 3, 'existing': 0, 'errors': 0, 'details': [{'name': 'Jane Smith', 'status': 'created', 'record_id': 'recjxr8pppuZmAZLx'}, {'name': 'Michael Johnson', 'status': 'created', 'record_id': 'recvJuTaO4jAjg0zG'}, {'name': 'Sarah Williams', 'status': 'created', 'record_id': 'rec5GCW29qk2M5NGL'}]}}
+2025-11-10 15:29:06 - application - INFO - Found report in final state (length: 2441)
+2025-11-10 15:29:06 - application - INFO - SEMAPHORE RELEASED: Job 5f13caec-1754-458f-9def-c1896efa6d19 finished. 5 slots available.

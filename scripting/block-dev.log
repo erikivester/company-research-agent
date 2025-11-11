@@ -1,0 +1,28 @@
+Updating bundle...
+Bundle updated
+✅ Server listening at https://localhost:9000
+https://localhost:9000 has been copied to your clipboard
+(node:60157) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+node:events:486
+      throw er; // Unhandled 'error' event
+      ^
+
+Error [ERR_IPC_CHANNEL_CLOSED]: Channel closed
+    at target.send (node:internal/child_process:753:16)
+    at EventEmitterChannelImplementation.send (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/lib/helpers/task_channels.js:68:24)
+    at RequestChannelImplementation.requestAsync (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/lib/helpers/task_channels.js:114:21)
+    at Object.emitBuildState (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/lib/manager/run_bridge.js:13:33)
+    at /opt/homebrew/lib/node_modules/@airtable/blocks-cli/node_modules/@airtable/blocks-esbuild-bundler/dist/bundler.js:99:29
+    at /opt/homebrew/lib/node_modules/@airtable/blocks-cli/node_modules/esbuild/lib/main.js:1196:28
+    at Array.map (<anonymous>)
+    at requestCallbacks.on-start (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/node_modules/esbuild/lib/main.js:1194:40)
+    at handleRequest (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/node_modules/esbuild/lib/main.js:628:17)
+    at handleIncomingPacket (/opt/homebrew/lib/node_modules/@airtable/blocks-cli/node_modules/esbuild/lib/main.js:653:7)
+Emitted 'error' event on process instance at:
+    at node:internal/child_process:757:35
+    at process.processTicksAndRejections (node:internal/process/task_queues:85:11) {
+  code: 'ERR_IPC_CHANNEL_CLOSED'
+}
+
+Node.js v24.10.0

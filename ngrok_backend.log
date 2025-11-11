@@ -1,0 +1,30 @@
+t=2025-11-10T16:27:07-0600 lvl=info msg="no configuration paths supplied"
+t=2025-11-10T16:27:07-0600 lvl=info msg="using configuration at default config path" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml"
+t=2025-11-10T16:27:07-0600 lvl=info msg="open config file" path="/Users/erikivester/Library/Application Support/ngrok/ngrok.yml" err=nil
+t=2025-11-10T16:27:07-0600 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-11-10T16:27:07-0600 lvl=info msg="client session established" obj=tunnels.session
+t=2025-11-10T16:27:07-0600 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-11-10T16:27:07-0600 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8000 url=https://futuramic-nonglandulous-senaida.ngrok-free.dev
+t=2025-11-10T16:27:20-0600 lvl=info msg=start pg=/api/tunnels id=28771b46e9d5c2ef
+t=2025-11-10T16:27:20-0600 lvl=info msg=end pg=/api/tunnels id=28771b46e9d5c2ef status=200 dur=519.625µs
+t=2025-11-10T16:27:22-0600 lvl=info msg=start pg=/api/tunnels id=8310834b593530e2
+t=2025-11-10T16:27:22-0600 lvl=info msg=end pg=/api/tunnels id=8310834b593530e2 status=200 dur=167.334µs
+t=2025-11-10T16:27:24-0600 lvl=info msg=start pg=/api/tunnels id=2d393aabe0b9cb4f
+t=2025-11-10T16:27:24-0600 lvl=info msg=end pg=/api/tunnels id=2d393aabe0b9cb4f status=200 dur=153.083µs
+t=2025-11-10T16:27:26-0600 lvl=info msg=start pg=/api/tunnels id=aefe1aea36de8287
+t=2025-11-10T16:27:26-0600 lvl=info msg=end pg=/api/tunnels id=aefe1aea36de8287 status=200 dur=210.125µs
+t=2025-11-10T16:27:28-0600 lvl=info msg=start pg=/api/tunnels id=a77b7fcc55f01b5e
+t=2025-11-10T16:27:28-0600 lvl=info msg=end pg=/api/tunnels id=a77b7fcc55f01b5e status=200 dur=185.833µs
+t=2025-11-10T16:27:30-0600 lvl=info msg=start pg=/api/tunnels id=8c64afc992e5c074
+t=2025-11-10T16:27:30-0600 lvl=info msg=end pg=/api/tunnels id=8c64afc992e5c074 status=200 dur=277.25µs
+t=2025-11-10T16:27:32-0600 lvl=info msg=start pg=/api/tunnels id=5f4c1381cbae3278
+t=2025-11-10T16:27:32-0600 lvl=info msg=end pg=/api/tunnels id=5f4c1381cbae3278 status=200 dur=255.584µs
+t=2025-11-10T16:27:34-0600 lvl=info msg=start pg=/api/tunnels id=f7e6e624d12a4a08
+t=2025-11-10T16:27:34-0600 lvl=info msg=end pg=/api/tunnels id=f7e6e624d12a4a08 status=200 dur=211.791µs
+t=2025-11-10T16:27:36-0600 lvl=info msg=start pg=/api/tunnels id=6a36f633d58612ad
+t=2025-11-10T16:27:36-0600 lvl=info msg=end pg=/api/tunnels id=6a36f633d58612ad status=200 dur=194.542µs
+t=2025-11-10T16:27:38-0600 lvl=info msg=start pg=/api/tunnels id=ef635a8c6a9b3221
+t=2025-11-10T16:27:38-0600 lvl=info msg=end pg=/api/tunnels id=ef635a8c6a9b3221 status=200 dur=200.875µs
+t=2025-11-10T16:27:40-0600 lvl=info msg="received stop request" obj=app stopReq="{err:<nil> restart:false}"
+t=2025-11-10T16:27:40-0600 lvl=info msg="session closing" obj=tunnels.session err=nil
+t=2025-11-10T16:27:40-0600 lvl=info msg="accept failed" obj=tunnels.session obj=csess id=c73abe4bc4ec err="reconnecting session closed"
