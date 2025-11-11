@@ -3,11 +3,11 @@ import logging
 import os
 import asyncio
 from langchain_core.messages import AIMessage
-from tavily import AsyncTavilyClient
 
 from ..classes import InputState, ResearchState
 from backend.airtable_uploader import update_airtable_record # synchronous function
 from ..utils.status_constants import ResearchStatus
+from ..config import config
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,8 @@ class GroundingNode:
     """Gathers initial grounding data about the company."""
     
     def __init__(self) -> None:
-        self.tavily_client = AsyncTavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+        # Use config to get the appropriate Tavily client (mock or real)
+        self.tavily_client = config.get_tavily_client()
 
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):

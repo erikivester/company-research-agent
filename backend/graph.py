@@ -18,6 +18,7 @@ from .nodes.collector import Collector
 from .nodes.curator import Curator
 from .nodes.enricher import Enricher
 from .nodes.tagger import Tagger
+from .nodes.executive_summary import ExecutiveSummaryNode  # <-- NEW: Import executive summary
 
 # --- v2 Node Imports ---
 # Import the 5 new/refocused researcher nodes
@@ -139,6 +140,7 @@ class Graph:
         self.curator = Curator()
         self.enricher = Enricher()
         self.briefing = Briefing()
+        self.executive_summary = ExecutiveSummaryNode()  # <-- NEW: Initialize executive summary
         self.tagger = Tagger()
         # NOTE: self.editor is correctly removed
 
@@ -150,11 +152,52 @@ class Graph:
             record_id = state.get("airtable_record_id")
             company_name = state.get("company", "Unknown_Company")
 
-            # --- 1. Google Drive Context Upload ---
+            # Update status to "Compiling Report"
+            if record_id:
+                from backend.utils.status_constants import ResearchStatus
+                from backend.airtable_uploader import update_airtable_record
+                await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': ResearchStatus.COMPILING_REPORT})
+                logger.info(f"Updated Airtable status to 'Compiling Report' for record {record_id}")
+
+            # --- 1. Google Drive Executive Summary PDF Upload ---
             google_drive_folder_url = state.get("google_drive_folder_url")
             if google_drive_folder_url:
-                logger.info(f"Google Drive URL found. Compiling comprehensive research context for upload...")
-                
+                logger.info(f"Google Drive URL found. Preparing executive summary PDF for upload...")
+                pdf_path = state.get("executive_summary_pdf_path")
+                if pdf_path and os.path.exists(pdf_path):
+                    try:
+                        from backend.utils.gdrive_uploader import upload_context_to_gdrive
+                        # Use the filename from the path
+                        pdf_filename = os.path.basename(pdf_path)
+                        # Open the PDF file and upload
+                        with open(pdf_path, "rb") as pdf_file:
+                            await upload_context_to_gdrive(
+                                pdf_file,
+                                google_drive_folder_url,
+                                pdf_filename,
+                                'application/pdf'
+                            )
+                        logger.info(f"✅ Successfully uploaded executive summary PDF to Google Drive: {pdf_filename}")
+                        state['gdrive_uploads'] = {'pdf_file': pdf_filename}
+                        # Optionally, delete the temp file after upload
+                        try:
+                            os.remove(pdf_path)
+                            logger.info(f"Deleted temporary PDF file: {pdf_path}")
+                        except Exception as del_exc:
+                            logger.warning(f"Could not delete temp PDF file: {pdf_path} ({del_exc})")
+                    except Exception as gdrive_exc:
+                        logger.error(f"Failed to upload executive summary PDF to Google Drive: {gdrive_exc}", exc_info=True)
+                        state.setdefault("messages", []).append(
+                            AIMessage(content=f"⚠️ Failed to upload PDF to Google Drive: {gdrive_exc}")
+                        )
+                else:
+                    logger.warning("No executive summary PDF file found in state, skipping PDF upload.")
+            else:
+                logger.info("No Google Drive URL provided in state, skipping PDF upload.")
+            
+            # --- OLD: Full Context Upload (REPLACED BY EXECUTIVE SUMMARY) ---
+            # This section is now commented out since we only upload the executive summary PDF
+            if False:  # Disabled - replaced by executive summary upload
                 # Create comprehensive context with all available content
                 full_context = {
                     "company_identity": {
@@ -310,32 +353,9 @@ class Graph:
                     }
                 }
                 
-                if full_context:
-                    try:
-                        # Polish the context before upload
-                        polisher = ContextPolisher()
-                        polished_data = await polisher.polish_context(full_context)
-                        
-                        # Upload both JSON and PDF versions
-                        upload_results = await upload_research_with_pdf(
-                            polished_data,
-                            google_drive_folder_url,
-                            company_name
-                        )
-                        
-                        logger.info(f"Successfully uploaded research files to Google Drive: {upload_results}")
-                        
-                        # Add file URLs to state for reference
-                        state['gdrive_uploads'] = upload_results
-                        
-                    except Exception as gdrive_exc:
-                        logger.error(f"Failed to upload context to Google Drive: {gdrive_exc}", exc_info=True)
-                        # Don't stop the flow; log this error in process notes
-                        state.setdefault("messages", []).append(AIMessage(content=f"⚠️ Failed to upload context to Google Drive: {gdrive_exc}"))
-                else:
-                    logger.warning("No enriched context found to upload to Google Drive.")
-            else:
-                logger.info("No Google Drive URL provided in state, skipping GDrive upload.")
+                # OLD CODE: This full_context was previously used for enhanced PDF generation
+                # Now replaced by executive summary PDF upload above
+                pass  # End of disabled full context block
             # --- End Google Drive Logic ---
 
             # --- 2. Airtable Upload Preparation ---
@@ -472,6 +492,7 @@ class Graph:
         self.workflow.add_node("curator", self.curator.run)
         self.workflow.add_node("enricher", self.enricher.run)
         self.workflow.add_node("briefing", self.briefing.run)
+        self.workflow.add_node("executive_summary", self.executive_summary.run)  # <-- NEW: Add executive summary node
         self.workflow.add_node("raw_compiler", simple_report_compiler_node) # Keep raw compiler
         self.workflow.add_node("tagger", self.tagger.run)
         self.workflow.add_node("airtable_uploader", self.airtable_upload_node)
@@ -503,7 +524,8 @@ class Graph:
         self.workflow.add_edge("enricher", "briefing")
         
         # --- MODIFIED EDGES TO BYPASS EDITOR ---
-        self.workflow.add_edge("briefing", "raw_compiler") # Briefing output goes to compiler
+        self.workflow.add_edge("briefing", "executive_summary")  # Generate executive summary after briefings
+        self.workflow.add_edge("executive_summary", "raw_compiler") # Compiler still creates markdown report
         self.workflow.add_edge("raw_compiler", "tagger")   # Compiler output (with state['report']) goes to tagger
         # --- END MODIFIED EDGES ---
         
@@ -512,11 +534,45 @@ class Graph:
     async def run(self, thread: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute the research workflow"""
         initial_state_data = self.input_state.copy()
-        # --- v2: Pass GDrive URL from thread config ---
-        if 'airtable_record_id' in thread.get("configurable", {}):
+        
+        # DEBUG: Log initial state values
+        logger.info(f"🔧 GRAPH.RUN - Initial InputState values:")
+        logger.info(f"   use_local_context: {initial_state_data.get('use_local_context')}")
+        logger.info(f"   google_drive_folder_url: {initial_state_data.get('google_drive_folder_url')}")
+        
+        # DEBUG: Log thread config values
+        logger.info(f"🔧 GRAPH.RUN - Thread config top-level values:")
+        logger.info(f"   use_local_context: {thread.get('use_local_context')}")
+        logger.info(f"   google_drive_folder_url: {thread.get('google_drive_folder_url')}")
+        logger.info(f"   Thread config keys: {list(thread.keys())}")
+        
+        # --- v2: Pass GDrive URL and use_local_context from thread config ---
+        # Check both top-level and configurable (for backwards compatibility)
+        if 'airtable_record_id' in thread:
+             initial_state_data['airtable_record_id'] = thread['airtable_record_id']
+             logger.info(f"✅ Updated airtable_record_id from thread (top-level): {thread['airtable_record_id']}")
+        elif 'airtable_record_id' in thread.get("configurable", {}):
              initial_state_data['airtable_record_id'] = thread["configurable"]['airtable_record_id']
-        if 'google_drive_folder_url' in thread.get("configurable", {}):
+             logger.info(f"✅ Updated airtable_record_id from thread (configurable): {thread['configurable']['airtable_record_id']}")
+             
+        if 'google_drive_folder_url' in thread:
+             initial_state_data['google_drive_folder_url'] = thread['google_drive_folder_url']
+             logger.info(f"✅ Updated google_drive_folder_url from thread (top-level): {thread['google_drive_folder_url']}")
+        elif 'google_drive_folder_url' in thread.get("configurable", {}):
              initial_state_data['google_drive_folder_url'] = thread["configurable"]['google_drive_folder_url']
+             logger.info(f"✅ Updated google_drive_folder_url from thread (configurable): {thread['configurable']['google_drive_folder_url']}")
+             
+        if 'use_local_context' in thread:
+             initial_state_data['use_local_context'] = thread['use_local_context']
+             logger.info(f"✅ Updated use_local_context from thread (top-level): {thread['use_local_context']}")
+        elif 'use_local_context' in thread.get("configurable", {}):
+             initial_state_data['use_local_context'] = thread["configurable"]['use_local_context']
+             logger.info(f"✅ Updated use_local_context from thread (configurable): {thread['configurable']['use_local_context']}")
+        
+        # DEBUG: Log final initial_state_data values
+        logger.info(f"🔧 GRAPH.RUN - Final initial_state_data being passed to workflow:")
+        logger.info(f"   use_local_context: {initial_state_data.get('use_local_context')}")
+        logger.info(f"   google_drive_folder_url: {initial_state_data.get('google_drive_folder_url')}")
         # --- End v2 ---
 
         compiled_graph = self.workflow.compile()

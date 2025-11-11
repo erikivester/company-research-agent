@@ -954,7 +954,8 @@ def start():
     start_http_server(8001)  # Metrics available on port 8001
     
     # Start the FastAPI application
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 @app.post("/auth/token", 
          responses={

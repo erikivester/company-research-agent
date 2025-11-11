@@ -128,9 +128,7 @@ class Curator:
         logger.info(f"Starting curation for company: {company}")
 
         if airtable_record_id:
-            asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, ResearchStatus.CURATING_DOCUMENTS)
-            )
+            await self._update_airtable_status(airtable_record_id, ResearchStatus.CURATING_DOCUMENTS)
 
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')

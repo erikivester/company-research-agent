@@ -6,11 +6,11 @@ from typing import Dict, List, Any
 from urllib.parse import urlparse # <-- NEW: Import urlparse
 
 from langchain_core.messages import AIMessage
-from tavily import AsyncTavilyClient
 
 from ..classes import ResearchState
 from backend.airtable_uploader import update_airtable_record
 from ..utils.status_constants import ResearchStatus
+from ..config import config
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,8 @@ class Enricher:
     """Enriches curated documents with raw content."""
 
     def __init__(self) -> None:
-        tavily_key = os.getenv("TAVILY_API_KEY")
-        if not tavily_key:
-            raise ValueError("TAVILY_API_KEY environment variable is not set")
-        self.tavily_client = AsyncTavilyClient(api_key=tavily_key)
+        # Use config to get the appropriate Tavily client (mock or real)
+        self.tavily_client = config.get_tavily_client()
         self.batch_size = 20 # Number of URLs to fetch in parallel per batch
         self.semaphore_limit = 10 # Max concurrent requests to Tavily API
         
@@ -181,9 +179,7 @@ class Enricher:
         job_id = state.get('job_id')
 
         if airtable_record_id:
-            asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, ResearchStatus.ENRICHING_CONTENT)
-            )
+            await self._update_airtable_status(airtable_record_id, ResearchStatus.ENRICHING_CONTENT)
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
@@ -376,9 +372,7 @@ class Enricher:
             logger.error(error_msg, exc_info=True)
             state.setdefault('messages', []).append(AIMessage(content=f"⚠️ Enrichment node failed: {error_msg}"))
             if airtable_record_id:
-                 asyncio.create_task(
-                     self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_ENRICHMENT, str(e)))
-                 )
+                await self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_ENRICHMENT, str(e)))
             
             # --- v2 MODIFICATION: Ensure all new v2 keys exist on failure ---
             v2_curated_keys = [

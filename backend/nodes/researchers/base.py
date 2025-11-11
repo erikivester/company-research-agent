@@ -84,25 +84,31 @@ class BaseResearcher:
         use_local_context = state.get('use_local_context', False)  # <-- Check Airtable flag
         google_drive_folder_url = state.get('google_drive_folder_url')
         
-        # DEBUG: Log the values
-        logger.info(f"🔧 use_local_context={use_local_context}, google_drive_folder_url={google_drive_folder_url}")
+        # DEBUG: Log the values with clear markers
+        logger.info(f"🔧 CONTEXT CHECK: use_local_context={use_local_context}, google_drive_folder_url={google_drive_folder_url}")
         
         # NEW: If use_local_context is enabled and GDrive folder URL is provided, download existing research
         if use_local_context and google_drive_folder_url:
+            logger.info(f"🎯 LOCAL CONTEXT MODE ACTIVATED - Will check Google Drive for existing research")
+            logger.info(f"📂 Google Drive Folder: {google_drive_folder_url}")
             try:
                 from ...utils.gdrive_uploader import download_research_from_gdrive
                 
-                logger.info(f"🔍 Checking Google Drive folder for existing research files...")
+                logger.info(f"🔍 STARTING Google Drive download for {self.analyst_type}...")
                 downloaded_files = await download_research_from_gdrive(google_drive_folder_url)
+                logger.info(f"📦 Download complete. Retrieved {len(downloaded_files) if downloaded_files else 0} files")
                 
                 if downloaded_files:
-                    logger.info(f"📥 Found {len(downloaded_files)} research files in Google Drive")
+                    logger.info(f"✅ SUCCESS: Found {len(downloaded_files)} research file(s) in Google Drive")
+                    logger.info(f"📋 Files retrieved: {[f['filename'] for f in downloaded_files]}")
                     
                     # Parse downloaded research files into document format
                     for file_data in downloaded_files:
                         try:
                             research_content = file_data['content']
                             filename = file_data['filename']
+                            
+                            logger.info(f"🔄 Processing file: {filename}")
                             
                             # Extract relevant sections from the research JSON
                             # The research JSON structure typically has sections like:
@@ -147,17 +153,24 @@ class BaseResearcher:
                             logger.debug(f"✓ Parsed research file: {filename}")
                             
                         except Exception as e:
-                            logger.warning(f"Failed to parse research file {file_data.get('filename')}: {e}")
+                            logger.warning(f"⚠️ Failed to parse research file {file_data.get('filename')}: {e}")
                             continue
                     
                     if local_docs:
-                        logger.info(f"✅ Loaded {len(local_docs)} documents from Google Drive research files")
-                        logger.info(f"🚫 Skipping Tavily API calls - using existing research from GDrive")
+                        logger.info(f"✅ SUCCESS: Loaded {len(local_docs)} document(s) from Google Drive research files")
+                        logger.info(f"🚫 SKIPPING TAVILY - Using existing research from Google Drive instead")
                 else:
-                    logger.info(f"📭 No existing research files found in Google Drive folder")
+                    logger.warning(f"📭 NO FILES FOUND in Google Drive folder")
+                    logger.info(f"⏭️ Will proceed with Tavily API search")
                     
             except Exception as e:
-                logger.warning(f"Failed to download research from Google Drive: {e}", exc_info=True)
+                logger.error(f"❌ FAILED to download research from Google Drive: {e}", exc_info=True)
+                logger.info(f"⏭️ Falling back to Tavily API search")
+        elif use_local_context and not google_drive_folder_url:
+            logger.warning(f"⚠️ LOCAL CONTEXT MODE enabled but no Google Drive folder URL provided!")
+            logger.info(f"⏭️ Will proceed with Tavily API search")
+        else:
+            logger.info(f"📡 NORMAL MODE - Will use Tavily API for research")
         
         # FALLBACK: Also check local file system if USE_LOCAL_FILES is enabled
         if (use_local_context or config.USE_LOCAL_FILES) and not local_docs:

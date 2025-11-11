@@ -36,3 +36,22 @@ class MockTavilyClient:
         logger.info(f"Found {enrichment_count} enriched sections in mock data")
         
         return results
+    
+    async def crawl(self, url: str, **kwargs) -> Dict[str, Any]:
+        """Mock crawl that returns empty results (grounding uses this)."""
+        await asyncio.sleep(0.1)
+        logger.info(f"{MOCK_DATA_MARKER} Mock crawl for URL: {url}")
+        # Return empty crawl result - grounding will handle gracefully
+        return {"results": []}
+    
+    async def extract(self, url: str, **kwargs) -> Dict[str, Any]:
+        """Mock extract that returns mock content (enricher uses this)."""
+        await asyncio.sleep(0.1)
+        logger.info(f"{MOCK_DATA_MARKER} Mock extract for URL: {url}")
+        # Return mock extracted content with raw_content field that enricher expects
+        return {
+            "results": [{
+                "url": url,
+                "raw_content": f"Mock extracted content from {url}. This is simulated full-text content that would normally be extracted from the webpage."
+            }]
+        }

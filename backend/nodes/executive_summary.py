@@ -13,8 +13,8 @@ from backend.utils.enhanced_pdf import create_executive_summary_pdf
 logger = logging.getLogger(__name__)
 
 class ExecutiveSummaryNode:
-
-    async def run(self, state):
+    async def run(self, state: ResearchState) -> ResearchState:
+        """Entry point for workflow: calls generate_executive_summary."""
         return await self.generate_executive_summary(state)
     """
     Generates a dynamic 1-2 page executive summary using AI.
@@ -105,14 +105,24 @@ class ExecutiveSummaryNode:
             
             # Generate PDF from the summary
             try:
-                pdf_buffer = io.BytesIO()
-                create_executive_summary_pdf(summary, company, pdf_buffer)
-                pdf_buffer.seek(0)
-                state['executive_summary_pdf'] = pdf_buffer
-                logger.info(f"Successfully generated executive summary PDF ({pdf_buffer.getbuffer().nbytes} bytes)")
+                import tempfile
+                from datetime import datetime
+                # Save PDF to a temp file in the pdfs directory
+                pdfs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../pdfs')
+                os.makedirs(pdfs_dir, exist_ok=True)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                pdf_filename = f"executive_summary_{company.replace(' ', '_').lower()}_{timestamp}.pdf"
+                pdf_path = os.path.join(pdfs_dir, pdf_filename)
+                with open(pdf_path, 'wb') as f:
+                    pdf_buffer = io.BytesIO()
+                    create_executive_summary_pdf(summary, company, pdf_buffer)
+                    pdf_buffer.seek(0)
+                    f.write(pdf_buffer.read())
+                state['executive_summary_pdf_path'] = pdf_path
+                logger.info(f"Successfully generated executive summary PDF at {pdf_path}")
             except Exception as pdf_err:
                 logger.error(f"Failed to generate PDF from summary: {pdf_err}", exc_info=True)
-                state['executive_summary_pdf'] = None
+                state['executive_summary_pdf_path'] = None
             
             # Also update final_summary for PDF generation
             state['final_summary'] = {'markdown_report': summary}

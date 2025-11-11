@@ -20,7 +20,8 @@ class PDFService:
     def _generate_filename(self, company_name: str) -> str:
         """Generates a sanitized PDF filename."""
         safe_name = "".join(
-            [c for c in company_name if c.isalnum() or c in (" ", "-")]
+            [c for c in company_name if c
+            .isalnum() or c in (" ", "-")]
         ).rstrip()
         safe_name = safe_name.replace(" ", "_").replace("-", "_")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -1,3 +1,4 @@
+
 """
 Pydantic models for the outreach email generation feature.
 """

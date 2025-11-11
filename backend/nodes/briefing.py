@@ -392,9 +392,7 @@ Output ONLY the requested markdown content.
         """Executes the briefing generation process."""
         airtable_record_id = state.get('airtable_record_id')
         if airtable_record_id:
-            asyncio.create_task(
-                self._update_airtable_status(airtable_record_id, ResearchStatus.GENERATING_BRIEFINGS)
-            )
+            await self._update_airtable_status(airtable_record_id, ResearchStatus.GENERATING_BRIEFINGS)
             
         try:
              return await self.create_briefings(state)

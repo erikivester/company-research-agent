@@ -20,10 +20,8 @@ class QueryGeneratorNode:
     def __init__(self) -> None:
         self.openai_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_key:
-            logger.warning("OPENAI_API_KEY not set; QueryGenerator will be inert until a key is provided.")
-            self.openai_client = None
-        else:
-            self.openai_client = AsyncOpenAI(api_key=self.openai_key)
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        self.openai_client = AsyncOpenAI(api_key=self.openai_key)
         logger.info("Query Generator Node initialized.")
 
     async def generate_queries(self, state: ResearchState) -> ResearchState:
@@ -71,7 +69,8 @@ class QueryGeneratorNode:
 
         5.  **engagement_finder**: (4 queries)
             * Find a broad and all-encompassing set of external signals for "common ground" and "entry points".
-            * **Query Example 1 (Partnerships/Memberships):** Focus on direct nonprofit partnerships, coalition memberships (e.g., '"U.S. Food Waste Pact"'), or event sponsorships (e.g., '"ReFED Summit"').
+            * **Query Example 1 (Partnerships/Memberships):** Focus on di
+            rect nonprofit partnerships, coalition memberships (e.g., '"U.S. Food Waste Pact"'), or event sponsorships (e.g., '"ReFED Summit"').
             * **Query Example 2 (Investment/Innovation):** Look for corporate venture capital (CVC) investments or grants given by their foundation related to sustainability, ag-tech, or food waste. (e.g., '"{company} venture fund" food tech investment').
             * **Query Example 3 (Supply Chain/Solution Providers):** Search for partnerships with *operational* solution providers. (e.g., '"{company}" partners with Leanpath', '"{company}" adopts Apeel', '"{company}" circular economy supply chain').
             * **Query Example 4 (Policy/Advocacy/People):** Find public policy statements, advocacy, or key board member affiliations. (e.g., '"{company}" supports food donation policy', '"{company}" board member" nonprofit').
@@ -79,11 +78,6 @@ class QueryGeneratorNode:
         # --- END OF MODIFIED PROMPT ---
 
         try:
-            # Defensive logging: preserve and show local-context flags coming into the generator
-            logger.info(f"QueryGenerator: entry flags - use_local_context={state.get('use_local_context')} google_drive_folder_url={state.get('google_drive_folder_url')}")
-            if not self.openai_client:
-                raise ValueError("OpenAI client not configured. Set OPENAI_API_KEY to enable LLM query generation.")
-
             response = await self.openai_client.chat.completions.create(
                 model="gpt-4o-mini", # Using a reliable model for JSON mode
                 messages=[
@@ -149,12 +143,6 @@ class QueryGeneratorNode:
                 log_msg += f"  • {key}: {len(queries)} queries - {queries}\n"
 
             new_state['messages'].append(AIMessage(content=f"📊 {log_msg}"))
-            # Preserve important input flags explicitly to avoid accidental loss during merges
-            try:
-                new_state['use_local_context'] = state.get('use_local_context', False)
-                new_state['google_drive_folder_url'] = state.get('google_drive_folder_url')
-            except Exception:
-                logger.warning("QueryGenerator: failed to explicitly preserve local-context flags on new_state")
             return new_state
 
         except json.JSONDecodeError as e:
@@ -170,29 +158,6 @@ class QueryGeneratorNode:
         Entry point for the LangGraph node execution.
         """
         try:
-            # Invariant logging: record entry flags
-            entry_use_local = bool(state.get('use_local_context'))
-            entry_gdrive = state.get('google_drive_folder_url')
-            logger.info(f"QueryGenerator.run - entry flags: use_local_context={entry_use_local}, google_drive_folder_url={entry_gdrive}")
-
-            # If local context bypass is enabled, skip expensive LLM query generation.
-            if entry_use_local and entry_gdrive:
-                logger.info("QueryGenerator: local-mode detected - skipping query generation and returning empty query sets.")
-                # Ensure research_queries exists with the correct keys (empty lists)
-                state.setdefault('research_queries', {})
-                for k in ["company_brief", "news_signal", "flw_analyzer", "contact_finder", "engagement_finder"]:
-                    state['research_queries'].setdefault(k, [])
-                # Preserve flags explicitly on the returned state
-                try:
-                    state['use_local_context'] = entry_use_local
-                    state['google_drive_folder_url'] = entry_gdrive
-                except Exception:
-                    logger.warning("QueryGenerator: failed to explicitly preserve local-context flags on state before returning")
-                # Add an informational message
-                state.setdefault('messages', []).append(AIMessage(content="📌 Local context mode: skipped query generation (using Google Drive research)."))
-                logger.info(f"QueryGenerator.run - exit (skipped) - preserved flags: use_local_context={state.get('use_local_context')}, google_drive_folder_url={state.get('google_drive_folder_url')}")
-                return state
-
             # Send status update via WebSocket
             if websocket_manager := state.get('websocket_manager'):
                 if job_id := state.get('job_id'):
@@ -203,11 +168,7 @@ class QueryGeneratorNode:
                         result={"step": "Query Generation"}
                     )
             
-            # Normal path: generate queries via LLM
-            logger.info("QueryGenerator: invoking LLM to generate queries")
             state = await self.generate_queries(state)
-            # Post-condition: ensure flags preserved
-            logger.info(f"QueryGenerator.run - exit after generate_queries - use_local_context={state.get('use_local_context')}, google_drive_folder_url={state.get('google_drive_folder_url')}")
 
         except Exception as e:
             error_msg = f"Query Generator node failed: {str(e)}"

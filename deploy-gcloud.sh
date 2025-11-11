@@ -40,7 +40,7 @@ REGION="us-central1"
 SERVICE_NAME="company-research-agent"
 MEMORY="2Gi"
 CPU="2"
-TIMEOUT="900"
+TIMEOUT="1200"
 MIN_INSTANCES="1"
 MAX_INSTANCES="10"
 CONCURRENCY="80"
@@ -180,7 +180,7 @@ gcloud run deploy $SERVICE_NAME \
     --concurrency $CONCURRENCY \
     --min-instances $MIN_INSTANCES \
     --max-instances $MAX_INSTANCES \
-    --set-env-vars "PYTHONUNBUFFERED=1,PORT=8000,EMAIL_TEMPLATES_FOLDER_ID=1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH" \
+    --set-env-vars "PYTHONUNBUFFERED=1,EMAIL_TEMPLATES_FOLDER_ID=1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH" \
     --update-secrets ".env=research-env:latest,/secrets/gdrive_credentials.json=gdrive-credentials:latest"
 
 echo ""

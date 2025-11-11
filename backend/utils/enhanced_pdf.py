@@ -1,49 +1,240 @@
 """
 Enhanced PDF generation with AI-optimized context and formatting.
 
-This script is structured to be highly useful for future AI agents:
-1.  **AI Summaries First:** Presents the AI-generated briefings at the beginning.
-2.  **Metadata Context:** Provides the "who, what, why" (profile, queries, scores).
-3.  **Raw Data Appendix:** Appends all raw source text as a ground-truth reference.
+V2 TEST SCRIPT:
+- Combines enhanced_pdf, context_analyzer, and context_polisher.
+- Updates footer text to "ReFED Research Report".
+- Simplifies asset path to look in a local "./assets" folder.
 """
 import io
 import json
 import logging
-import os  # Added for logo path
-import re  # Added for markdown parsing
+import os
+import re
+import asyncio  # Added for test harness
 from datetime import datetime
 from typing import Dict, Any, List
 
 from reportlab.lib import colors
-try:
-    from .context_analyzer import ContextAnalyzer
-except ImportError:
-    logger = logging.getLogger(__name__)
-    logger.warning("Could not import ContextAnalyzer. Using dummy class.")
-    # Define a dummy class if import fails (e.g., in a test)
-    class ContextAnalyzer:
-        async def prepare_context(self, data):
-            logger.info("Using dummy ContextAnalyzer.")
-            return data if isinstance(data, dict) else {}
-
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
+from reportlab.lib.units import inch, cm
 from reportlab.platypus import (
     Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     PageBreak, Image, ListFlowable, ListItem
 )
-import logging
-import os.path
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-# Initialize logger first
+# --- Initialize Logger ---
+# Basic logging config for testing
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get the assets directory path
-ASSETS_DIR = os.path.join(os.path.dirname(__file__), '..', 'assets')
+# --- START: V2 - Combined Code from context_polisher.py ---
+# Note: In a real app, Gemini API key should be securely managed.
+# For this test, it will warn if the key is not set but won't fail.
+try:
+    import google.generativeai as genai
+except ImportError:
+    logger.warning("google.generativeai not installed. ContextPolisher will be disabled.")
+    genai = None
+
+class ContextPolisher:
+    """Polishes research context JSON using Gemini for better readability and structure."""
+
+    def __init__(self) -> None:
+        if genai is None:
+            logger.warning("Gemini library not available. ContextPolisher is disabled.")
+            self.model = None
+            return
+            
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
+        if not self.gemini_key:
+            logger.warning("GEMINI_API_KEY environment variable is not set - will return unpolished context")
+            self.model = None
+            return
+        
+        try:
+            # Configure Gemini
+            genai.configure(api_key=self.gemini_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash') # Using 1.5-flash
+            logger.info("Context Polisher initialized with Gemini 1.5 Flash model")
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini model: {e}")
+            self.model = None
+
+    async def polish_context(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Processes the research context to improve readability and structure.
+        """
+        try:
+            if not self.model:
+                logger.warning("Gemini model not available - returning unpolished context")
+                return context
+            
+            # This is a placeholder for the actual polishing prompt.
+            # In a real scenario, you'd send parts of the context to Gemini.
+            # For this test, we'll just log and return the original context
+            # to avoid unnecessary API calls during visual testing.
+            logger.info("ContextPolisher: Bypassing Gemini API call for visual test.")
+            return context
+        
+        except Exception as e:
+            logger.error(f"Error during context polishing: {e}")
+            return context  # Return original context if polishing fails
+# --- END: V2 - Combined Code from context_polisher.py ---
+
+
+# --- START: V2 - Combined Code from context_analyzer.py ---
+class ContextAnalyzer:
+    """Analyzes and structures research context for AI consumption."""
+    
+    def __init__(self):
+        # Use the ContextPolisher class defined above
+        self.polisher = ContextPolisher()
+
+    async def prepare_context(self, research_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Prepares research context from the flat agent state.
+        """
+        try:
+            logger.debug(f"Received research data keys: {research_data.keys() if isinstance(research_data, dict) else 'Not a dictionary'}")
+            
+            # Start with a fresh structure
+            enhanced_data = {
+                "company_identity": {
+                    "name": "Company",
+                    "headquarters": "Not Available",
+                    "industry": "Not Available",
+                    "region": "Not Available",
+                    "scale": "Not Available",
+                    "website": "Not Available"
+                },
+                "research_meta": {
+                    "queries_used": {},
+                    "successful_extractions": {
+                        "total_analyzed": 0,
+                        "relevant_sources": 0,
+                        "contacts_found": 0
+                    },
+                    "timestamp": "",
+                    "data_relationships": { # <-- Key fix from our previous chat
+                        "queries_to_sources": {}
+                    }
+                },
+                "final_summary": {'markdown_report': ''}, # Add default
+                "source_credibility": {'reference_info': {}}, # Add default
+                "official_content": {
+                    "company_information": {},
+                    "sustainability_reporting": {}
+                },
+                "recent_developments": {
+                    "news_coverage": {}
+                },
+                "key_personnel": {
+                    "identified_contacts": {}
+                },
+                "engagement_signals": {
+                    "partnerships_and_initiatives": {}
+                }
+            }
+            
+            # Update with actual data if available
+            if isinstance(research_data, dict):
+                # Extract company identity data
+                company_data = research_data.get('company_identity', {})
+                
+                # Update company identity
+                enhanced_data['company_identity'].update(company_data)
+                
+                # Update with actual data if available
+                if 'research_meta' in research_data:
+                    enhanced_data['research_meta'].update(research_data['research_meta'])
+                    logger.debug(f"Updated research_meta with keys: {research_data['research_meta'].keys()}")
+                
+                # Update content sections
+                for section in ['official_content', 'recent_developments', 'key_personnel', 
+                              'engagement_signals', 'source_credibility', 'final_summary']:
+                    if section in research_data:
+                        enhanced_data[section].update(research_data[section])
+                        logger.debug(f"Updated section '{section}' with keys: {research_data[section].keys()}")
+                    else:
+                        logger.warning(f"Missing section in research data: {section}")
+                
+                # Log final structure
+                logger.debug(f"Final enhanced data structure keys: {enhanced_data.keys()}")
+
+            # Track relationships (Fix from previous chat)
+            for query_type, queries in research_data.get('research_meta', {}).get('queries_used', {}).items():
+                if query_type not in enhanced_data["research_meta"]["data_relationships"]["queries_to_sources"]:
+                     enhanced_data["research_meta"]["data_relationships"]["queries_to_sources"][query_type] = {}
+                
+                for query in queries:
+                    matching_sources = []
+                    for section in ['official_content', 'recent_developments', 'key_personnel', 'engagement_signals']:
+                        if section in research_data:
+                            for subsection in research_data.get(section, {}).values():
+                                for url, data in subsection.items():
+                                    if isinstance(data, dict) and data.get('query_context') == query:
+                                        matching_sources.append({
+                                            "url": url,
+                                            "relevance": data.get('relevance', 0),
+                                            "source_type": data.get('source_type', 'unknown')
+                                        })
+                    
+                    enhanced_data["research_meta"]["data_relationships"]["queries_to_sources"][query_type][query] = matching_sources
+
+            # Light content polishing (will be bypassed in this test script)
+            try:
+                polished_sections = await self.polisher.polish_context({
+                    "company_information": research_data.get('official_content', {}).get('company_information', {}),
+                    "sustainability_data": research_data.get('official_content', {}).get('sustainability_reporting', {}),
+                    "news_coverage": research_data.get('recent_developments', {}).get('news_coverage', {})
+                })
+                
+                enhanced_data["raw_content"] = research_data
+                enhanced_data["polished_content"] = polished_sections
+                
+            except Exception as polish_err:
+                logger.error(f"Error during content polishing: {polish_err}")
+                enhanced_data["raw_content"] = research_data
+                enhanced_data["polishing_error"] = str(polish_err)
+
+            # Add source credibility context
+            if "source_credibility" in research_data and "reference_info" in research_data["source_credibility"]:
+                enhanced_data["source_analysis"] = {
+                    "credibility_metrics": research_data["source_credibility"],
+                    "source_relationships": {
+                        url: {
+                            "related_sources": [
+                                rel_url for rel_url, rel_data in research_data["source_credibility"]["reference_info"].items()
+                                if isinstance(rel_data, dict) and rel_data.get("domain") == data.get("domain") and rel_url != url
+                            ],
+                            "domain_authority": data.get("score", 0)
+                        }
+                        for url, data in research_data["source_credibility"]["reference_info"].items()
+                        if isinstance(data, dict)
+                    }
+                }
+
+            return enhanced_data
+
+        except Exception as e:
+            logger.error(f"Error preparing context: {e}", exc_info=True)
+            # Return original data if enhancement fails
+            return {
+                "error": str(e),
+                "original_data": research_data
+            }
+# --- END: V2 - Combined Code from context_analyzer.py ---
+
+
+# --- START: V2 - Main PDF Generation Code ---
+
+# --- V2 DESIGN CHANGE: Simplified asset path for local testing ---
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'assets')
 
 # Initialize font variables with default Helvetica
 FONT_REGULAR = "Helvetica"
@@ -52,28 +243,20 @@ FONT_SEMIBOLD = "Helvetica-Bold"
 
 # Try to load OpenSans fonts if available
 try:
-    # Check if OpenSans variable font exists in the assets directory
-    # NOTE: ReportLab has limited support for variable fonts. While it can use them,
-    # it won't take advantage of the variable font features. The font will work but
-    # only in its default weight/width configuration.
     opensans_regular = os.path.join(ASSETS_DIR, 'OpenSans-VariableFont_wdth,wght.ttf')
     opensans_italic = os.path.join(ASSETS_DIR, 'OpenSans-Italic-VariableFont_wdth,wght.ttf')
     
     if all(os.path.exists(f) for f in [opensans_regular, opensans_italic]):
-        # Register OpenSans fonts
         pdfmetrics.registerFont(TTFont('OpenSans', opensans_regular))
         pdfmetrics.registerFont(TTFont('OpenSans-Italic', opensans_italic))
         
-        # Update font variables to use OpenSans
         FONT_REGULAR = "OpenSans"
-        # NOTE: Using 'OpenSans' for all weights, as ReportLab can struggle with
-        # variable font weight names. Bolding will be applied via <b> tags.
         FONT_BOLD = "OpenSans"
         FONT_SEMIBOLD = "OpenSans"
         
         logger.info("Successfully registered OpenSans variable fonts")
     else:
-        logger.warning("OpenSans variable font files not found in assets directory. Using Helvetica as fallback.")
+        logger.warning(f"OpenSans font files not found in '{ASSETS_DIR}'. Using Helvetica as fallback.")
 except Exception as e:
     logger.warning(f"Could not register Open Sans fonts: {str(e)}. Using Helvetica as fallback.")
 
@@ -84,11 +267,61 @@ REFED_LIGHT_GREY = colors.HexColor('#EFEDEB')
 REFED_LIGHT_GREEN_TINT = colors.HexColor('#D1ECC1')
 
 # --- Define Logo Path ---
-LOGO_PATH = os.path.join(os.path.dirname(__file__), '..', 'assets', 'refed_logo.png')
-
+LOGO_PATH = os.path.join(ASSETS_DIR, 'refed_logo.png')
 
 # --- End ReFED Styles ---
 
+def header_and_footer(canvas, doc):
+    """
+    Adds a branded header and footer to each page.
+    """
+    canvas.saveState()
+    page_width = doc.width + doc.leftMargin + doc.rightMargin
+    page_height = doc.height + doc.topMargin + doc.bottomMargin
+    
+    # --- Header ---
+    if os.path.exists(LOGO_PATH):
+        # Draw a centered logo in the header band (between page top and separator line)
+        img_width = 1.5*inch
+        img_height = 0.45*inch
+        line_y = page_height - 1.25*inch
+        band_top = page_height - 0.15*inch
+        band_height = max(0.2*inch, band_top - line_y)
+        x_pos = (page_width - img_width) / 2.0
+        y_pos = line_y + (band_height - img_height) / 2.0
+        try:
+            logger.info(f"Drawing logo: {LOGO_PATH} at ({x_pos:.1f}, {y_pos:.1f}) size {img_width/inch:.2f}in x {img_height/inch:.2f}in")
+            canvas.drawImage(
+                LOGO_PATH,
+                x_pos,
+                y_pos,
+                width=img_width,
+                height=img_height,
+                preserveAspectRatio=True,
+                mask='auto'
+            )
+        except Exception as e:
+            logger.warning(f"Failed to draw logo: {e}")
+    else:
+        logger.warning(f"Logo not found at {LOGO_PATH} for header.")
+    
+    canvas.setStrokeColor(REFED_GREEN)
+    canvas.setLineWidth(1)
+    canvas.line(doc.leftMargin, page_height - 1.25*inch, 
+                page_width - doc.rightMargin, page_height - 1.25*inch)
+
+    # --- Footer ---
+    canvas.setFont(FONT_REGULAR, 9)
+    canvas.setFillColor(REFED_DARK)
+    
+    # --- V2 DESIGN CHANGE: Updated footer text ---
+    footer_text = "ReFED Research Report"
+    canvas.drawString(doc.leftMargin, 0.75*inch, footer_text)
+    
+    page_num_text = f"Page {doc.page}"
+    canvas.drawRightString(page_width - doc.rightMargin, 0.75*inch, page_num_text)
+    
+    canvas.restoreState()
 
 def _convert_markdown_to_elements(
     md_text: str,
@@ -97,32 +330,16 @@ def _convert_markdown_to_elements(
 ) -> List[Any]:
     """
     Basic converter for the final markdown report into ReportLab elements.
-    This is crucial for rendering the AI's output correctly.
     """
-    logger.debug(f"Converting markdown text of length: {len(md_text) if md_text else 0}")
-    
-    # Validate and clean input
     if md_text is None:
-        logger.warning("Received None as markdown text")
         return [Paragraph("No content available.", body_style)]
-    
     if not isinstance(md_text, str):
-        logger.warning(f"Converting non-string markdown text of type {type(md_text)} to string")
-        try:
-            md_text = str(md_text)
-        except Exception as e:
-            logger.error(f"Failed to convert markdown text to string: {e}")
-            return [Paragraph("Failed to process content format.", body_style)]
-    
+        md_text = str(md_text)
     if not md_text.strip():
-        logger.warning("Received empty markdown text")
         return [Paragraph("No content available.", body_style)]
     
-    # Clean up common markdown issues
-    md_text = md_text.replace('\r\n', '\n')  # Normalize line endings
-    md_text = re.sub(r'\n{3,}', '\n\n', md_text)  # Remove excessive newlines
-    
-    # Clean up markdown response for parsing
+    md_text = md_text.replace('\r\n', '\n')
+    md_text = re.sub(r'\n{3,}', '\n\n', md_text)
     md_text = re.sub(r"^\s*```markdown", "", md_text, flags=re.MULTILINE)
     md_text = re.sub(r"```\s*$", "", md_text, flags=re.MULTILINE)
     md_text = md_text.strip()
@@ -134,7 +351,6 @@ def _convert_markdown_to_elements(
     def flush_list():
         nonlocal list_items, in_list, elements
         if list_items:
-            # Use a style for list items
             list_item_style = ParagraphStyle(name='ListItem', parent=body_style, leftIndent=20)
             list_flow = ListFlowable(
                 [ListItem(Paragraph(item, list_item_style)) for item in list_items],
@@ -160,7 +376,6 @@ def _convert_markdown_to_elements(
             elements.append(Paragraph(line_strip[3:], subsection_style))
         elif line_strip.startswith('### '):
             if in_list: flush_list()
-            # Treat H3 as bold body text for this context
             elements.append(Paragraph(f"<b>{line_strip[4:]}</b>", body_style))
         elif line_strip.startswith('* '):
             in_list = True
@@ -169,9 +384,8 @@ def _convert_markdown_to_elements(
             if in_list: flush_list()
             elements.append(Paragraph(line_strip, body_style))
     
-    if in_list: flush_list() # Flush any remaining list items
+    if in_list: flush_list()
     return elements
-
 
 def format_source_content(
     url: str, 
@@ -180,17 +394,13 @@ def format_source_content(
     subsection_style: ParagraphStyle
 ) -> List[Any]:
     """
-    Helper function to format source content with metadata,
-    styled for the ReFED brand.
+    Helper function to format source content with metadata.
     """
     elements = []
-    
-    # Source header (using the ReFED Subsection Style for hierarchy)
     title = data.get("title") or url
     elements.append(Paragraph(title, subsection_style))
     elements.append(Paragraph(f"<i>Source: {url}</i>", body_style))
     
-    # Metadata table (Styled with ReFED colors)
     meta_data = [
         ["Score", f"{data.get('relevance', 0):.2f}"],
         ["Query", data.get("query_context", "N/A")],
@@ -210,15 +420,12 @@ def format_source_content(
     elements.append(t)
     elements.append(Spacer(1, 0.1*inch))
     
-    # Raw content section
-    # **REMOVED TRUNCATION** to ensure all raw data is included for the AI
     if data.get("raw_content"):
         elements.append(Paragraph("<b>Raw Content:</b>", body_style))
         raw_content = str(data["raw_content"])
         elements.append(Paragraph(raw_content, body_style))
         elements.append(Spacer(1, 0.1*inch))
     
-    # Processed content section (this is usually the Tavily snippet)
     if data.get("content"):
         elements.append(Paragraph("<b>Processed Content (Snippet):</b>", body_style))
         elements.append(Paragraph(data["content"], body_style))
@@ -228,44 +435,32 @@ def format_source_content(
 
 async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io.BytesIO) -> None:
     """
-    Creates a comprehensive PDF optimized for AI consumption with enhanced context
-    and styled according to the ReFED brand guide.
-    
-    Args:
-        research_data: The complete *FLAT* research data dictionary (agent state)
-        output: BytesIO object to write the PDF to
+    Creates a comprehensive PDF optimized for AI consumption.
     """
-    # --- START FIX: Data Structuring ---
-    # Extract company name first, before any potential errors
     company_name = None
     if isinstance(research_data, dict):
-        # Try multiple paths to find company name
         company_name = (
             research_data.get('company_name') or
             research_data.get('name') or
             research_data.get('company_identity', {}).get('name') or
             (research_data.get('final_summary', {}) or {}).get('company_name') or
-            (research_data.get('metadata', {}) or {}).get('company_name')
+            (research_data.get('research_meta', {}) or {}).get('company_name') # Corrected key
         )
         logger.debug(f"Extracted company name: {company_name}")
 
-    # The ContextAnalyzer *creates* the nested structure from the flat agent state.
     analyzer = ContextAnalyzer()
     try:
-        # Pass the flat agent state to the analyzer
         enhanced_data = await analyzer.prepare_context(research_data)
         logger.debug(f"Context analyzer returned keys: {enhanced_data.keys() if isinstance(enhanced_data, dict) else 'Not a dictionary'}")
     except Exception as e:
         logger.error(f"Failed to prepare context: {e}. PDF will be incomplete.", exc_info=True)
-        # Create a basic structure with the company name if we have it
         enhanced_data = {
             'company_identity': {'name': company_name} if company_name else {}
         }
 
-    # Set up default data structure with empty values
     default_data = {
         'company_identity': {
-            'name': company_name or 'Company',  # Use extracted company name
+            'name': company_name or 'Company',
             'headquarters': 'Not Available',
             'industry': 'Not Available',
             'region': 'Not Available',
@@ -292,72 +487,41 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
         'engagement_signals': {'partnerships_and_initiatives': {}}
     }
 
-    # Merge the enhanced data with default data, keeping existing values
-    # This ensures the PDF generation doesn't crash if a key is missing
     enhanced_data = {**default_data, **enhanced_data}
     for key in default_data:
         if isinstance(default_data[key], dict) and key in enhanced_data and enhanced_data[key] is not None:
             enhanced_data[key] = {**default_data[key], **enhanced_data[key]}
     
     company_name = enhanced_data['company_identity']['name']
-    # --- END FIX: Data Structuring ---
     
-    # Document setup
     doc = SimpleDocTemplate(
         output,
         pagesize=A4,
         rightMargin=0.75*inch,
         leftMargin=0.75*inch,
-        topMargin=0.75*inch,
-        bottomMargin=0.75*inch,
+        topMargin=1.5*inch,     # V2: Increased top margin
+        bottomMargin=1.25*inch, # V2: Increased bottom margin
         title=f"{company_name} Research Report",
         author="ReFED Development Team"
     )
 
-    # --- ReFED Styles ---
     styles = getSampleStyleSheet()
-    
     title_style = ParagraphStyle(
-        'ReFEDTitle',
-        parent=styles['Heading1'],
-        fontName=FONT_BOLD,
-        fontSize=24,
-        spaceAfter=30,
-        alignment=TA_CENTER,
-        textColor=REFED_DARK
+        'ReFEDTitle', parent=styles['Heading1'], fontName=FONT_BOLD,
+        fontSize=24, spaceAfter=30, alignment=TA_CENTER, textColor=REFED_DARK
     )
-    
     section_style = ParagraphStyle(
-        'ReFEDSection',
-        parent=styles['Heading2'],
-        fontName=FONT_SEMIBOLD,
-        fontSize=16,
-        spaceBefore=20,
-        spaceAfter=10,
-        textColor=REFED_GREEN
+        'ReFEDSection', parent=styles['Heading2'], fontName=FONT_SEMIBOLD,
+        fontSize=16, spaceBefore=20, spaceAfter=10, textColor=REFED_GREEN
     )
-    
     subsection_style = ParagraphStyle(
-        'ReFEDSubsection',
-        parent=styles['Heading3'],
-        fontName=FONT_SEMIBOLD,
-        fontSize=14,
-        spaceBefore=15,
-        spaceAfter=8,
-        textColor=REFED_DARK
+        'ReFEDSubsection', parent=styles['Heading3'], fontName=FONT_SEMIBOLD,
+        fontSize=14, spaceBefore=15, spaceAfter=8, textColor=REFED_DARK
     )
-    
     body_style = ParagraphStyle(
-        'ReFEDBody',
-        parent=styles['Normal'],
-        fontName=FONT_REGULAR,
-        fontSize=10,
-        leading=14,
-        alignment=TA_LEFT,
-        textColor=REFED_DARK,
-        spaceAfter=6
+        'ReFEDBody', parent=styles['Normal'], fontName=FONT_REGULAR,
+        fontSize=10, leading=14, alignment=TA_LEFT, textColor=REFED_DARK, spaceAfter=6
     )
-
     table_style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), REFED_LIGHT_GREY),
         ('TEXTCOLOR', (0, 0), (-1, 0), REFED_DARK),
@@ -372,7 +536,6 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
         ('GRID', (0, 0), (-1, -1), 1, REFED_LIGHT_GREEN_TINT),
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
     ])
-    
     source_analysis_table_style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), REFED_LIGHT_GREY),
         ('TEXTCOLOR', (0, 0), (-1, 0), REFED_DARK),
@@ -384,44 +547,22 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
         ('PADDING', (0, 0), (-1, -1), 4),
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
     ])
-    # --- End Styles ---
-
-    # Build the document
+    
     story = []
     
-    # --- Title Page with Logo ---
-    if os.path.exists(LOGO_PATH):
-        try:
-            # --- FIX: Removed preserveAspectRatio=True ---
-            story.append(Image(LOGO_PATH, width=2*inch))
-            # --- END FIX ---
-            story.append(Spacer(1, 0.2*inch))
-        except Exception as e:
-            # Log the full error
-            logger.warning(f"Could not load logo from {LOGO_PATH}: {e}", exc_info=True)
-            story.append(Paragraph("ReFED", title_style)) # Fallback text
-    else:
-        logger.warning(f"Logo not found at {LOGO_PATH}. Skipping logo. Place it at backend/assets/refed_logo.png")
-        story.append(Paragraph("ReFED", title_style)) # Fallback text
-        
+    # --- Title Page ---
+    story.append(Spacer(1, 1.5*inch)) # Space down from header
     story.append(Paragraph(f"{company_name} Research Report", title_style))
     story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d')}", body_style))
     story.append(Spacer(1, 20))
     
-    # --- AI-Optimized Table of Contents ---
+    # --- Table of Contents ---
     story.append(Paragraph("Table of Contents", section_style))
     toc_items = [
-        "1. AI-Generated Briefings",
-        "2. Company Profile",
-        "3. Research Process & Queries",
-        "4. Source Credibility Analysis",
-        "5. Research Statistics",
-        "6. Raw Data Appendix",
-        "   6.1 Company Information",
-        "   6.2 News & Recent Developments",
-        "   6.3 Sustainability & FLW Data",
-        "   6.4 Contact Information",
-        "   6.5 Engagement & Partnerships",
+        "1. AI-Generated Briefings", "2. Company Profile", "3. Research Process & Queries",
+        "4. Source Credibility Analysis", "5. Research Statistics", "6. Raw Data Appendix",
+        "   6.1 Company Information", "   6.2 News & Recent Developments",
+        "   6.3 Sustainability & FLW Data", "   6.4 Contact Information", "   6.5 Engagement & Partnerships",
     ]
     for item in toc_items:
         style = body_style
@@ -430,36 +571,29 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
         story.append(Paragraph(item, style))
     story.append(PageBreak())
     
-    # --- Section 1: AI-Generated Briefings (AI-FIRST) ---
+    # --- Section 1: AI-Generated Briefings ---
     story.append(Paragraph("1. AI-Generated Briefings", section_style))
-    story.append(Paragraph(
-        "This section contains the AI-generated summaries for each research category, "
-        "which can be used to draft tailored outreach.",
-        body_style
-    ))
-    
-    # This assumes the AI briefings are passed in `final_summary`
-    if 'final_summary' in enhanced_data and 'markdown_report' in enhanced_data['final_summary']:
-        md_report = enhanced_data['final_summary']['markdown_report']
-        story.extend(_convert_markdown_to_elements(md_report, body_style, subsection_style))
-    else:
-        logger.warning("No 'final_summary.markdown_report' key found in enhanced_data.")
-        story.append(Paragraph(
-            "AI-generated briefings were not found in the research data.",
-            body_style
-        ))
+    story.append(Paragraph("AI-generated summaries for each research category.", body_style))
+    md_report = enhanced_data.get('final_summary', {}).get('markdown_report', '')
+    story.extend(_convert_markdown_to_elements(md_report, body_style, subsection_style))
     story.append(PageBreak())
 
     # --- Section 2: Company Profile ---
     story.append(Paragraph("2. Company Profile", section_style))
     identity_data = enhanced_data['company_identity']
+    
+    # Helper function to safely get values and convert None to 'Not Available'
+    def safe_get(d, key, default='Not Available'):
+        value = d.get(key, default)
+        return value if value is not None else default
+    
     company_info = [
-        [Paragraph('Company Profile', body_style), Paragraph(identity_data.get('name', 'Not Available'), body_style)],
-        [Paragraph('Headquarters', body_style), Paragraph(identity_data.get('headquarters', 'Not Available'), body_style)],
-        [Paragraph('Industry', body_style), Paragraph(identity_data.get('industry', 'Not Available'), body_style)],
-        [Paragraph('Region', body_style), Paragraph(identity_data.get('region', 'Not Available'), body_style)],
-        [Paragraph('Scale', body_style), Paragraph(identity_data.get('scale', 'Not Available'), body_style)],
-        [Paragraph('Website', body_style), Paragraph(identity_data.get('website', 'Not Available'), body_style)],
+        [Paragraph('Company Profile', body_style), Paragraph(safe_get(identity_data, 'name'), body_style)],
+        [Paragraph('Headquarters', body_style), Paragraph(safe_get(identity_data, 'headquarters'), body_style)],
+        [Paragraph('Industry', body_style), Paragraph(safe_get(identity_data, 'industry'), body_style)],
+        [Paragraph('Region', body_style), Paragraph(safe_get(identity_data, 'region'), body_style)],
+        [Paragraph('Scale', body_style), Paragraph(safe_get(identity_data, 'scale'), body_style)],
+        [Paragraph('Website', body_style), Paragraph(safe_get(identity_data, 'website'), body_style)],
     ]
     t = Table(company_info, colWidths=[1.5*inch, 4.5*inch])
     t.setStyle(table_style)
@@ -473,8 +607,9 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
     story.append(Paragraph("Research Queries by Category:", subsection_style))
     for query_type, queries in meta.get('queries_used', {}).items():
         story.append(Paragraph(f"<b>{query_type.replace('_', ' ').title()}:</b>", body_style))
+        query_list = queries if isinstance(queries, list) else [str(queries)]
         query_items = [
-            ListItem(Paragraph(query, body_style), leftIndent=20) for query in queries
+            ListItem(Paragraph(query, body_style), leftIndent=20) for query in query_list
         ]
         story.append(ListFlowable(query_items, bulletType='bullet', leftIndent=20, bulletColor=REFED_DARK))
     story.append(PageBreak())
@@ -482,12 +617,11 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
     # --- Section 4: Source Credibility Analysis ---
     story.append(Paragraph("4. Source Credibility Analysis", section_style))
     story.append(Paragraph("Source Credibility Analysis:", subsection_style))
-    
     source_analysis_data = [['Source', 'Type', 'Score', 'Domain']]
     source_info = enhanced_data.get('source_credibility', {}).get('reference_info', {})
     if source_info:
         for url, info in source_info.items():
-            if not isinstance(info, dict): continue # Add check
+            if not isinstance(info, dict): continue
             title_p = Paragraph(info.get('title', url), body_style)
             try:
                 score_val = f"{float(info.get('score', 0)):.2f}"
@@ -510,63 +644,196 @@ async def create_enhanced_research_pdf(research_data: Dict[str, Any], output: io
 
     # --- Section 5: Research Statistics ---
     story.append(Paragraph("5. Research Statistics", section_style))
-    stats_meta = enhanced_data.get('research_meta', {}) # Use variable
+    stats_meta = enhanced_data.get('research_meta', {})
+    stats_data = stats_meta.get('successful_extractions', {})
     stats = [
         [Paragraph('Research Statistics', body_style), ''],
-        [Paragraph('Total Sources Analyzed', body_style), str(stats_meta.get('successful_extractions', {}).get('total_analyzed', 0))],
-        [Paragraph('Relevant Sources', body_style), str(stats_meta.get('successful_extractions', {}).get('relevant_sources', 0))],
-        [Paragraph('Contacts Identified', body_style), str(stats_meta.get('successful_extractions', {}).get('contacts_found', 0))],
+        [Paragraph('Total Sources Analyzed', body_style), str(stats_data.get('total_analyzed', 0))],
+        [Paragraph('Relevant Sources', body_style), str(stats_data.get('relevant_sources', 0))],
+        [Paragraph('Contacts Identified', body_style), str(stats_data.get('contacts_found', 0))],
         [Paragraph('Research Date', body_style), 
          stats_meta.get('timestamp', 'N/A').split('T')[0] if stats_meta.get('timestamp') else 'N/A'],
     ]
     t = Table(stats, colWidths=[2*inch, 4*inch])
     t.setStyle(table_style)
+    story.append(t)
     story.append(PageBreak())
 
-    # --- Section 6: Raw Data Appendix (The "Rich Context") ---
+    # --- Section 6: Raw Data Appendix ---
     story.append(Paragraph("6. Raw Data Appendix", section_style))
     story.append(Paragraph(
-        "This appendix contains the detailed source material, including metadata and full extracted text. "
-        "This is the ground-truth data for AI analysis.",
+        "This appendix contains the detailed source material, including metadata and full extracted text.",
         body_style
     ))
     
-    # Helper to iterate and add sections
     def add_raw_data_section(title, section_data):
         story.append(Paragraph(title, subsection_style))
         if not section_data:
             story.append(Paragraph("No data found for this section.", body_style))
             return
         
+        item_found = False
         for url, data in section_data.items():
             if isinstance(data, dict):
                 story.extend(format_source_content(url, data, body_style, subsection_style))
+                item_found = True
             else:
                 logger.warning(f"Skipping invalid data entry for {title}: {data}")
+        
+        if not item_found:
+             story.append(Paragraph("No data found for this section.", body_style))
+        
         story.append(PageBreak())
 
-    # 6.1 Company Information
-    add_raw_data_section("6.1 Company Information", enhanced_data['official_content']['company_information'])
-    
-    # 6.2 News & Recent Developments
-    add_raw_data_section("6.2 News & Recent Developments", enhanced_data['recent_developments']['news_coverage'])
-    
-    # 6.3 Sustainability & FLW Data
-    add_raw_data_section("6.3 Sustainability & FLW Data", enhanced_data['official_content']['sustainability_reporting'])
-    
-    # 6.4 Contact Information
-    add_raw_data_section("6.4 Contact Information", enhanced_data['key_personnel']['identified_contacts'])
-    # Note: The 'extracted_contacts' logic from the original script was flawed and specific
-    # to a loop. It's been removed for stability. The raw data will contain contact info.
-    
-    # 6.5 Engagement & Partnerships
-    add_raw_data_section("6.5 Engagement & Partnerships", enhanced_data['engagement_signals']['partnerships_and_initiatives'])
+    add_raw_data_section("6.1 Company Information", enhanced_data.get('official_content', {}).get('company_information', {}))
+    add_raw_data_section("6.2 News & Recent Developments", enhanced_data.get('recent_developments', {}).get('news_coverage', {}))
+    add_raw_data_section("6.3 Sustainability & FLW Data", enhanced_data.get('official_content', {}).get('sustainability_reporting', {}))
+    add_raw_data_section("6.4 Contact Information", enhanced_data.get('key_personnel', {}).get('identified_contacts', {}))
+    add_raw_data_section("6.5 Engagement & Partnerships", enhanced_data.get('engagement_signals', {}).get('partnerships_and_initiatives', {}))
     
     # --- Build the PDF ---
     try:
-        doc.build(story)
+        doc.build(story, onFirstPage=header_and_footer, onLaterPages=header_and_footer)
         logger.info(f"AI-Optimized ReFED-styled PDF report generated for {company_name}")
     except Exception as build_err:
         logger.error(f"CRITICAL: PDF doc.build() failed: {build_err}", exc_info=True)
-        # Re-raise the exception to be caught by the service layer
+        raise
+
+# --- END: V2 - Main PDF Generation Code ---
+
+
+def create_executive_summary_pdf(
+    summary_markdown: str,
+    company_name: str,
+    output_stream: io.BytesIO
+) -> None:
+    """
+    Generate a clean, branded 1-2 page executive summary PDF from markdown.
+    
+    Args:
+        summary_markdown: The markdown-formatted executive summary text
+        company_name: Name of the company for the title
+        output_stream: BytesIO stream to write the PDF to
+    """
+    logger.info(f"Generating executive summary PDF for {company_name}")
+    
+    # Set up document with smaller margins for executive summary
+    doc = SimpleDocTemplate(
+        output_stream,
+        pagesize=A4,
+        leftMargin=0.75*inch,
+        rightMargin=0.75*inch,
+        topMargin=1.5*inch,
+        bottomMargin=1*inch,
+        title=f"{company_name} - Executive Summary"
+    )
+    
+    story = []
+    
+    # Define styles for executive summary
+    title_style = ParagraphStyle(
+        'ExecutiveTitle',
+        parent=getSampleStyleSheet()['Heading1'],
+        fontName=FONT_SEMIBOLD,
+        fontSize=20,
+        textColor=REFED_DARK,
+        spaceAfter=16,
+        leading=24
+    )
+    
+    section_style = ParagraphStyle(
+        'ExecutiveSection',
+        parent=getSampleStyleSheet()['Heading2'],
+        fontName=FONT_SEMIBOLD,
+        fontSize=14,
+        textColor=REFED_GREEN,
+        spaceBefore=14,
+        spaceAfter=8,
+        leading=17
+    )
+    
+    body_style = ParagraphStyle(
+        'ExecutiveBody',
+        parent=getSampleStyleSheet()['BodyText'],
+        fontName=FONT_REGULAR,
+        fontSize=10,
+        textColor=REFED_DARK,
+        leading=14,
+        spaceAfter=10,
+        alignment=TA_LEFT
+    )
+    
+    bullet_style = ParagraphStyle(
+        'ExecutiveBullet',
+        parent=body_style,
+        leftIndent=20,
+        bulletIndent=10,
+        spaceAfter=6
+    )
+    
+    # Parse markdown and convert to PDF elements
+    lines = summary_markdown.split('\n')
+    i = 0
+    
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        if not line:
+            i += 1
+            continue
+        
+        # Parse markdown headers
+        if line.startswith('# '):
+            # Main title (H1)
+            text = line[2:].strip()
+            story.append(Paragraph(text, title_style))
+        elif line.startswith('## '):
+            # Section header (H2)
+            text = line[3:].strip()
+            story.append(Paragraph(text, section_style))
+        elif line.startswith('### '):
+            # Subsection (H3) - treat as bold body
+            text = line[4:].strip()
+            story.append(Paragraph(f"<b>{text}</b>", body_style))
+        elif line.startswith('* ') or line.startswith('- '):
+            # Bullet point
+            text = line[2:].strip()
+            # Clean up any markdown bold/italic
+            # Handle bold text properly
+            text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+            # Handle italic text properly (but not * that's part of a list)
+            text = re.sub(r'(?<!\*)\*([^\*]+?)\*(?!\*)', r'<i>\1</i>', text)
+            # Clean up any remaining raw asterisks
+            text = text.replace('**', '').replace('*', '')
+            # Escape special XML characters
+            text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # But allow our intentional HTML tags
+            text = text.replace('&lt;b&gt;', '<b>').replace('&lt;/b&gt;', '</b>')
+            text = text.replace('&lt;i&gt;', '<i>').replace('&lt;/i&gt;', '</i>')
+            story.append(Paragraph(f"• {text}", bullet_style))
+        elif line.startswith('**') and line.endswith('**'):
+            # Bold paragraph
+            text = line.strip('*').strip()
+            story.append(Paragraph(f"<b>{text}</b>", body_style))
+        else:
+            # Regular paragraph
+            # Handle inline markdown formatting
+            text = line
+            # Bold text
+            text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+            # Italic text
+            text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+            # Links (just show the text, not the URL)
+            text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)
+            
+            story.append(Paragraph(text, body_style))
+        
+        i += 1
+    
+    # Build PDF with header/footer
+    try:
+        doc.build(story, onFirstPage=header_and_footer, onLaterPages=header_and_footer)
+        logger.info(f"Executive summary PDF generated for {company_name}")
+    except Exception as build_err:
+        logger.error(f"Failed to build executive summary PDF: {build_err}", exc_info=True)
         raise

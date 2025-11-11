@@ -114,23 +114,32 @@ async def download_research_from_gdrive(folder_url: str) -> list[Dict[str, Any]]
     Returns:
         List of dicts with 'filename', 'content' (parsed JSON), and 'created_time'
     """
+    logger.info(f"🔽 DOWNLOAD_RESEARCH_FROM_GDRIVE called with URL: {folder_url}")
+    
     folder_id = _extract_folder_id_from_url(folder_url)
     if not folder_id:
-        logger.warning(f"Invalid Google Drive folder URL: {folder_url}")
+        logger.error(f"❌ Invalid Google Drive folder URL: {folder_url}")
         return []
+    
+    logger.info(f"✅ Extracted folder ID: {folder_id}")
 
     service = await asyncio.to_thread(get_drive_service)
     if not service:
-        logger.error("Failed to authenticate Google Drive service")
+        logger.error("❌ Failed to authenticate Google Drive service")
         return []
+    
+    logger.info(f"✅ Google Drive service authenticated successfully")
 
-    logger.info(f"📥 Scanning GDrive folder {folder_id} for existing research files...")
+    logger.info(f"📥 Starting scan of GDrive folder {folder_id} for JSON research files...")
 
     try:
         def _list_and_download():
+            logger.info(f"🔍 Building query for folder '{folder_id}'...")
             # List all JSON files in the folder
             query = f"'{folder_id}' in parents and mimeType='application/json' and trashed = false"
+            logger.info(f"🔍 Query: {query}")
             
+            logger.info(f"📡 Executing Google Drive API files().list() request...")
             results = service.files().list(
                 q=query,
                 fields="files(id, name, createdTime, modifiedTime)",
@@ -140,13 +149,21 @@ async def download_research_from_gdrive(folder_url: str) -> list[Dict[str, Any]]
             ).execute()
             
             files = results.get('files', [])
-            logger.info(f"Found {len(files)} JSON files in GDrive folder")
+            logger.info(f"📊 API Response: Found {len(files)} JSON file(s) in GDrive folder")
+            
+            if files:
+                logger.info(f"📄 Files found:")
+                for idx, f in enumerate(files, 1):
+                    logger.info(f"   {idx}. {f['name']} (ID: {f['id']}, Created: {f.get('createdTime', 'N/A')})")
+            else:
+                logger.warning(f"📭 No JSON files found in folder {folder_id}")
             
             downloaded = []
             for file_info in files:
                 file_id = file_info['id']
                 file_name = file_info['name']
                 
+                logger.info(f"⬇️ Downloading: {file_name}...")
                 try:
                     # Download file content
                     request = service.files().get_media(
@@ -155,9 +172,12 @@ async def download_research_from_gdrive(folder_url: str) -> list[Dict[str, Any]]
                     )
                     
                     file_content = request.execute()
+                    logger.info(f"✅ Downloaded {len(file_content)} bytes from {file_name}")
                     
                     # Parse JSON content
+                    logger.info(f"🔄 Parsing JSON content from {file_name}...")
                     parsed_content = json.loads(file_content.decode('utf-8'))
+                    logger.info(f"✅ Successfully parsed JSON from {file_name}")
                     
                     downloaded.append({
                         'filename': file_name,
@@ -166,20 +186,26 @@ async def download_research_from_gdrive(folder_url: str) -> list[Dict[str, Any]]
                         'modified_time': file_info.get('modifiedTime')
                     })
                     
-                    logger.debug(f"✓ Downloaded and parsed: {file_name}")
+                    logger.info(f"✓ Successfully processed: {file_name}")
                     
                 except Exception as e:
-                    logger.warning(f"Failed to download/parse {file_name}: {e}")
+                    logger.error(f"❌ Failed to download/parse {file_name}: {e}", exc_info=True)
                     continue
             
+            logger.info(f"📦 Download batch complete: {len(downloaded)}/{len(files)} files processed successfully")
             return downloaded
         
+        logger.info(f"🏃 Executing download operation in thread pool...")
         downloaded_files = await asyncio.to_thread(_list_and_download)
-        logger.info(f"✅ Successfully downloaded {len(downloaded_files)} research files from GDrive")
+        logger.info(f"✅ DOWNLOAD COMPLETE: Successfully retrieved {len(downloaded_files)} research file(s) from GDrive")
+        
+        if downloaded_files:
+            logger.info(f"📋 Successfully downloaded files: {[f['filename'] for f in downloaded_files]}")
+        
         return downloaded_files
 
     except Exception as e:
-        logger.error(f"Failed to list/download files from GDrive folder: {e}", exc_info=True)
+        logger.error(f"💥 CRITICAL ERROR in download_research_from_gdrive: {e}", exc_info=True)
         return []
 
 # --- CORE ASYNC UPLOAD FUNCTION ---

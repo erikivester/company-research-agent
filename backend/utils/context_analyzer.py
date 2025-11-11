@@ -45,7 +45,10 @@ class ContextAnalyzer:
                         "relevant_sources": 0,
                         "contacts_found": 0
                     },
-                    "timestamp": ""
+                    "timestamp": "",
+                    "data_relationships": {  # <-- ADD THIS
+                        "queries_to_sources": {} # <-- AND THIS
+                    }
                 },
                 "official_content": {
                     "company_information": {},
@@ -117,9 +120,9 @@ class ContextAnalyzer:
 
             # Track relationships between queries and their results
             for query_type, queries in research_data.get('research_meta', {}).get('queries_used', {}).items():
-                enhanced_data["metadata"]["data_relationships"]["queries_to_sources"][query_type] = {}
+                enhanced_data["research_meta"]["data_relationships"]["queries_to_sources"][query_type] = {} # <-- FIXED
                 for query in queries:
-                    matching_sources = []
+                    matching_sources = [] # <-- Initialize list here
                     
                     # Look for sources that came from this query
                     for section in ['official_content', 'recent_developments', 'key_personnel', 'engagement_signals']:
@@ -132,7 +135,8 @@ class ContextAnalyzer:
                                         "source_type": data.get('source_type', 'unknown')
                                     })
                     
-                    enhanced_data["metadata"]["data_relationships"]["queries_to_sources"][query_type][query] = matching_sources
+                    enhanced_data["research_meta"]["data_relationships"]["queries_to_sources"][query_type][query] = matching_sources # <-- FIXED
+                
 
             # Light content polishing with Gemini
             try:
