@@ -146,22 +146,19 @@ Based *only* on the information provided, select all applicable regions of opera
 Available Regions: {', '.join(self.classification_rules['Country/Region'])}
 Output only the selected region names, separated by commas.
 """
-        # Revenue Band Prompt (Uses only company_brief_text if available)
-        if company_brief_text:
-             prompts["Revenue Band (est.)"] = f"""
+        # Revenue Band Prompt (now always included)
+        prompts["Revenue Band (est.)"] = f"""
 Analyze the following financial information for "{company}":
 --- START FINANCIAL INFO ---
-{company_brief_text}
+{company_brief_text or "No specific financial briefing available."}
 --- END FINANCIAL INFO ---
-Based *only* on the financial information provided (like total funding, revenue figures, company size hints), estimate the company's annual revenue band. Choose exactly ONE option from the list below that best fits the evidence. Do not guess or extrapolate heavily. If the information is insufficient to make a reasonable estimate, output "None".
+Based *only* on the financial information provided (like total funding, revenue figures, company size hints), estimate the company's annual revenue band. Choose exactly ONE option from the list below that best fits the evidence. Do not guess or extrapolate heavily. If the information is insufficient to make a reasonable estimate, output "Unknown".
 
 Available Revenue Bands:
 {', '.join(self.classification_rules['Revenue Band (est.)'])}
 
 Output only the single selected revenue band name. Example: $10M-$50M
 """
-        else:
-             logger.info("Skipping Revenue Band estimation as Company Briefing is missing or empty.")
 
         # --- NEW v2 ReFED Alignment Prompt ---
         prompts["ReFED Alignment"] = f"""
@@ -288,12 +285,11 @@ Output only the selected category names, separated by commas.
 
     async def run(self, state: ResearchState) -> ResearchState:
         """Executes the tagger node."""
-        airtable_record_id = state.get('airtable_record_id')
         try:
             # --- Call Airtable Update (Start Status) ---
-            if airtable_record_id:
-                logger.info(f"Sending 'Classifying' status update to Airtable record: {airtable_record_id}")
-                await self._update_airtable_status(airtable_record_id, ResearchStatus.CLASSIFYING)
+            if state.get('airtable_record_id'):
+                logger.info(f"Sending 'Classifying' status update to Airtable record: {state.get('airtable_record_id')}")
+                await self._update_airtable_status(state, ResearchStatus.CLASSIFYING)
 
             state = await self.classify_company(state)
             return state
@@ -302,9 +298,9 @@ Output only the selected category names, separated by commas.
             logger.error(f"Error in Tagger node run method: {e}", exc_info=True)
             error_msg = f"⚠️ Tagger node failed critically: {str(e)}"
             state.setdefault('messages', []).append(AIMessage(content=error_msg))
-            if airtable_record_id:
-                logger.info(f"Sending 'Tagger Failed' status update to Airtable record: {airtable_record_id}")
-                await self._update_airtable_status(airtable_record_id, ResearchStatus.format_error(ResearchStatus.FAILED_CLASSIFICATION, str(e)))
+            if state.get('airtable_record_id'):
+                logger.info(f"Sending 'Tagger Failed' status update to Airtable record: {state.get('airtable_record_id')}")
+                await self._update_airtable_status(state, ResearchStatus.format_error(ResearchStatus.FAILED_CLASSIFICATION, str(e)))
             
             # --- v2: Ensure ALL keys exist on failure ---
             state.setdefault('airtable_industries', ['Unknown'])
@@ -313,8 +309,9 @@ Output only the selected category names, separated by commas.
             state.setdefault('airtable_refed_alignment', [])
             return state
 
-    async def _update_airtable_status(self, record_id: str, status_text: str):
+    async def _update_airtable_status(self, state: ResearchState, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
+        record_id = state.get('airtable_record_id')
         if not record_id:
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
@@ -322,4 +319,6 @@ Output only the selected category names, separated by commas.
             await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
+            error_message = f"⚠️ Airtable status update failed: {e}"
             logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+            state.setdefault('messages', []).append(AIMessage(content=error_message))

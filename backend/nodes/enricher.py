@@ -34,64 +34,70 @@ class Enricher:
         }
         # --- END NEW ---
 
-    async def fetch_single_content(self, url: str, websocket_manager=None, job_id=None, category=None) -> Dict[str, Any]:
-        """Fetch raw content for a single URL using the extract method."""
-        try:
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id, status="extracting",
-                    message=f"Extracting content from {url}",
-                    result={ "step": "Enriching", "url": url, "category": category }
-                )
+    async def fetch_single_content(self, url: str, websocket_manager=None, job_id=None, category=None, retries: int = 3, retry_delay: int = 2) -> Dict[str, Any]:
+        """Fetch raw content for a single URL using the extract method with retries."""
+        last_error = None
+        for attempt in range(retries):
+            try:
+                if websocket_manager and job_id:
+                    status_message = f"Extracting content from {url}"
+                    if attempt > 0:
+                        status_message += f" (Attempt {attempt + 1}/{retries})"
+                    await websocket_manager.send_status_update(
+                        job_id=job_id, status="extracting",
+                        message=status_message,
+                        result={ "step": "Enriching", "url": url, "category": category, "attempt": attempt + 1 }
+                    )
 
-            # Use Tavily's extract method
-            response = await self.tavily_client.extract(url)
+                # Use Tavily's extract method
+                response = await self.tavily_client.extract(url)
 
-            # Parse response
-            if response and isinstance(response, dict) and response.get('results'):
-                 result_content = response['results'][0].get('raw_content', '')
-                 if result_content and result_content.strip():
-                     logger.debug(f"Successfully extracted content from {url} (Length: {len(result_content)})")
-                     if websocket_manager and job_id:
-                         await websocket_manager.send_status_update(
-                             job_id=job_id, status="extracted",
-                             message=f"Successfully extracted content from {url}",
-                             result={ "step": "Enriching", "url": url, "category": category, "success": True }
-                         )
-                     return {url: result_content} # Return URL mapped to content string
-                 else:
-                      logger.warning(f"Empty raw_content found in extract results for {url}.")
-                      error_msg = "Empty content returned by extract"
-                      if websocket_manager and job_id:
-                          await websocket_manager.send_status_update(
-                              job_id=job_id, status="extraction_error",
-                              message=f"Failed to extract content from {url}: {error_msg}",
-                              result={"step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg}
-                          )
-                      # Return None for content, but keep URL as key and include error
-                      return {url: None, "error": error_msg}
+                # Parse response
+                if response and isinstance(response, dict) and response.get('results'):
+                     result_content = response['results'][0].get('raw_content', '')
+                     if result_content and result_content.strip():
+                         logger.debug(f"Successfully extracted content from {url} (Length: {len(result_content)}) on attempt {attempt + 1}")
+                         if websocket_manager and job_id:
+                             await websocket_manager.send_status_update(
+                                 job_id=job_id, status="extracted",
+                                 message=f"Successfully extracted content from {url}",
+                                 result={ "step": "Enriching", "url": url, "category": category, "success": True }
+                             )
+                         return {url: result_content} # Return URL mapped to content string
+                     else:
+                          logger.warning(f"Empty raw_content found in extract results for {url} on attempt {attempt + 1}.")
+                          last_error = "Empty content returned by extract"
+                          # No retry on empty content, as it's a successful but empty response
+                          break
 
-            else:
-                 logger.warning(f"Unexpected response structure or empty results from extract for {url}. Response: {response}")
-                 error_msg = "Invalid response from extract API"
-                 if websocket_manager and job_id:
-                     await websocket_manager.send_status_update(
-                         job_id=job_id, status="extraction_error",
-                         message=f"Failed to extract content from {url}: {error_msg}",
-                         result={ "step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg }
-                     )
-                 return {url: None, "error": error_msg}
+                else:
+                     logger.warning(f"Unexpected response structure or empty results from extract for {url} on attempt {attempt + 1}. Response: {response}")
+                     last_error = "Invalid response from extract API"
+                     # Potentially retryable, continue loop
 
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Error calling Tavily extract for {url}: {error_msg}", exc_info=True)
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id, status="extraction_error",
-                    message=f"Failed to extract content from {url}: API Error",
-                    result={ "step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg }
-                )
-            return {url: None, "error": error_msg}
+            except Exception as e:
+                last_error = str(e)
+                logger.error(f"Error on attempt {attempt + 1} for {url}: {last_error}", exc_info=True)
+                if attempt < retries - 1:
+                    logger.info(f"Retrying {url} in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                continue # Go to next attempt
+            
+            # If we got a bad response but didn't raise an exception, wait before retrying
+            if attempt < retries - 1:
+                logger.info(f"Retrying {url} due to bad response in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+
+        # If all retries fail, send final error status
+        error_msg = last_error or "Unknown extraction error"
+        logger.error(f"Failed to extract content for {url} after {retries} attempts. Last error: {error_msg}")
+        if websocket_manager and job_id:
+            await websocket_manager.send_status_update(
+                job_id=job_id, status="extraction_error",
+                message=f"Failed to extract content from {url}: {error_msg}",
+                result={"step": "Enriching", "url": url, "category": category, "success": False, "error": error_msg}
+            )
+        return {url: None, "error": error_msg}
 
     async def fetch_raw_content(self, urls: List[str], websocket_manager=None, job_id=None, category=None) -> Dict[str, Any]:
         """Fetch raw content for multiple URLs in parallel with rate limiting."""
@@ -178,8 +184,8 @@ class Enricher:
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
 
-        if airtable_record_id:
-            await self._update_airtable_status(airtable_record_id, ResearchStatus.ENRICHING_CONTENT)
+        if state.get('airtable_record_id'):
+            await self._update_airtable_status(state, ResearchStatus.ENRICHING_CONTENT)
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
@@ -349,18 +355,19 @@ class Enricher:
         return state
 
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
-    async def _update_airtable_status(self, record_id: str, status_text: str):
+    async def _update_airtable_status(self, state: ResearchState, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
+        record_id = state.get('airtable_record_id')
         if not record_id:
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
         try:
-            # Use asyncio.to_thread to safely run the synchronous Airtable API call
             await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            # Log the error but do not raise, as Airtable update is a secondary task
-            logger.error(f"{self.__class__.__name__} failed to update Airtable status: {e}", exc_info=True)
+            error_message = f"⚠️ Airtable status update failed: {e}"
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+            state.setdefault('messages', []).append(AIMessage(content=error_message))
     # --- END MODIFIED HELPER METHOD ---
 
     async def run(self, state: ResearchState) -> ResearchState:

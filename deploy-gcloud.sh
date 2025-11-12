@@ -167,6 +167,34 @@ echo ""
 echo -e "${BLUE}🚀 Starting deployment...${NC}"
 echo ""
 
+# Construct the --set-env-vars argument
+ENV_VARS="PYTHONUNBUFFERED=1,EMAIL_TEMPLATES_FOLDER_ID=1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
+if [ -f ".env" ]; then
+    ENV_CONTENTS=""
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip comments and empty lines
+        case "$line" in
+            ''|\#*) continue ;;
+        esac
+        key="${line%%=*}"
+        value="${line#*=}"
+        # Remove possible surrounding quotes from value
+        value="${value%\"}"
+        value="${value#\"}"
+        value="${value%\'}"
+        value="${value#\'}"
+        # Remove newlines and commas from value
+        value="$(printf "%s" "$value" | tr -d '\n' | tr ',' '_')"
+        # Append to ENV_CONTENTS
+        ENV_CONTENTS+="${key}=${value},"
+    done < .env
+    # Remove trailing comma
+    ENV_CONTENTS="${ENV_CONTENTS%,}"
+    if [ -n "$ENV_CONTENTS" ]; then
+        ENV_VARS="$ENV_VARS,$ENV_CONTENTS"
+    fi
+fi
+
 # Deploy to Cloud Run
 gcloud run deploy $SERVICE_NAME \
     --source . \
@@ -180,8 +208,8 @@ gcloud run deploy $SERVICE_NAME \
     --concurrency $CONCURRENCY \
     --min-instances $MIN_INSTANCES \
     --max-instances $MAX_INSTANCES \
-    --set-env-vars "PYTHONUNBUFFERED=1,EMAIL_TEMPLATES_FOLDER_ID=1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH" \
-    --update-secrets ".env=research-env:latest,/secrets/gdrive_credentials.json=gdrive-credentials:latest"
+    --set-env-vars "$ENV_VARS" \
+    --update-secrets "/secrets/gdrive_credentials.json=gdrive-credentials:latest"
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"

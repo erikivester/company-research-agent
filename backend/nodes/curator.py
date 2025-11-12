@@ -127,8 +127,8 @@ class Curator:
         airtable_record_id = state.get('airtable_record_id')
         logger.info(f"Starting curation for company: {company}")
 
-        if airtable_record_id:
-            await self._update_airtable_status(airtable_record_id, ResearchStatus.CURATING_DOCUMENTS)
+        if state.get('airtable_record_id'):
+            await self._update_airtable_status(state, ResearchStatus.CURATING_DOCUMENTS)
 
         websocket_manager = state.get('websocket_manager')
         job_id = state.get('job_id')
@@ -318,18 +318,19 @@ class Curator:
         return state
 
     # --- Use robust HELPER METHOD from collector.py ---
-    async def _update_airtable_status(self, record_id: str, status_text: str):
+    async def _update_airtable_status(self, state: ResearchState, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
+        record_id = state.get('airtable_record_id')
         if not record_id:
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
         try:
-            # Use asyncio.to_thread to safely run the synchronous Airtable API call
             await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            # Log the error but do not raise, as Airtable update is a secondary task
-            logger.error(f"{self.__class__.__name__} failed to update Airtable status: {e}", exc_info=True)
+            error_message = f"⚠️ Airtable status update failed: {e}"
+            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+            state.setdefault('messages', []).append(AIMessage(content=error_message))
     # --- END HELPER METHOD ---
             
     async def run(self, state: ResearchState) -> ResearchState:

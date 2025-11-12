@@ -20,10 +20,10 @@ if env_path.exists():
 from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
 from backend.config import config  # Import the singleton config instance
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Depends, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from backend.graph import Graph
@@ -48,7 +48,7 @@ os.environ["EMAIL_TEMPLATES_FOLDER_ID"] = "1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
 
 # Configure logging using our custom configuration
 setup_logging(
-    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_level="INFO",
     log_file=os.getenv("LOG_FILE", "logs/app.log")
 )
 logger = logging.getLogger(__name__)
@@ -144,9 +144,12 @@ if mongo_uri := os.getenv("MONGODB_URI"):
 
 class ResearchRequest(BaseModel):
     company: str
-    company_url: str | None = None
-    industry: str | None = None
-    hq_location: str | None = None
+    airtable_record_id: Optional[str] = Field(None, alias='recordId')
+    company_url: Optional[str] = None
+    industry: Optional[str] = None
+    hq_location: Optional[str] = None
+    google_drive_folder_url: Optional[str] = None
+    use_local_context: bool = False
 
 # --- v2 MODIFIED: Pydantic Model for Webhook Input ---
 class AirtableWebhookInput(ResearchRequest):
@@ -586,7 +589,11 @@ async def debug_gdrive_folder_info(
         # Try to read from credentials file/env for a quick hint (non-fatal)
         try:
             import json as _json
-            sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
+            # Use the more reliable GDRIVE_CREDENTIALS_PATH for Cloud Run/Docker
+            sa_file = os.getenv("GDRIVE_CREDENTIALS_PATH")
+            if not sa_file:
+                # Fallback for local dev if the other env var is set
+                sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
             if os.path.exists(sa_file):
                 _j = _json.load(open(sa_file))
                 sa_email = _j.get('client_email')

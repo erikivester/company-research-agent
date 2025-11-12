@@ -104,6 +104,7 @@ class ExecutiveSummaryNode:
             state['executive_summary'] = summary
             
             # Generate PDF from the summary
+            pdf_path = None  # Initialize pdf_path to None
             try:
                 import tempfile
                 from datetime import datetime
@@ -118,11 +119,13 @@ class ExecutiveSummaryNode:
                     create_executive_summary_pdf(summary, company, pdf_buffer)
                     pdf_buffer.seek(0)
                     f.write(pdf_buffer.read())
-                state['executive_summary_pdf_path'] = pdf_path
+                
                 logger.info(f"Successfully generated executive summary PDF at {pdf_path}")
             except Exception as pdf_err:
                 logger.error(f"Failed to generate PDF from summary: {pdf_err}", exc_info=True)
-                state['executive_summary_pdf_path'] = None
+                pdf_path = None # Ensure pdf_path is None on failure
+            
+            state['executive_summary_pdf_file'] = pdf_path
             
             # Also update final_summary for PDF generation
             state['final_summary'] = {'markdown_report': summary}

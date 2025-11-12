@@ -45,7 +45,7 @@ RUN chown -R appuser:appuser /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=8080
 
 EXPOSE 8000 8001
 

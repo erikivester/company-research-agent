@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+import time
 from airtable import Airtable
 from datetime import datetime
 from typing import Dict, Any, Optional, List
@@ -10,8 +11,10 @@ from .utils.airtable_mappings import REVENUE_BAND_MAPPINGS
 logger = logging.getLogger(__name__)
 
 # --- Re-defined Helper (for internal use by other nodes to update status) ---
-def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
-    """Updates specific fields of an existing Airtable record."""
+def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any], retries: int = 3, delay: int = 2):
+    """
+    Updates specific fields of an existing Airtable record with retry logic.
+    """
     if not record_id:
         logger.warning("Airtable update skipped: No record ID provided.")
         return {"status": "Skipped", "error": "No record ID"}
@@ -21,42 +24,50 @@ def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
     table_name = os.getenv('AIRTABLE_TABLE_NAME')
 
     if not all([airtable_key, base_id, table_name]):
-        logger.warning(f"Airtable update skipped: Environment variables not fully set.")
+        logger.warning("Airtable update skipped: Environment variables not fully set.")
         return {"status": "Skipped", "error": "Airtable environment variables not set."}
 
-    try:
-        airtable = Airtable(
-            base_id=base_id,
-            table_name=table_name,
-            api_key=airtable_key
-        )
+    for attempt in range(retries):
+        try:
+            airtable = Airtable(
+                base_id=base_id,
+                table_name=table_name,
+                api_key=airtable_key
+            )
 
-        # --- v2 MODIFICATION: Add 'ReFED Alignment' to multi-select list ---
-        multi_select_fields = ['Industries', 'Country/Region', 'ReFED Alignment'] 
-        for field in multi_select_fields:
-            if field in fields_to_update:
-                value = fields_to_update[field]
-                if value is None:
-                    fields_to_update[field] = [] 
-                elif not isinstance(value, list):
-                    try:
-                        fields_to_update[field] = list(value) if value else []
-                    except TypeError:
-                        fields_to_update[field] = [str(value)] if value else []
+            # --- v2 MODIFICATION: Add 'ReFED Alignment' to multi-select list ---
+            multi_select_fields = ['Industries', 'Country/Region', 'ReFED Alignment'] 
+            for field in multi_select_fields:
+                if field in fields_to_update:
+                    value = fields_to_update[field]
+                    if value is None:
+                        fields_to_update[field] = [] 
+                    elif not isinstance(value, list):
+                        try:
+                            fields_to_update[field] = list(value) if value else []
+                        except TypeError:
+                            fields_to_update[field] = [str(value)] if value else []
 
-        # Remove fields with None values and protect the Contacts field
-        fields_to_send_update = {k: v for k, v in fields_to_update.items() 
-                               if v is not None and k != 'Contacts'}  # Never update Contacts field here
+            # Remove fields with None values and protect the Contacts field
+            fields_to_send_update = {k: v for k, v in fields_to_update.items() 
+                                   if v is not None and k != 'Contacts'}  # Never update Contacts field here
 
-        logger.info(f"DEBUG: Fields being sent for UPDATE: {fields_to_send_update.keys()}")
+            logger.info(f"DEBUG: Fields being sent for UPDATE: {fields_to_send_update.keys()}")
 
-        updated_record = airtable.update(record_id, fields_to_send_update)
-        logger.info(f"Successfully updated Airtable record {record_id} with fields: {list(fields_to_send_update.keys())}")
-        return {"status": "Success", "airtable_record_id": record_id}
+            updated_record = airtable.update(record_id, fields_to_send_update)
+            logger.info(f"Successfully updated Airtable record {record_id} with fields: {list(fields_to_send_update.keys())}")
+            return {"status": "Success", "airtable_record_id": record_id}
 
-    except Exception as e:
-        logger.error(f"Airtable status update failed for record {record_id}: {str(e)}")
-        return {"status": "Failure", "error": f"Airtable update failed: {str(e)}"}
+        except Exception as e:
+            logger.error(f"Airtable status update failed for record {record_id} on attempt {attempt + 1}/{retries}: {str(e)}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                # Re-raise the exception on the final attempt
+                raise e
+    
+    # This part should not be reached if retries > 0
+    return {"status": "Failure", "error": "Airtable update failed after multiple retries."}
 
 # --- NEW/MODIFIED Core Logic for UPSERT ---
 def _find_contact_record(contacts_airtable: Airtable, name: str, company_record_id: str, company_name: str) -> Optional[str]:
@@ -174,6 +185,16 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
             "errors": 0,
             "details": []
         }
+        
+        # --- FIX: Instantiate company_airtable ONCE before the loop ---
+        company_airtable = Airtable(
+            base_id=base_id,
+            table_name=os.getenv('AIRTABLE_TABLE_NAME'),
+            api_key=airtable_key
+        )
+        company_record = company_airtable.get(company_record_id)
+        company_name = company_record['fields'].get('Organization', 'Unknown')
+        # --- END FIX ---
 
         for contact in contacts:
             try:
@@ -181,15 +202,6 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                 if not name:
                     continue
                 
-                # Get company name from company record
-                company_airtable = Airtable(
-                    base_id=base_id,
-                    table_name=os.getenv('AIRTABLE_TABLE_NAME'),
-                    api_key=airtable_key
-                )
-                company_record = company_airtable.get(company_record_id)
-                company_name = company_record['fields'].get('Organization', 'Unknown')
-
                 # Check if contact already exists and is linked
                 existing_id = _find_contact_record(contacts_airtable, name, company_record_id, company_name)
                 
@@ -203,15 +215,6 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                         "record_id": existing_id
                     })
                 else:
-                    # Use the company name we already retrieved
-                    company_airtable = Airtable(
-                        base_id=base_id,
-                        table_name=os.getenv('AIRTABLE_TABLE_NAME'),
-                        api_key=airtable_key
-                    )
-                    company_record = company_airtable.get(company_record_id)
-                    company_name = company_record['fields'].get('Organization', 'Unknown')
-
                     # Create new contact record with Organization as a linked record
                     fields = {
                         "Name": name,
@@ -224,25 +227,8 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                     new_record_id = new_record['id']
                     logger.info(f"Created new contact record with ID: {new_record_id}")
                     
-                    # Get existing contact links and ensure unique IDs
-                    try:
-                        existing_company = company_airtable.get(company_record_id)
-                        existing_contacts = existing_company.get('fields', {}).get('Contacts', [])
-                        logger.info(f"Found existing contacts: {existing_contacts}")
-                        
-                        # Add new contact to the list, ensuring no duplicates
-                        unique_contacts = list(set(existing_contacts + [new_record_id]))
-                        logger.info(f"Updated contact list: {unique_contacts}")
-                        
-                        # Update company record with unique contact links
-                        company_airtable.update(
-                            company_record_id,
-                            {'Contacts': unique_contacts}
-                        )
-                        logger.info(f"Updated company record with contacts: {unique_contacts}")
-                    except Exception as e:
-                        logger.error(f"Error linking contact to company: {str(e)}")
-                        # Continue processing even if linking fails
+                    # --- FIX: REMOVED redundant company update block ---
+                    # We will do a single update AFTER the loop
                     
                     results["new"] += 1
                     results["details"].append({
@@ -261,41 +247,35 @@ def create_and_link_contacts(contacts_json: str, company_record_id: str) -> Dict
                     "error": str(e)
                 })
 
-            # Final verification and update of contact links
-            try:
-                # Get all contact record IDs that should be linked
-                contact_record_ids = []
-                for detail in results["details"]:
-                    if detail.get("record_id"):
-                        contact_record_ids.append(detail["record_id"])
-                        
-                if contact_record_ids:
-                    # Get Airtable instance for main company table
-                    company_airtable = Airtable(
-                        base_id=base_id,
-                        table_name=os.getenv('AIRTABLE_TABLE_NAME'),
-                        api_key=airtable_key
-                    )
+        # --- FIX: This block is now DE-INDENTED to run ONCE after the loop ---
+        try:
+            # Get all contact record IDs that should be linked
+            contact_record_ids = []
+            for detail in results["details"]:
+                if detail.get("record_id"):
+                    contact_record_ids.append(detail["record_id"])
                     
-                    # Get existing contacts to merge with new ones
-                    existing_company = company_airtable.get(company_record_id)
-                    existing_contacts = existing_company.get('fields', {}).get('Contacts', [])
-                    
-                    # Combine existing and new contacts, ensure uniqueness
-                    all_contacts = list(set(existing_contacts + contact_record_ids))
-                    
-                    # Update the Contacts linked records field
-                    company_airtable.update(
-                        company_record_id,
-                        {'Contacts': all_contacts}
-                    )
-                    logger.info(f"Final update: Company record now has {len(all_contacts)} linked contacts")
-                else:
-                    logger.warning("No contact record IDs found to link to company")
-                    
-            except Exception as lookup_exc:
-                logger.error(f"Error in final contact link verification: {lookup_exc}")
-                results["lookup_field_error"] = str(lookup_exc)
+            if contact_record_ids:
+                # Get existing contacts to merge with new ones
+                # We already fetched company_record and company_airtable
+                existing_contacts = company_record.get('fields', {}).get('Contacts', [])
+                
+                # Combine existing and new contacts, ensure uniqueness
+                all_contacts = list(set(existing_contacts + contact_record_ids))
+                
+                # Update the Contacts linked records field
+                company_airtable.update(
+                    company_record_id,
+                    {'Contacts': all_contacts}
+                )
+                logger.info(f"Final update: Company record now has {len(all_contacts)} linked contacts")
+            else:
+                logger.warning("No new or existing contact record IDs found to link to company")
+                
+        except Exception as lookup_exc:
+            logger.error(f"Error in final contact link verification: {lookup_exc}")
+            results["lookup_field_error"] = str(lookup_exc)
+        # --- END FIX ---
 
         logger.info(f"Contacts processing completed: {results['new']} new, {results['existing']} existing, {results['errors']} errors")
         return {
@@ -354,7 +334,7 @@ def upload_to_airtable(report_data: Dict[str, Any], job_id: str, record_id: str 
     if not all([airtable_key, base_id, table_name]):
         logger.warning(f"Airtable upload/update skipped: Environment variables not fully set. Check keys.")
         logger.warning(f"DEBUG: Key: {airtable_key}, Base: {base_id}, Table: {table_name}")
-        return {"status": "Skipped", "error": "Airtable environment variables not set."}
+        return {"status": "Skipped", "error": "ADbug.logirtable environment variables not set."}
 
     try:
         airtable = Airtable(base_id, table_name, airtable_key)

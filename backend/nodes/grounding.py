@@ -19,18 +19,19 @@ class GroundingNode:
         self.tavily_client = config.get_tavily_client()
 
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
-    async def _update_airtable_status(self, record_id: str, status_text: str):
+    async def _update_airtable_status(self, state: ResearchState, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
+        record_id = state.get('airtable_record_id')
         if not record_id:
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
         try:
-            # Use asyncio.to_thread to safely run the synchronous Airtable API call
             await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            # Log the error but do not raise, as Airtable update is a secondary task
+            error_message = f"⚠️ Airtable status update failed: {e}"
             logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
+            state.setdefault('messages', []).append(AIMessage(content=error_message))
     # --- END MODIFIED HELPER METHOD ---
 
     async def initial_search(self, state: InputState) -> ResearchState:
@@ -170,10 +171,9 @@ class GroundingNode:
         return state
 
     async def run(self, state: InputState) -> ResearchState:
-        airtable_record_id = state.get('airtable_record_id')
-        if airtable_record_id:
+        if state.get('airtable_record_id'):
             # AWAIT the critical initial status update
-            await self._update_airtable_status(airtable_record_id, ResearchStatus.IN_PROGRESS)
+            await self._update_airtable_status(state, ResearchStatus.IN_PROGRESS)
         
         # Pass the original state object to be modified
         return await self.initial_search(state)
