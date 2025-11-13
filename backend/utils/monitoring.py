@@ -1,20 +1,23 @@
 """
 Monitoring and metrics collection utilities.
 """
-import time
-import os
-from typing import Dict, Any, Optional
+
 import logging
-from datetime import datetime, timedelta
-import prometheus_client as prom
-from prometheus_client import Counter, Histogram, Gauge
-from functools import wraps
+import os
+import time
 from contextlib import contextmanager
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Dict, Optional
+
+import prometheus_client as prom
+from prometheus_client import Counter, Gauge, Histogram
+
 
 def setup_logging(log_level: str = "INFO", log_file: str = None) -> None:
     """
     Set up logging configuration for the application.
-    
+
     Args:
         log_level: The logging level to use (default: INFO)
         log_file: Optional path to a log file. If provided, logs will be written to this file
@@ -22,78 +25,66 @@ def setup_logging(log_level: str = "INFO", log_file: str = None) -> None:
     """
     # Convert string log level to logging constant
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    
+
     # Basic configuration
     config = {
-        'level': numeric_level,
-        'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        'datefmt': '%Y-%m-%d %H:%M:%S'
+        "level": numeric_level,
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "datefmt": "%Y-%m-%d %H:%M:%S",
     }
-    
+
     # If log file is specified, ensure directory exists and add file handler
     if log_file:
         log_dir = os.path.dirname(log_file)
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        config['filename'] = log_file
-        config['filemode'] = 'a'  # Append mode
-    
+        config["filename"] = log_file
+        config["filemode"] = "a"  # Append mode
+
     # Apply configuration
     logging.basicConfig(**config)
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Define metrics
 REQUESTS_TOTAL = Counter(
-    'email_generator_requests_total',
-    'Total number of email generation requests',
-    ['status', 'template_type']
+    "email_generator_requests_total",
+    "Total number of email generation requests",
+    ["status", "template_type"],
 )
 
 GENERATION_TIME = Histogram(
-    'email_generation_duration_seconds',
-    'Time spent generating emails',
-    ['template_type']
+    "email_generation_duration_seconds",
+    "Time spent generating emails",
+    ["template_type"],
 )
 
-CACHE_HITS = Counter(
-    'cache_hits_total',
-    'Total number of cache hits',
-    ['cache_type']
-)
+CACHE_HITS = Counter("cache_hits_total", "Total number of cache hits", ["cache_type"])
 
 CACHE_MISSES = Counter(
-    'cache_misses_total',
-    'Total number of cache misses',
-    ['cache_type']
+    "cache_misses_total", "Total number of cache misses", ["cache_type"]
 )
 
 ACTIVE_GENERATIONS = Gauge(
-    'email_generations_active',
-    'Number of email generations in progress'
+    "email_generations_active", "Number of email generations in progress"
 )
 
 TEMPLATE_REFRESH_TIME = Histogram(
-    'template_refresh_duration_seconds',
-    'Time spent refreshing templates'
+    "template_refresh_duration_seconds", "Time spent refreshing templates"
 )
 
 DRIVE_API_CALLS = Counter(
-    'drive_api_calls_total',
-    'Total number of Google Drive API calls',
-    ['operation']
+    "drive_api_calls_total", "Total number of Google Drive API calls", ["operation"]
 )
 
-ERROR_COUNT = Counter(
-    'errors_total',
-    'Total number of errors',
-    ['error_type']
-)
+ERROR_COUNT = Counter("errors_total", "Total number of errors", ["error_type"])
+
 
 class MetricsCollector:
     """Collector for application metrics."""
-    
+
     @staticmethod
     def track_request(template_type: str, status: str = "success"):
         """Track an email generation request."""
@@ -141,13 +132,15 @@ class MetricsCollector:
         finally:
             TEMPLATE_REFRESH_TIME.observe(time.time() - start_time)
 
+
 def track_performance(name: str):
     """
     Decorator to track function performance.
-    
+
     Args:
         name: Name of the operation to track
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -160,8 +153,8 @@ def track_performance(name: str):
                     extra={
                         "operation": name,
                         "duration": duration,
-                        "status": "success"
-                    }
+                        "status": "success",
+                    },
                 )
                 return result
             except Exception as e:
@@ -172,34 +165,27 @@ def track_performance(name: str):
                         "operation": name,
                         "duration": duration,
                         "status": "error",
-                        "error": str(e)
+                        "error": str(e),
                     },
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
+
         return wrapper
+
     return decorator
+
 
 class PerformanceMonitor:
     """Monitor for tracking application performance metrics."""
-    
+
     def __init__(self):
         self.start_time = datetime.now()
         self._metrics: Dict[str, Dict[str, Any]] = {
-            "requests": {
-                "total": 0,
-                "success": 0,
-                "error": 0
-            },
-            "cache": {
-                "hits": 0,
-                "misses": 0
-            },
-            "api_calls": {
-                "drive": 0,
-                "openai": 0
-            },
-            "errors": {}
+            "requests": {"total": 0, "success": 0, "error": 0},
+            "cache": {"hits": 0, "misses": 0},
+            "api_calls": {"drive": 0, "openai": 0},
+            "errors": {},
         }
 
     def get_uptime(self) -> timedelta:
@@ -208,10 +194,7 @@ class PerformanceMonitor:
 
     def get_metrics(self) -> Dict[str, Any]:
         """Get current metrics."""
-        return {
-            "uptime": str(self.get_uptime()),
-            "metrics": self._metrics
-        }
+        return {"uptime": str(self.get_uptime()), "metrics": self._metrics}
 
     def record_request(self, success: bool = True):
         """Record an API request."""
@@ -234,7 +217,10 @@ class PerformanceMonitor:
 
     def record_error(self, error_type: str):
         """Record an error occurrence."""
-        self._metrics["errors"][error_type] = self._metrics["errors"].get(error_type, 0) + 1
+        self._metrics["errors"][error_type] = (
+            self._metrics["errors"].get(error_type, 0) + 1
+        )
+
 
 # Create global instances
 metrics_collector = MetricsCollector()

@@ -2,31 +2,37 @@
 Dynamic template management for email outreach.
 """
 
-import os
 import json
-from typing import Dict, List, Optional
+import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from threading import Lock
+from typing import Dict, List, Optional
+
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class EmailTemplate:
     """Represents an email template from Google Drive."""
-    id: str           # Google Drive file ID
-    name: str         # Original filename
-    type: str         # Template type (derived from filename)
+
+    id: str  # Google Drive file ID
+    name: str  # Original filename
+    type: str  # Template type (derived from filename)
     description: str  # Description from the first line of the template
 
-from .cache import cached, CacheManager
+
+from .cache import CacheManager, cached
+
 
 class EmailTemplateManager:
     """Manages dynamic fetching and caching of email templates from Google Drive."""
+
     _instance = None
     _refresh_lock = Lock()
     _last_refresh = None
@@ -41,7 +47,7 @@ class EmailTemplateManager:
     def __init__(self, folder_id: str = "1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW"):
         """
         Initialize the template manager.
-        
+
         Args:
             folder_id: The Google Drive folder ID containing email templates
         """
@@ -50,18 +56,21 @@ class EmailTemplateManager:
             self.templates: Dict[str, EmailTemplate] = {}
             self.drive_service = None
             self._initialized = True
-    
+
     async def ensure_drive_service(self):
         """Lazily set up the Google Drive service when needed."""
         if self.drive_service is not None:
             return
 
         import asyncio
+
         credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
         if not credentials_json:
-            logger.warning("GDRIVE_CREDENTIALS_JSON not set, Drive features will be unavailable")
+            logger.warning(
+                "GDRIVE_CREDENTIALS_JSON not set, Drive features will be unavailable"
+            )
             return
-                
+
         try:
             # Run the synchronous Drive API initialization in a thread pool
             loop = asyncio.get_running_loop()
@@ -74,17 +83,43 @@ class EmailTemplateManager:
             raise
 
     def _initialize_drive_service(self):
-        """Internal method to initialize the Drive service synchronously."""
-        credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
-        if not credentials_json:
-            raise ValueError("GDRIVE_CREDENTIALS_JSON not set")
-            
-        credentials_info = json.loads(credentials_json)
-        credentials = service_account.Credentials.from_service_account_info(
-            credentials_info,
-            scopes=['https://www.googleapis.com/auth/drive.readonly']
-        )
-        self.drive_service = build('drive', 'v3', credentials=credentials)
+        """
+        Internal method to initialize the Drive service synchronously.
+        It checks for credentials in a mounted file first, then falls back to an environment variable.
+        """
+        credentials_path = "/app/gdrive_credentials.json"
+
+        try:
+            if os.path.exists(credentials_path):
+                logger.info(
+                    f"Found credentials file at {credentials_path}, using it for authentication."
+                )
+                credentials = service_account.Credentials.from_service_account_file(
+                    credentials_path,
+                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                )
+            else:
+                logger.info(
+                    "Credentials file not found, falling back to GDRIVE_CREDENTIALS_JSON env var."
+                )
+                credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
+                if not credentials_json:
+                    raise ValueError(
+                        "GDRIVE_CREDENTIALS_JSON not set and file not found."
+                    )
+
+                credentials_info = json.loads(credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(
+                    credentials_info,
+                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                )
+
+            self.drive_service = build("drive", "v3", credentials=credentials)
+
+        except Exception as e:
+            logger.error(f"Failed to initialize Drive service: {e}", exc_info=True)
+            self.drive_service = None
+            raise
 
     def _extract_template_type(self, filename: str) -> str:
         """Extract template type from filename."""
@@ -112,8 +147,10 @@ class EmailTemplateManager:
             # Check if refresh is needed based on time interval
             with self._refresh_lock:
                 now = datetime.now()
-                if (self._last_refresh and 
-                    now - self._last_refresh < self._refresh_interval):
+                if (
+                    self._last_refresh
+                    and now - self._last_refresh < self._refresh_interval
+                ):
                     logger.debug("Using cached templates, refresh not needed")
                     return
 
@@ -125,99 +162,118 @@ class EmailTemplateManager:
 
             # Run the Drive API calls in a thread pool
             import asyncio
+
             loop = asyncio.get_running_loop()
-            
+
             # Get cache manager
             cache = CacheManager()
-            
+
             # Try to get cached file list first
             cache_key = f"template_files:{self.folder_id}"
             files = cache.get(cache_key)
-            
+
             if not files:
                 # List all files in the templates folder
                 query = f"'{self.folder_id}' in parents and trashed = false"
                 logger.info(f"Searching for files in folder: {self.folder_id}")
-                results = await loop.run_in_executor(None, 
-                    lambda: self.drive_service.files().list(
+                results = await loop.run_in_executor(
+                    None,
+                    lambda: self.drive_service.files()
+                    .list(
                         q=query,
-                        spaces='drive',
-                        fields='files(id, name, mimeType)',
+                        spaces="drive",
+                        fields="files(id, name, mimeType)",
                         supportsAllDrives=True,
-                        includeItemsFromAllDrives=True
-                    ).execute()
+                        includeItemsFromAllDrives=True,
+                    )
+                    .execute(),
                 )
-                
-                files = results.get('files', [])
+
+                files = results.get("files", [])
                 # Cache file list for 5 minutes
                 cache.set(cache_key, files, ttl=300)
-                
+
             logger.info(f"Found {len(files)} files in folder")
             for file in files:
-                logger.info(f"Found file: {file['name']} (type: {file['mimeType']}, id: {file['id']})")
+                logger.info(
+                    f"Found file: {file['name']} (type: {file['mimeType']}, id: {file['id']})"
+                )
 
             new_templates = {}
-            
-            for file in results.get('files', []):
+
+            for file in results.get("files", []):
                 try:
                     # Accept Google Docs and text-based files
-                    mime_type = file['mimeType'].lower()
+                    mime_type = file["mimeType"].lower()
                     acceptable_types = [
-                        'text/plain',
-                        'text/markdown',
-                        'application/json',
-                        'text/html',
-                        'application/x-javascript',
-                        'application/javascript',
-                        'text/javascript',
-                        'application/vnd.google-apps.document'  # Google Docs
+                        "text/plain",
+                        "text/markdown",
+                        "application/json",
+                        "text/html",
+                        "application/x-javascript",
+                        "application/javascript",
+                        "text/javascript",
+                        "application/vnd.google-apps.document",  # Google Docs
                     ]
-                    
-                    is_acceptable = mime_type.startswith('text/') or mime_type in acceptable_types
+
+                    is_acceptable = (
+                        mime_type.startswith("text/") or mime_type in acceptable_types
+                    )
                     if not is_acceptable:
-                        logger.debug(f"Skipping non-text file: {file['name']} (type: {mime_type})")
+                        logger.debug(
+                            f"Skipping non-text file: {file['name']} (type: {mime_type})"
+                        )
                         continue
 
                     logger.info(f"Processing file: {file['name']} (type: {mime_type})")
-                    
+
                     # Try to get content from cache first
                     content_cache_key = f"template_content:{file['id']}"
                     content = cache.get(content_cache_key)
-                    
+
                     if not content:
                         # Handle Google Docs differently from regular files
-                        if mime_type == 'application/vnd.google-apps.document':
-                            content = await loop.run_in_executor(None,
-                                lambda: self.drive_service.files().export(
-                                    fileId=file['id'],
-                                    mimeType='text/plain'
-                                ).execute().decode('utf-8')
+                        if mime_type == "application/vnd.google-apps.document":
+                            content = await loop.run_in_executor(
+                                None,
+                                lambda: self.drive_service.files()
+                                .export(fileId=file["id"], mimeType="text/plain")
+                                .execute()
+                                .decode("utf-8"),
                             )
                         else:
                             # Regular file download
-                            content = await loop.run_in_executor(None,
-                                lambda: self.drive_service.files().get_media(
-                                    fileId=file['id']
-                                ).execute().decode('utf-8')
+                            content = await loop.run_in_executor(
+                                None,
+                                lambda: self.drive_service.files()
+                                .get_media(fileId=file["id"])
+                                .execute()
+                                .decode("utf-8"),
                             )
                         # Cache content for 1 hour
                         cache.set(content_cache_key, content, ttl=3600)
-                    
+
                     try:
-                        template_type = self._extract_template_type(file['name'])
+                        template_type = self._extract_template_type(file["name"])
                         description = self._extract_description(content)
-                        
+
                         new_templates[template_type] = EmailTemplate(
-                            id=file['id'],
-                            name=file['name'],
+                            id=file["id"],
+                            name=file["name"],
                             type=template_type,
-                            description=description
+                            description=description,
                         )
-                        logger.info(f"Successfully loaded template: {template_type} from {file['name']}")
+                        logger.info(
+                            f"Successfully loaded template: {template_type} from {file['name']}"
+                        )
                     except Exception as template_error:
-                        logger.error(f"Error processing template metadata for {file['name']}: {template_error}")
-                    logger.debug(f"Loaded template: {template_type} from {file['name']}")
-                    
+                        logger.error(
+                            f"Error processing template metadata for {file['name']}: {template_error}"
+                        )
+                    logger.debug(
+                        f"Loaded template: {template_type} from {file['name']}"
+                    )
+
                 except Exception as e:
                     logger.error(f"Error processing template {file['name']}: {e}")
                     continue
@@ -226,7 +282,7 @@ class EmailTemplateManager:
             with self._refresh_lock:
                 self._last_refresh = datetime.now()
             logger.info(f"Refreshed {len(self.templates)} templates from Drive folder")
-            
+
             # Clean up cache entries for removed templates
             cache = CacheManager()
             current_template_ids = {template.id for template in new_templates.values()}
@@ -236,7 +292,7 @@ class EmailTemplateManager:
                 template_id = key.replace(cache_prefix, "")
                 if template_id not in current_template_ids:
                     cache.delete(key)
-            
+
         except HttpError as error:
             logger.error(f"Error accessing templates folder: {error}")
             self.templates = {}
@@ -248,16 +304,19 @@ class EmailTemplateManager:
         """
         Get a dictionary of available templates and their descriptions.
         If there are duplicates, keeps only the most recent version.
-        
+
         Returns:
             Dictionary mapping template types to their descriptions
         """
         # Remove duplicates by keeping only one template per type
         unique_templates = {}
         for template in self.templates.values():
-            if template.type not in unique_templates or template.id > unique_templates[template.type].id:
+            if (
+                template.type not in unique_templates
+                or template.id > unique_templates[template.type].id
+            ):
                 unique_templates[template.type] = template
-        
+
         return {
             template.type: template.description
             for template in unique_templates.values()
@@ -266,15 +325,16 @@ class EmailTemplateManager:
     def get_template_id(self, template_type: str) -> Optional[str]:
         """
         Get the Google Drive file ID for a template type.
-        
+
         Args:
             template_type: The type of template to find
-            
+
         Returns:
             Google Drive file ID if found, None otherwise
         """
         template = self.templates.get(template_type.upper())
         return template.id if template else None
+
 
 # Lazy-loaded singleton instance getter
 def get_template_manager() -> EmailTemplateManager:

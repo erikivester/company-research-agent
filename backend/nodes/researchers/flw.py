@@ -4,18 +4,21 @@ from typing import Any, Dict
 
 from langchain_core.messages import AIMessage
 
+from backend.utils.utils import company_name
+
 # Use relative imports assuming standard project structure
 from ...classes import ResearchState
 from .base import BaseResearcher
-from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
+
 
 class FLWAnalyzer(BaseResearcher):
     """
     (v2) Researcher focused on Food Loss & Waste (FLW), sustainability, ESG reports,
     and related environmental initiatives for a company.
     """
+
     def __init__(self) -> None:
         super().__init__()
         # Set a specific analyst type for this researcher
@@ -27,9 +30,8 @@ class FLWAnalyzer(BaseResearcher):
         Analyzes the company's FLW and sustainability efforts.
         """
         company = company_name(state)
-        industry = state.get('industry', 'Unknown Industry') # Get industry for context
-        websocket_manager = state.get('websocket_manager')
-        job_id = state.get('job_id')
+        websocket_manager = state.get("websocket_manager")
+        job_id = state.get("job_id")
 
         # Initial message for logging and state update
         msg = [f"🌿 FLW/Sustainability Analyzer investigating {company}"]
@@ -37,13 +39,16 @@ class FLWAnalyzer(BaseResearcher):
 
         try:
             # Get the generated queries from state
-            queries = state.get('research_queries', {}).get(self.analyst_type, [])
+            queries = state.get("research_queries", {}).get(self.analyst_type, [])
 
             # Add generated queries to state messages for transparency
-            subqueries_msg = "🔍 Subqueries for FLW/Sustainability analysis:\n" + "\n".join([f"• {query}" for query in queries])
-            messages = state.get('messages', [])
+            subqueries_msg = (
+                "🔍 Subqueries for FLW/Sustainability analysis:\n"
+                + "\n".join([f"• {query}" for query in queries])
+            )
+            messages = state.get("messages", [])
             messages.append(AIMessage(content=subqueries_msg))
-            state['messages'] = messages
+            state["messages"] = messages
 
             # Send WebSocket update: Queries generated
             if websocket_manager and job_id:
@@ -52,65 +57,74 @@ class FLWAnalyzer(BaseResearcher):
                     status="processing",
                     message="FLW/Sustainability analysis queries generated",
                     result={
-                        "step": "FLW/Sustainability Analyst", # Use a descriptive step name
+                        "step": "FLW/Sustainability Analyst",  # Use a descriptive step name
                         "analyst_type": self.analyst_type,
-                        "queries": queries
-                    }
+                        "queries": queries,
+                    },
                 )
 
             # Initialize dictionary to store research results
             flw_data = {}
 
             # Include relevant data from the initial website scrape if available
-            if site_scrape := state.get('site_scrape'):
-                msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
+            if site_scrape := state.get("site_scrape"):
+                msg.append(
+                    f"\n📊 Including {len(site_scrape)} pages from company website..."
+                )
                 flw_data.update(site_scrape)
                 logger.info(f"Included {len(site_scrape)} site scrape results.")
 
-
             # Execute searches for the generated queries
-            logger.info(f"Searching documents for {len(queries)} FLW/Sustainability queries.")
+            logger.info(
+                f"Searching documents for {len(queries)} FLW/Sustainability queries."
+            )
             documents_found = await self.search_documents(state)
 
             if documents_found:
                 # Add found documents, associating each with its query
                 for url, doc in documents_found.items():
-                    doc['query'] = doc.get('query', 'Unknown Query')
+                    doc["query"] = doc.get("query", "Unknown Query")
                     flw_data[url] = doc
-                msg.append(f"\n✓ Found {len(documents_found)} documents from web search.")
+                msg.append(
+                    f"\n✓ Found {len(documents_found)} documents from web search."
+                )
                 logger.info(f"Found {len(documents_found)} documents from web search.")
             else:
-                 msg.append("\nℹ️ No additional documents found from web search for FLW/Sustainability.")
-                 logger.info("No additional documents found from web search.")
+                msg.append(
+                    "\nℹ️ No additional documents found from web search for FLW/Sustainability."
+                )
+                logger.info("No additional documents found from web search.")
 
             # Send WebSocket update: Search complete
             if websocket_manager and job_id:
-                 await websocket_manager.send_status_update(
-                     job_id=job_id,
-                     status="processing",
-                     message=f"Found {len(documents_found)} documents for FLW/Sustainability",
-                     result={
-                         "step": "Searching",
-                         "analyst_type": self.analyst_type,
-                         "queries": queries,
-                         "documents_found": len(documents_found)
-                     }
-                 )
+                await websocket_manager.send_status_update(
+                    job_id=job_id,
+                    status="processing",
+                    message=f"Found {len(documents_found)} documents for FLW/Sustainability",
+                    result={
+                        "step": "Searching",
+                        "analyst_type": self.analyst_type,
+                        "queries": queries,
+                        "documents_found": len(documents_found),
+                    },
+                )
 
             # Update state with findings
-            messages = state.get('messages', [])
+            messages = state.get("messages", [])
             messages.append(AIMessage(content="\n".join(msg)))
-            state['messages'] = messages
+            state["messages"] = messages
             # This state key ('flw_data') is already correct per our v2 state.py
-            state['flw_data'] = flw_data
-            logger.info(f"Completed FLW/Sustainability analysis. Total documents collected: {len(flw_data)}")
+            state["flw_data"] = flw_data
+            logger.info(
+                f"Completed FLW/Sustainability analysis. Total documents collected: {len(flw_data)}"
+            )
 
             # Return the modified state in-place to preserve pass-through keys
             return state
 
         except Exception as e:
             error_msg = f"FLW/Sustainability analysis failed: {str(e)}"
-            logger.error(error_msg, exc_info=True) 
+            logger.error(error_msg, exc_info=True)
 
             if websocket_manager and job_id:
                 await websocket_manager.send_status_update(
@@ -120,14 +134,16 @@ class FLWAnalyzer(BaseResearcher):
                     result={
                         "step": "FLW/Sustainability Analyst",
                         "analyst_type": self.analyst_type,
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
-            
-            messages = state.get('messages', [])
+
+            messages = state.get("messages", [])
             messages.append(AIMessage(content=f"\n⚠️ {error_msg}"))
-            state['messages'] = messages
-            state['flw_data'] = state.get('flw_data', {}) # Ensure key exists even on failure
+            state["messages"] = messages
+            state["flw_data"] = state.get(
+                "flw_data", {}
+            )  # Ensure key exists even on failure
             raise
 
     async def run(self, state: ResearchState) -> ResearchState:
@@ -138,9 +154,11 @@ class FLWAnalyzer(BaseResearcher):
         try:
             await self.analyze(state)
         except Exception as e:
-             logger.error(f"FLWAnalyzer run failed: {e}")
-             state.setdefault('messages', []).append(AIMessage(content=f"FLW node failed: {e}"))
-             state.setdefault('flw_data', {})
+            logger.error(f"FLWAnalyzer run failed: {e}")
+            state.setdefault("messages", []).append(
+                AIMessage(content=f"FLW node failed: {e}")
+            )
+            state.setdefault("flw_data", {})
 
         # Modify state in-place and return the full state to preserve pass-through keys
         return state

@@ -1,18 +1,20 @@
 # backend/services/mongodb.py
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
+
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 logger = logging.getLogger(__name__)
+
 
 class MongoDBService:
     def __init__(self, uri: str, db_name: str = "company_research"):
         try:
             self.client = MongoClient(uri, serverSelectionTimeoutMS=5000)
             # Ping the server to check connection
-            self.client.admin.command('ping')
+            self.client.admin.command("ping")
             self.db = self.client[db_name]
             self.jobs_collection = self.db["jobs"]
             self.reports_collection = self.db["reports"]
@@ -32,7 +34,7 @@ class MongoDBService:
                 "status": "pending",
                 "created_at": datetime.now().isoformat(),
                 "last_update": datetime.now().isoformat(),
-                "details": job_details
+                "details": job_details,
             }
             self.jobs_collection.insert_one(job_document)
             logger.debug(f"Created job record for job_id: {job_id}")
@@ -43,10 +45,7 @@ class MongoDBService:
         """Updates the status of an existing job."""
         try:
             update_query = {
-                "$set": {
-                    "status": status,
-                    "last_update": datetime.now().isoformat()
-                }
+                "$set": {"status": status, "last_update": datetime.now().isoformat()}
             }
             if error:
                 update_query["$set"]["error"] = error
@@ -62,13 +61,11 @@ class MongoDBService:
             report_document = {
                 "job_id": job_id,
                 "generated_at": datetime.now().isoformat(),
-                **report_data
+                **report_data,
             }
             # Use update_one with upsert=True to avoid duplicates
             self.reports_collection.update_one(
-                {"job_id": job_id},
-                {"$set": report_document},
-                upsert=True
+                {"job_id": job_id}, {"$set": report_document}, upsert=True
             )
             logger.info(f"Stored report for job_id: {job_id}")
         except Exception as e:

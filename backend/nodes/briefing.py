@@ -6,67 +6,87 @@ from typing import Any, Dict, List, Union
 
 import google.generativeai as genai
 
-# Assuming ResearchState is in ../classes/state.py relative to this file
-from ..classes import ResearchState
 # Import the Airtable update function
-from backend.airtable_uploader import update_airtable_record # synchronous function
+from backend.airtable_uploader import update_airtable_record  # synchronous function
 from backend.utils.utils import company_name
+
+# Assuming ResearchState is in ../classes/state.py relative to this file
+from langchain_core.messages import AIMessage
+
+from ..classes import ResearchState
 from ..utils.status_constants import ResearchStatus
 
 logger = logging.getLogger(__name__)
+
 
 class Briefing:
     """(v2) Creates polished briefings for each of the 5 v2 research categories."""
 
     def __init__(self) -> None:
         self.max_doc_length = 8000  # Maximum document content length per doc
-        self.max_total_length = 120000 # Max total characters to send to Gemini
+        self.max_total_length = 80000  # Max total characters to send to Gemini
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         if not self.gemini_key:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
 
         # Configure Gemini
         genai.configure(api_key=self.gemini_key)
-        self.gemini_model = genai.GenerativeModel('gemini-2.5-flash', generation_config=genai.types.GenerationConfig(
-            temperature=0.1,
-            max_output_tokens=8192
-        ))
+        self.gemini_model = genai.GenerativeModel(
+            "gemini-2.5-flash",
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1, max_output_tokens=8192  # Max for gemini-2.5-flash
+            ),
+        )
         logger.info("Briefing node initialized with Gemini 2.5 Flash model")
-    
+
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
-    async def _update_airtable_status(self, state: ResearchState, status_text: str):
+    async def _update_airtable_status(self, record_id: str, status_text: str):
         """Helper to call the synchronous update function in a separate thread."""
-        record_id = state.get('airtable_record_id')
         if not record_id:
             logger.warning("Airtable status update skipped: No record ID provided.")
             return
         try:
-            await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': status_text})
+            # Use asyncio.to_thread to safely run the synchronous Airtable API call
+            await asyncio.to_thread(
+                update_airtable_record, record_id, {"Research Status": status_text}
+            )
             logger.debug(f"Airtable status update successful for record {record_id}")
         except Exception as e:
-            error_message = f"⚠️ Airtable status update failed: {e}"
-            logger.error(f"{self.__class__.__name__} failed to update Airtable status for record {record_id}: {e}", exc_info=True)
-            state.setdefault('messages', []).append(AIMessage(content=error_message))
+            # Log the error but do not raise, as Airtable update is a secondary task
+            logger.error(
+                f"{self.__class__.__name__} failed to update Airtable status: {e}",
+                exc_info=True,
+            )
+
     # --- END MODIFIED HELPER METHOD ---
 
     async def generate_category_briefing(
-        self, docs: Union[Dict[str, Any], List[Dict[str, Any]]],
-        category: str, context: Dict[str, Any]
+        self,
+        docs: Union[Dict[str, Any], List[Dict[str, Any]]],
+        category: str,
+        context: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Generates a briefing for a specific category using curated documents."""
-        company = context.get('company', 'Unknown')
-        industry = context.get('industry', 'Unknown')
-        hq_location = context.get('hq_location', 'Unknown')
-        websocket_manager = context.get('websocket_manager')
-        job_id = context.get('job_id')
+        company = context.get("company", "Unknown")
+        industry = context.get("industry", "Unknown")
+        hq_location = context.get("hq_location", "Unknown")
+        websocket_manager = context.get("websocket_manager")
+        job_id = context.get("job_id")
 
         # Normalize docs to handle both dict and list inputs
-        items = list(docs.items()) if isinstance(docs, dict) else [
-            (doc.get('url', f'doc_{i}'), doc) for i, doc in enumerate(docs) if isinstance(doc, dict) # Ensure doc is dict
-        ]
+        items = (
+            list(docs.items())
+            if isinstance(docs, dict)
+            else [
+                (doc.get("url", f"doc_{i}"), doc)
+                for i, doc in enumerate(docs)
+                if isinstance(doc, dict)  # Ensure doc is dict
+            ]
+        )
         num_docs = len(items)
-        logger.info(f"Generating {category} briefing for {company} using {num_docs} documents")
-
+        logger.info(
+            f"Generating {category} briefing for {company} using {num_docs} documents"
+        )
 
         # Send category start status
         if websocket_manager and job_id:
@@ -76,68 +96,63 @@ class Briefing:
                 message=f"Generating {category} briefing",
                 result={
                     "step": "Briefing",
-                    "category": category, # This will be the v2 category name, e.g., 'contact'
-                    "total_docs": num_docs
-                }
+                    "category": category,  # This will be the v2 category name, e.g., 'contact'
+                    "total_docs": num_docs,
+                },
             )
 
         # --- v2: Define prompts for 5 new nodes ---
         prompts = {
-            'company_brief': f"""Create a focused Company Brief for {company}, a {industry} company based in {hq_location}.
-Key requirements:
-1. Structure using these exact headers. Use only bullet points under headers.
-### Core Business
-* Conccisely summarize {company}'s primary products, services, and mission.
-### Financial Health
-* List any "ballpark" revenue figures (e.g., "$100M-$500M", "Est. $1B+").
-* List any "financial health signals" found (e.g., "Recent layoffs reported", "Stock price drop", "Secured new funding").
-2. Each bullet must be a single, concise, complete fact derived *only* from the documents.
-3. If information for a header is not found in the documents, OMIT that header entirely.
-4. NEVER state "no information found" or "data not available".
-5. Provide only the briefing content in markdown format. No explanations or commentary.
-""",
-            'news_signal': f"""Create a "News & Signals" briefing for {company}.
-Key requirements:
-1. Structure using ONLY bullet points (*). DO NOT use ### headers.
-2. Scan documents for specific, actionable signals from the last 12-18 months.
-3. Format bullets to tag the signal type:
-   * **FLW/Climate Signal:** [Detail of ESG report, methane goal, food waste initiative, etc.]
-   * **Opportunity Signal:** [Detail of new VP of Impact, new relevant initiative, etc.]
-   * **Risk Signal:** [Detail of layoff, boycott, stock issue, etc.]
-   * **General News:** [Detail of product launch, partnership, etc.]
-4. Sort items newest to oldest *if dates are available*, otherwise list as found.
-5. If no information is found for a category bullet, OMIT that bullet entirely.
-6. Provide only the briefing content as a single bulleted list. No explanation or commentary.
-""",
-            'flw': f"""Create a focused briefing on {company}'s Food Loss & Waste (FLW) and Sustainability efforts.
-Key Requirements:
-1. Structure using these exact headers ONLY IF relevant information is found. Use only bullet points under headers.
-### ESG & Methane Goals
-* Stated climate goals mentioned (especially methane reduction, SBTi).
-* Mention of sustainability or ESG reports (e.g., '2024 ESG Report').
-### FLW Initiatives
-* Specific actions mentioned for preventing food waste (e.g., forecasting, shelf-life extension).
-* Information on food waste recycling (e.g., composting, anaerobic digestion).
-### Food Rescue & Donation
-* Details on food rescue or donation programs mentioned (e.g., partners, volumes).
-### Sustainable Packaging
-* Details on packaging materials (e.g., recycled content, compostable).
-* Mention of packaging optimization or reduction initiatives.
-2. Each bullet must be a single, concise, verifiable fact derived *only* from the provided documents. Include dates if mentioned.
-3. If information for a specific header is not found, OMIT that header entirely.
-4. NEVER state "no information found".
-5. Provide only the briefing content in markdown format. No explanations or commentary.
-""",
-            'contact': f"""You are a JSON-only contact extractor. You must output ONLY a valid JSON array and nothing else.
+            "company_brief": f"""Create a focused Company Brief for {company}, a {industry} company based in {hq_location}.
+Your goal is to extract key business and financial facts from the provided documents.
 
-For the provided documents about {company}, extract relevant contacts and output them as JSON.
+**Instructions:**
+1.  **Structure the brief** using the following suggested headers (you may modify this depending on what you find as relevent.). Use bullet points for details under each header.
+    *   `### Core Business`: Concisely summarize the company's primary products, services, and mission.
+    *   `### Financial Health`: List any revenue figures, funding details, or other financial signals (e.g., "Recent layoffs," "Stock price changes").
+2.  **Be factual and specific:** Each bullet point must be a fact derived *only* from the provided documents.
+3.  **Include direct quotes:** When relevant, include direct quotes from the source material to support your points.
+4.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
+5.  **Omit empty sections:** If you cannot find any relevant information for a header in the documents, leave that section out entirely.
+6.  **Fallback:** If no relevant information can be found for *any* section, output only this message: "A detailed company brief could not be generated from the provided documents."
+7.  **Be concise:** Do not add any explanations or commentary outside of the structured brief.
+""",
+            "news_signal": f"""Create a "News & Signals" briefing for {company}.
+
+**Instructions:**
+1.  **Format:** Use a simple bulleted list. Do not use headers.
+2.  **Content:** Scan the documents for actionable signals from the last 12-18 months.
+3.  **Tagging:** Start each bullet by tagging the signal type (e.g., `**FLW/Climate Signal:**`, `**Opportunity Signal:**`, `**Risk Signal:**`, `**General News:**`).
+4.  **Include direct quotes:** When relevant, include direct quotes from the source material to support your points.
+5.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
+6.  **Fallback:** If no relevant news or signals are found, output only this message: "No significant news or signals were identified in the provided documents."
+7.  **Be concise:** Do not add any explanations or commentary.
+""",
+            "flw": f"""As a research analyst for ReFED, a national nonprofit dedicated to ending food loss and waste, create a focused briefing on {company}'s Food Loss & Waste (FLW) and Sustainability efforts. Your analysis should be framed by ReFED's mission to advance data-driven solutions.
+
+**Instructions:**
+1.  **Structure:** Use the following suggested headers *only if* you find relevant information for them. Use bullet points for details. Feel free to adapt this section depending on the output/discoveries made.
+    *   `### ESG Goals`
+    *   `### FLW Initiatives`
+    *   `### Food Rescue & Donation`
+    *   `### Methane Reduction Efforts`
+2.  **Be factual and specific:** Each bullet must be a concise fact derived *only* from the provided documents.
+3.  **Include direct quotes:** When relevant, include direct quotes from the source material to support your points.
+4.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
+5.  **Omit empty sections:** If you cannot find information for a header, leave that section out.
+6.  **Fallback:** If no relevant FLW or sustainability information is found for *any* section, output only this message: "No specific FLW or sustainability initiatives were identified in the provided documents."
+7.  **Be concise:** Do not add any explanations or commentary.
+""",
+            "contact": f"""You are a JSON-only contact extractor. You must output ONLY a valid JSON array and nothing else.
+
+For the provided documents about {company}, extract relevant contacts and output them as JSON. Ensure that they are actively working for each company.
 
 Output Format:
 [
   {{
     "name": "Full Name",
     "title": "Exact Title",
-    "summary": "Brief role description"
+    "summary": "2-3 sentence summary of role/responsibilities",
   }}
 ]
 
@@ -149,77 +164,88 @@ Rules:
 5. Ensure output is valid JSON with proper escaping
 
 Critical: Output MUST start with [ and end with ] - absolutely no other text or formatting""",
-            'engagement': f"""Create an "Engagements & Affiliations" briefing for {company}.
-Key Requirements:
-1. Structure using the exact header: ### Engagements & Affiliations
-2. List all signals of external engagement, partnerships, and memberships.
-3. Format as: `* **[Category]:** [Specific detail found in text]`
-   * Examples:
-     * **Membership:** 1% for the Planet
-     * **Event:** Spoke at ReFED Food Waste Solutions Summit 2024
-     * **Award:** Named one of Fast Company's Most Innovative 2025
-     * **Partnership:** Partnered with World Wildlife Fund on regenerative agriculture
-     * **Coalition:** Signatory of the US Food Waste Pact
-4. If no signals are found, OMIT the header and output nothing.
-5. Provide only the briefing content in markdown format. No explanations or commentary.
-"""
+            "engagement": f"""Create an "Engagements & Affiliations" briefing for {company}.
+
+**Instructions:**
+1.  **Structure:** Use the header `### Engagements & Affiliations` followed by a bulleted list.
+2.  **Content:** List all signals of external engagement, partnerships, and memberships.
+3.  **Format:** Start each bullet with a category tag (e.g., `* **Membership:**`, `* **Event:**`, `* **Partnership:**`).
+4.  **Fallback:** If no engagement signals are found, output only this message: "No significant engagements or affiliations were identified in the provided documents."
+5.  **Be concise:** Do not add any explanations or commentary.
+""",
         }
         # --- END v2 PROMPTS ---
 
         # Select the appropriate prompt, default to a generic one if category unknown
-        prompt_template = prompts.get(category, f'Create a focused research briefing on {category} for {company} based on the provided documents.')
+        prompt_template = prompts.get(
+            category,
+            f"Create a focused research briefing on {category} for {company} based on the provided documents.",
+        )
 
         # Sort documents by evaluation score (highest first)
         try:
-             sorted_items = sorted(
-                 items,
-                 key=lambda x: float(x[1].get('evaluation', {}).get('overall_score', 0)) if isinstance(x[1], dict) else 0,
-                 reverse=True
-             )
+            sorted_items = sorted(
+                items,
+                key=lambda x: (
+                    float(x[1].get("evaluation", {}).get("overall_score", 0))
+                    if isinstance(x[1], dict)
+                    else 0
+                ),
+                reverse=True,
+            )
         except Exception as sort_exc:
-             logger.error(f"Error sorting documents for {category}: {sort_exc}. Proceeding with unsorted docs.")
-             sorted_items = items # Fallback to unsorted
+            logger.error(
+                f"Error sorting documents for {category}: {sort_exc}. Proceeding with unsorted docs."
+            )
+            sorted_items = items  # Fallback to unsorted
 
         # Prepare document text, limiting length
         doc_texts = []
         total_length = 0
         separator = "\n" + "-" * 40 + "\n"
         for _, doc in sorted_items:
-             if not isinstance(doc, dict):
-                  logger.warning(f"Skipping non-dictionary item during doc text preparation for {category}.")
-                  continue
+            if not isinstance(doc, dict):
+                logger.warning(
+                    f"Skipping non-dictionary item during doc text preparation for {category}."
+                )
+                continue
 
-             title = doc.get('title', '')
-             content = doc.get('raw_content') or doc.get('content', '')
+            title = doc.get("title", "")
+            content = doc.get("raw_content") or doc.get("content", "")
 
-             if not isinstance(content, str):
-                  content = str(content) 
-             if len(content) > self.max_doc_length:
-                  content = content[:self.max_doc_length] + "... [content truncated]"
+            if not isinstance(content, str):
+                content = str(content)
+            if len(content) > self.max_doc_length:
+                content = content[: self.max_doc_length] + "... [content truncated]"
 
-             doc_url = doc.get('url', 'Unknown Source')
-             doc_entry = f"Source URL: {doc_url}\nTitle: {title}\n\nContent: {content}"
+            doc_url = doc.get("url", "Unknown Source")
+            doc_entry = f"Source URL: {doc_url}\nTitle: {title}\n\nContent: {content}"
 
-             entry_len = len(doc_entry) + len(separator)
-             if total_length + entry_len < self.max_total_length:
-                 doc_texts.append(doc_entry)
-                 total_length += entry_len
-             else:
-                 logger.warning(f"Reached max total length ({self.max_total_length} chars). Truncating documents for {category} briefing.")
-                 break 
+            entry_len = len(doc_entry) + len(separator)
+            if total_length + entry_len < self.max_total_length:
+                doc_texts.append(doc_entry)
+                total_length += entry_len
+            else:
+                logger.warning(
+                    f"Reached max total length ({self.max_total_length} chars). Truncating documents for {category} briefing."
+                )
+                break
 
         if not doc_texts:
-             logger.warning(f"No document content available to generate briefing for {category}.")
-             if websocket_manager and job_id:
-                  await websocket_manager.send_status_update(
-                      job_id=job_id, status="briefing_complete",
-                      message=f"No content for {category} briefing",
-                      result={ "step": "Briefing", "category": category, "success": False }
-                  )
-             return {'content': ''}
+            logger.warning(
+                f"No document content available to generate briefing for {category}."
+            )
+            if websocket_manager and job_id:
+                await websocket_manager.send_status_update(
+                    job_id=job_id,
+                    status="briefing_complete",
+                    message=f"No content for {category} briefing",
+                    result={"step": "Briefing", "category": category, "success": False},
+                )
+        # Removed stray return statement outside of function
 
         # --- v2: Add appropriate instructions based on category ---
-        if category == 'contact':
+        if category == "contact":
             # For contacts, just provide the documents without markdown polishing instructions
             full_prompt = f"""{prompt_template}
 
@@ -237,91 +263,176 @@ Documents for Analysis:
 ---
 
 **Polishing Instructions:**
-As you write the briefing, ensure clean markdown, remove any redundancies, and write in clear, professional language. 
+As you write the briefing, ensure clean markdown, remove any redundancies, and write in clear, professional language.
 This briefing will be used directly in a report, so do not include any preamble, conversation, or meta-commentary.
 Output ONLY the requested markdown content.
 """
         # --- End v2 Instructions ---
-        
+
         logger.debug(f"Prompt length for {category}: {len(full_prompt)} characters.")
 
-        try:
-            logger.info(f"Sending prompt to Gemini for {category} briefing ({len(doc_texts)} docs).")
-            response = await self.gemini_model.generate_content_async( 
-                full_prompt,
-                request_options={'timeout': 300} 
-            )
+        # Log document URLs for debugging (especially for company_brief failures)
+        if category == "company_brief":
+            doc_urls = [doc.get("url", "Unknown") for _, doc in sorted_items if isinstance(doc, dict)]
+            logger.info(f"company_brief document URLs: {doc_urls}")
+            logger.info(f"Full prompt preview (first 500 chars): {full_prompt[:500]}")
 
-            content = ""
-            if response and response.parts:
-                 content = "".join(part.text for part in response.parts if hasattr(part, 'text')).strip()
-            
-            if not content:
-                 finish_reason = response.prompt_feedback.block_reason if response.prompt_feedback else "Unknown"
-                 logger.error(f"Empty response from LLM for {category} briefing. Finish Reason: {finish_reason}")
-                 if websocket_manager and job_id:
-                      await websocket_manager.send_status_update(
-                          job_id=job_id, status="briefing_complete",
-                          message=f"LLM failed for {category} briefing",
-                          result={ "step": "Briefing", "category": category, "success": False, "error": f"LLM Error: {finish_reason}" }
-                      )
-                 return {'content': ''}
-
-            logger.info(f"Successfully generated {category} briefing (Length: {len(content)} characters)")
-            if websocket_manager and job_id:
-                await websocket_manager.send_status_update(
-                    job_id=job_id,
-                    status="briefing_complete",
-                    message=f"Completed {category} briefing",
-                    result={
-                        "step": "Briefing",
-                        "category": category,
-                        "success": True 
-                    }
+        retries = 3
+        delay = 5
+        for attempt in range(retries):
+            try:
+                logger.info(
+                    f"Sending prompt to Gemini for {category} briefing ({len(doc_texts)} docs)."
+                )
+                response = await self.gemini_model.generate_content_async(
+                    full_prompt, request_options={"timeout": 300}
                 )
 
-            return {'content': content}
-        except Exception as e:
-            logger.error(f"Error generating {category} briefing via LLM: {e}", exc_info=True)
-            if websocket_manager and job_id:
-                 await websocket_manager.send_status_update(
-                     job_id=job_id, status="briefing_complete",
-                     message=f"Error generating {category} briefing",
-                     result={ "step": "Briefing", "category": category, "success": False, "error": str(e) }
-                 )
-            return {'content': ''}
+                content = ""
+                if response and response.parts:
+                    content = "".join(
+                        part.text for part in response.parts if hasattr(part, "text")
+                    ).strip()
+
+                if not content:
+                    finish_reason_str = "Unknown"
+                    try:
+                        # Default to unknown
+                        finish_reason_str = "No content and no specific finish reason."
+
+                        # Check for blocking at the prompt level
+                        if (
+                            response.prompt_feedback
+                            and response.prompt_feedback.block_reason
+                        ):
+                            finish_reason_str = f"Blocked - {response.prompt_feedback.block_reason.name}"
+
+                        # Check finish reason from candidates if available
+                        elif response.candidates:
+                            candidate = response.candidates[0]
+                            finish_reason = candidate.finish_reason
+                            finish_reason_str = (
+                                finish_reason.name
+                                if hasattr(finish_reason, "name")
+                                else str(finish_reason)
+                            )
+
+                            # Also check for safety ratings if finish reason is SAFETY
+                            if hasattr(finish_reason, 'name') and finish_reason.name == "SAFETY":
+                                safety_ratings_str = "; ".join(
+                                    [
+                                        f"{rating.category.name}: {rating.probability.name}"
+                                        for rating in candidate.safety_ratings
+                                    ]
+                                )
+                                finish_reason_str += f" ({safety_ratings_str})"
+
+                    except Exception as e:
+                        finish_reason_str = f"Could not determine finish reason ({e})"
+
+                    # Special handling for MAX_TOKENS - retry with concise instruction
+                    if "MAX_TOKENS" in finish_reason_str.upper() and attempt < retries - 1:
+                        logger.warning(
+                            f"Hit MAX_TOKENS for {category} briefing on attempt {attempt + 1}. Retrying with concise instruction..."
+                        )
+                        # Add concise instruction to the prompt and retry
+                        full_prompt += "\n\n**CRITICAL: This response MUST be very concise and fit within 6000 tokens. Prioritize the most important information.**"
+                        await asyncio.sleep(delay)
+                        delay *= 2
+                        continue  # Retry the loop
+
+                    error_message = f"Briefing generation for '{category}' failed due to an empty response from the AI model (Finish Reason: {finish_reason_str}). This section will be omitted."
+                    logger.error(error_message)
+                    # Log at ERROR level (not DEBUG) so we can see it in production logs
+                    logger.error(
+                        f"Full Gemini response for failed {category} briefing: {response}"
+                    )
+
+                    if websocket_manager and job_id:
+                        await websocket_manager.send_status_update(
+                            job_id=job_id,
+                            status="briefing_complete",
+                            message=f"LLM failed for {category} briefing",
+                            result={
+                                "step": "Briefing",
+                                "category": category,
+                                "success": False,
+                                "error": f"LLM Error: {finish_reason_str}",
+                            },
+                        )
+                    return {"content": f"_{error_message}_"}
+
+                logger.info(
+                    f"Successfully generated {category} briefing (Length: {len(content)} characters)"
+                )
+                if websocket_manager and job_id:
+                    await websocket_manager.send_status_update(
+                        job_id=job_id,
+                        status="briefing_complete",
+                        message=f"Completed {category} briefing",
+                        result={
+                            "step": "Briefing",
+                            "category": category,
+                            "success": True,
+                        },
+                    )
+
+                return {"content": content}
+            except Exception as e:
+                logger.error(
+                    f"Error generating {category} briefing via LLM on attempt {attempt + 1}: {e}",
+                    exc_info=True,
+                )
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                else:
+                    if websocket_manager and job_id:
+                        await websocket_manager.send_status_update(
+                            job_id=job_id,
+                            status="briefing_complete",
+                            message=f"Error generating {category} briefing",
+                            result={
+                                "step": "Briefing",
+                                "category": category,
+                                "success": False,
+                                "error": str(e),
+                            },
+                        )
+                    return {"content": ""}
+    # Removed stray return statement outside of function
 
     async def create_briefings(self, state: ResearchState) -> ResearchState:
         """(v2) Create briefings for all 5 v2 categories in parallel."""
         company = company_name(state)
-        websocket_manager = state.get('websocket_manager')
-        job_id = state.get('job_id')
+        websocket_manager = state.get("websocket_manager")
+        job_id = state.get("job_id")
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
                 job_id=job_id,
                 status="processing",
                 message="Starting research briefings",
-                result={"step": "Briefing"}
+                result={"step": "Briefing"},
             )
 
         context = {
             "company": company,
-            "industry": state.get('industry', 'Unknown'),
-            "hq_location": state.get('hq_location', 'Unknown'),
+            "industry": state.get("industry", "Unknown"),
+            "hq_location": state.get("hq_location", "Unknown"),
             "websocket_manager": websocket_manager,
-            "job_id": job_id
+            "job_id": job_id,
         }
         logger.info(f"Creating section briefings for {company}")
 
         # --- v2 MODIFICATION: Updated categories dictionary ---
         # Maps v2 curated data keys -> (v2 prompt category, v2 briefing state key)
         categories = {
-            'curated_company_brief_data': ("company_brief", "company_brief_briefing"),
-            'curated_news_signal_data': ("news_signal", "news_signal_briefing"),
-            'curated_flw_data': ("flw", "flw_sustainability_briefing"),
-            'curated_contact_finder_data': ("contact", "contact_briefing"),
-            'curated_engagement_finder_data': ("engagement", "engagement_briefing")
+            "curated_company_brief_data": ("company_brief", "company_brief_briefing"),
+            "curated_news_signal_data": ("news_signal", "news_signal_briefing"),
+            "curated_flw_data": ("flw", "flw_sustainability_briefing"),
+            "curated_contact_finder_data": ("contact", "contact_briefing"),
+            "curated_engagement_finder_data": ("engagement", "engagement_briefing"),
         }
         # --- END v2 MODIFICATION ---
 
@@ -333,64 +444,106 @@ Output ONLY the requested markdown content.
             curated_data = state.get(curated_key, {})
 
             if curated_data and isinstance(curated_data, dict):
-                logger.info(f"Preparing briefing task for {cat} using {len(curated_data)} documents from {curated_key}")
-                briefing_tasks_details.append({
-                    'category': cat,  # e.g., 'contact'
-                    'briefing_key': briefing_key,  # e.g., 'contact_briefing'
-                    'curated_data': curated_data,
-                    'data_field': curated_key
-                })
+                logger.info(
+                    f"Preparing briefing task for {cat} using {len(curated_data)} documents from {curated_key}"
+                )
+                briefing_tasks_details.append(
+                    {
+                        "category": cat,  # e.g., 'contact'
+                        "briefing_key": briefing_key,  # e.g., 'contact_briefing'
+                        "curated_data": curated_data,
+                        "data_field": curated_key,
+                    }
+                )
             else:
-                logger.info(f"No data available or invalid format for {curated_key}, skipping {cat} briefing.")
+                logger.info(
+                    f"No data available or invalid format for {curated_key}, skipping {cat} briefing."
+                )
                 state[briefing_key] = ""  # Ensure the briefing key exists in the state
 
         # Process briefings in parallel if tasks were prepared
         if briefing_tasks_details:
-            briefing_semaphore = asyncio.Semaphore(3)  # Limit to 3 concurrent Gemini calls
+            briefing_semaphore = asyncio.Semaphore(
+                3
+            )  # Limit to 3 concurrent Gemini calls
 
             async def process_briefing(task_details: Dict[str, Any]) -> Dict[str, Any]:
                 """Process a single briefing with rate limiting."""
                 async with briefing_semaphore:
                     result = await self.generate_category_briefing(
-                        task_details['curated_data'],
-                        task_details['category'],
-                        context
+                        task_details["curated_data"], task_details["category"], context
                     )
 
-                    briefing_content = result.get('content', '')
+                    briefing_content = result.get("content", "")
                     success = bool(briefing_content)
 
-                    state[task_details['briefing_key']] = briefing_content
+                    state[task_details["briefing_key"]] = briefing_content
                     if success:
-                        briefings[task_details['category']] = briefing_content
-                        logger.info(f"Completed {task_details['category']} briefing ({len(briefing_content)} chars)")
+                        briefings[task_details["category"]] = briefing_content
+                        logger.info(
+                            f"Completed {task_details['category']} briefing ({len(briefing_content)} chars)"
+                        )
                     else:
-                        logger.error(f"Failed to generate briefing for {task_details['category']} using {task_details['data_field']}")
+                        logger.error(
+                            f"Failed to generate briefing for {task_details['category']} using {task_details['data_field']}"
+                        )
 
                     return {
-                        'category': task_details['category'],
-                        'success': success,
-                        'length': len(briefing_content)
+                        "category": task_details["category"],
+                        "success": success,
+                        "length": len(briefing_content),
                     }
 
-            logger.info(f"Starting execution of {len(briefing_tasks_details)} briefing tasks.")
-            results = await asyncio.gather(*[
-                process_briefing(task)
-                for task in briefing_tasks_details
-            ])
+            logger.info(
+                f"Starting execution of {len(briefing_tasks_details)} briefing tasks."
+            )
+            results = await asyncio.gather(
+                *[process_briefing(task) for task in briefing_tasks_details]
+            )
 
-            successful_briefings = sum(1 for r in results if r.get('success'))
-            total_length = sum(r.get('length', 0) for r in results)
-            logger.info(f"Generated {successful_briefings}/{len(briefing_tasks_details)} briefings successfully. Total characters generated: {total_length}")
+            successful_briefings = sum(1 for r in results if r.get("success"))
+            total_length = sum(r.get("length", 0) for r in results)
+            logger.info(
+                f"Generated {successful_briefings}/{len(briefing_tasks_details)} briefings successfully. Total characters generated: {total_length}"
+            )
         else:
-            logger.warning("No briefing tasks were prepared. Skipping parallel processing.")
+            logger.warning(
+                "No briefing tasks were prepared. Skipping parallel processing."
+            )
 
-        state['briefings'] = briefings
+        state["briefings"] = briefings
         logger.info("Finished creating all briefings.")
         return state
 
     async def run(self, state: ResearchState) -> ResearchState:
         """Executes the briefing generation process."""
-        if state.get('airtable_record_id'):
-            await self._update_airtable_status(state, ResearchStatus.GENERATING_BRIEFINGS)
-        return await self.create_briefings(state)
+        airtable_record_id = state.get("airtable_record_id")
+        if airtable_record_id:
+            await self._update_airtable_status(
+                airtable_record_id, ResearchStatus.GENERATING_BRIEFINGS
+            )
+
+        try:
+            return await self.create_briefings(state)
+        except Exception as e:
+            logger.error(
+                f"Critical error during briefing node execution: {e}", exc_info=True
+            )
+            state.setdefault("messages", []).append(
+                AIMessage(content=f"⚠️ Briefing node failed: {str(e)}")
+            )
+            state.setdefault("briefings", {})
+
+            # --- v2 MODIFICATION: Ensure 5 new keys exist on failure ---
+            briefing_keys_to_ensure = [
+                "company_brief_briefing",
+                "news_signal_briefing",
+                "flw_sustainability_briefing",
+                "contact_briefing",
+                "engagement_briefing",
+            ]
+            # --- END v2 MODIFICATION ---
+
+            for key in briefing_keys_to_ensure:
+                state.setdefault(key, "")
+            return state

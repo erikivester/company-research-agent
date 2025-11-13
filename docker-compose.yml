@@ -5,7 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8001:8000"
+      - "8002:8000"
+      - "8001:8001"  # Prometheus metrics
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
@@ -15,7 +16,7 @@ services:
       - ./reports:/app/reports
       - ./backend:/app/backend
       - ./application.py:/app/application.py
-      - ./gdrive_credentials.json:/secrets/gdrive_credentials.json
+      - ./gdrive_credentials.json:/app/gdrive_credentials.json:ro
       - ./client_secret.json:/app/client_secret.json
     env_file:
       - .env
@@ -34,7 +35,7 @@ services:
       context: .
       dockerfile: Dockerfile.airtable
     ports:
-      - "9002:9000"
+      - "9000:9000"
     volumes:
       - ./scripting:/app/scripting
     working_dir: /app/scripting

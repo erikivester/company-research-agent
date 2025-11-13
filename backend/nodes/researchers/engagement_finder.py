@@ -4,12 +4,14 @@ from typing import Any, Dict
 
 from langchain_core.messages import AIMessage
 
+from backend.utils.utils import company_name
+
 # Use relative imports assuming standard project structure
 from ...classes import ResearchState
 from .base import BaseResearcher
-from backend.utils.utils import company_name
 
 logger = logging.getLogger(__name__)
+
 
 class EngagementFinderNode(BaseResearcher):
     """
@@ -17,6 +19,7 @@ class EngagementFinderNode(BaseResearcher):
     engagements, affiliations, partnerships, and awards, which act as
     strong signals for outreach.
     """
+
     def __init__(self) -> None:
         super().__init__()
         # Set a specific analyst type for this researcher
@@ -28,9 +31,8 @@ class EngagementFinderNode(BaseResearcher):
         Analyzes public information for signals of external engagement.
         """
         company = company_name(state)
-        industry = state.get('industry', 'Unknown Industry')  # Get industry for context
-        websocket_manager = state.get('websocket_manager')
-        job_id = state.get('job_id')
+        websocket_manager = state.get("websocket_manager")
+        job_id = state.get("job_id")
 
         # Initial message for logging and state update
         msg = [f"🛰️ Engagement Finder Node hunting for signals at {company}"]
@@ -38,13 +40,15 @@ class EngagementFinderNode(BaseResearcher):
 
         try:
             # v2: Generate search queries to hunt for "creative signals"
-            queries = state.get('research_queries', {}).get(self.analyst_type, [])
+            queries = state.get("research_queries", {}).get(self.analyst_type, [])
 
             # Add generated queries to state messages for transparency
-            subqueries_msg = "🔍 Subqueries for engagement finding:\n" + "\n".join([f"• {query}" for query in queries])
-            messages = state.get('messages', [])
+            subqueries_msg = "🔍 Subqueries for engagement finding:\n" + "\n".join(
+                [f"• {query}" for query in queries]
+            )
+            messages = state.get("messages", [])
             messages.append(AIMessage(content=subqueries_msg))
-            state['messages'] = messages
+            state["messages"] = messages
 
             # Send WebSocket update: Queries generated
             if websocket_manager and job_id:
@@ -55,16 +59,18 @@ class EngagementFinderNode(BaseResearcher):
                     result={
                         "step": "Engagement Finder",
                         "analyst_type": self.analyst_type,
-                        "queries": queries
-                    }
+                        "queries": queries,
+                    },
                 )
 
             # Initialize dictionary to store research results
             engagement_finder_data = {}
 
             # Include relevant data from the initial website scrape if available
-            if site_scrape := state.get('site_scrape'):
-                msg.append(f"\n📊 Including {len(site_scrape)} pages from company website...")
+            if site_scrape := state.get("site_scrape"):
+                msg.append(
+                    f"\n📊 Including {len(site_scrape)} pages from company website..."
+                )
                 engagement_finder_data.update(site_scrape)
                 logger.info(f"Included {len(site_scrape)} site scrape results.")
 
@@ -75,12 +81,16 @@ class EngagementFinderNode(BaseResearcher):
             if documents_found:
                 # Add found documents, associating each with its query
                 for url, doc in documents_found.items():
-                    doc['query'] = doc.get('query', 'Unknown Query')
+                    doc["query"] = doc.get("query", "Unknown Query")
                     engagement_finder_data[url] = doc
-                msg.append(f"\n✓ Found {len(documents_found)} documents from web search.")
+                msg.append(
+                    f"\n✓ Found {len(documents_found)} documents from web search."
+                )
                 logger.info(f"Found {len(documents_found)} documents from web search.")
             else:
-                msg.append("\nℹ️ No additional documents found from web search for engagements.")
+                msg.append(
+                    "\nℹ️ No additional documents found from web search for engagements."
+                )
                 logger.info("No additional documents found from web search.")
 
             # Send WebSocket update: Search complete
@@ -93,18 +103,20 @@ class EngagementFinderNode(BaseResearcher):
                         "step": "Searching",
                         "analyst_type": self.analyst_type,
                         "queries": queries,
-                        "documents_found": len(documents_found)
-                    }
+                        "documents_found": len(documents_found),
+                    },
                 )
 
             # Update state with findings
-            messages = state.get('messages', [])
+            messages = state.get("messages", [])
             messages.append(AIMessage(content="\n".join(msg)))
-            state['messages'] = messages
+            state["messages"] = messages
 
             # Use the specific key from our new v2 state.py
-            state['engagement_finder_data'] = engagement_finder_data
-            logger.info(f"Completed engagement finding. Total documents collected: {len(engagement_finder_data)}")
+            state["engagement_finder_data"] = engagement_finder_data
+            logger.info(
+                f"Completed engagement finding. Total documents collected: {len(engagement_finder_data)}"
+            )
 
             # Return the modified state in-place to preserve pass-through keys
             return state
@@ -121,14 +133,16 @@ class EngagementFinderNode(BaseResearcher):
                     result={
                         "step": "Engagement Finder",
                         "analyst_type": self.analyst_type,
-                        "error": str(e)
-                    }
+                        "error": str(e),
+                    },
                 )
 
-            messages = state.get('messages', [])
+            messages = state.get("messages", [])
             messages.append(AIMessage(content=f"\n⚠️ {error_msg}"))
-            state['messages'] = messages
-            state['engagement_finder_data'] = state.get('engagement_finder_data', {}) # Ensure key exists
+            state["messages"] = messages
+            state["engagement_finder_data"] = state.get(
+                "engagement_finder_data", {}
+            )  # Ensure key exists
             raise
 
     async def run(self, state: ResearchState) -> ResearchState:
@@ -139,9 +153,11 @@ class EngagementFinderNode(BaseResearcher):
         try:
             await self.analyze(state)
         except Exception as e:
-             logger.error(f"EngagementFinderNode run failed: {e}")
-             state.setdefault('messages', []).append(AIMessage(content=f"Engagement finder node failed: {e}"))
-             state.setdefault('engagement_finder_data', {})
+            logger.error(f"EngagementFinderNode run failed: {e}")
+            state.setdefault("messages", []).append(
+                AIMessage(content=f"Engagement finder node failed: {e}")
+            )
+            state.setdefault("engagement_finder_data", {})
 
         # Modify state in-place and return the full state to preserve pass-through keys
         return state

@@ -3,10 +3,12 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 from fastapi import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
+
 
 class WebSocketManager:
     def __init__(self):
@@ -28,7 +30,9 @@ class WebSocketManager:
                 del self.active_connections[job_id]
             logger.info(f"WebSocket disconnected for job_id: {job_id}")
         except (ValueError, KeyError):
-            logger.warning(f"WebSocket already disconnected or job_id {job_id} not found.")
+            logger.warning(
+                f"WebSocket already disconnected or job_id {job_id} not found."
+            )
 
     async def broadcast_to_job(self, job_id: str, update: Dict[str, Any]):
         """Send a JSON update to all WebSockets connected to a specific job."""
@@ -58,7 +62,7 @@ class WebSocketManager:
         status: str,
         message: str,
         result: Any = None,
-        error: Any = None
+        error: Any = None,
     ):
         """
         Helper function to format and broadcast a status update.
@@ -70,11 +74,21 @@ class WebSocketManager:
             "status": status,
             "message": message,
             "data": result,
-            "error": str(error) if error else None
+            "error": str(error) if error else None,
         }
         await self.broadcast_to_job(job_id, update)
 
-    async def safe_send(self, *, state: Dict[str, Any] | None = None, job_id: str | None = None, status: str, message: str, result: Any = None, error: Any = None, fallback_job_id: str | None = None):
+    async def safe_send(
+        self,
+        *,
+        state: Dict[str, Any] | None = None,
+        job_id: str | None = None,
+        status: str,
+        message: str,
+        result: Any = None,
+        error: Any = None,
+        fallback_job_id: str | None = None,
+    ):
         """
         Safely send a status update using either an explicit job_id or a provided state dict.
 
@@ -89,8 +103,8 @@ class WebSocketManager:
         job_to_use = None
         if job_id:
             job_to_use = job_id
-        elif state and state.get('job_id'):
-            job_to_use = state.get('job_id')
+        elif state and state.get("job_id"):
+            job_to_use = state.get("job_id")
         elif fallback_job_id:
             job_to_use = fallback_job_id
 
@@ -98,7 +112,9 @@ class WebSocketManager:
             # Helpful debug output showing keys we received
             state_keys = list(state.keys()) if isinstance(state, dict) else None
             # Lower severity to DEBUG to avoid spamming logs when job_id is not available
-            logger.debug(f"Could not send WebSocket update: job_id missing. state_keys={state_keys}, explicit_job_id={job_id!r}, fallback={fallback_job_id!r}")
+            logger.debug(
+                f"Could not send WebSocket update: job_id missing. state_keys={state_keys}, explicit_job_id={job_id!r}, fallback={fallback_job_id!r}"
+            )
             return
 
         update = {
@@ -107,7 +123,7 @@ class WebSocketManager:
             "status": status,
             "message": message,
             "data": result,
-            "error": str(error) if error else None
+            "error": str(error) if error else None,
         }
 
         await self.broadcast_to_job(job_to_use, update)

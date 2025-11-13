@@ -20,10 +20,11 @@ if env_path.exists():
 from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
 from backend.config import config  # Import the singleton config instance
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Depends, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Body, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 from typing import Optional
 
 from backend.graph import Graph
@@ -48,7 +49,7 @@ os.environ["EMAIL_TEMPLATES_FOLDER_ID"] = "1tt4LLouNP2FgHcguIKlnRzRb3j5jE8LH"
 
 # Configure logging using our custom configuration
 setup_logging(
-    log_level="INFO",
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
     log_file=os.getenv("LOG_FILE", "logs/app.log")
 )
 logger = logging.getLogger(__name__)
@@ -144,19 +145,20 @@ if mongo_uri := os.getenv("MONGODB_URI"):
 
 class ResearchRequest(BaseModel):
     company: str
-    airtable_record_id: Optional[str] = Field(None, alias='recordId')
-    company_url: Optional[str] = None
-    industry: Optional[str] = None
-    hq_location: Optional[str] = None
-    google_drive_folder_url: Optional[str] = None
-    use_local_context: bool = False
+    company_url: str | None = None
+    industry: str | None = None
+    hq_location: str | None = None
 
 # --- v2 MODIFIED: Pydantic Model for Webhook Input ---
 class AirtableWebhookInput(ResearchRequest):
-    """Extends ResearchRequest to include Airtable Record ID, Google Drive URL, and local context flag."""
-    airtable_record_id: str | None = None
-    google_drive_folder_url: str | None = None # <-- ADDED
-    use_local_context: bool = False  # <-- NEW: Airtable checkbox to bypass Tavily
+    """
+    Extends ResearchRequest. The webhook payload from Airtable is expected
+    to match the fields defined in the base ResearchRequest model.
+    This model adds an alias so 'recordId' in the payload is mapped to 'airtable_record_id'.
+    """
+    airtable_record_id: Optional[str] = Field(default=None, alias="recordId")
+    use_local_context: Optional[bool] = False
+    google_drive_folder_url: Optional[str] = None
 # --- END v2 MODIFICATION ---
 
 class PDFGenerationRequest(BaseModel):
@@ -300,10 +302,22 @@ async def process_research(
                 thread_config["google_drive_folder_url"] = google_drive_folder_url
             # --- End Fix ---
 
+            # Accumulate state updates from the graph
             state = {}
-            async for s in graph.run(thread=thread_config): # Pass the config here
-                state.update(s)
-            
+            async for s in graph.run(thread=thread_config):
+                # Merge each state update into our accumulated state
+                if s:
+                    state.update(s)
+            if not state:
+                state = {}
+
+            # DEBUG: Log what keys are in the final state and whether report exists
+            logger.info(f"Final accumulated state keys: {list(state.keys())}")
+            logger.info(f"'report' in state: {'report' in state}")
+            if 'report' in state:
+                report_len = len(state.get('report', ''))
+                logger.info(f"Report length in state: {report_len}")
+
             # Look for the compiled report. 'editor' key is no longer used, but keeping check is safe.
             report_content = state.get('report') or (state.get('editor') or {}).get('report')
             
@@ -409,22 +423,13 @@ async def start_research_webhook(data: AirtableWebhookInput):
     Accepts a POST request (e.g., from an Airtable Automation webhook) 
     and queues the research pipeline using the semaphore.
     """
+    job_id = str(uuid.uuid4())
+    
     try:
-        # Force flush logs immediately
-        import sys
-        print(f"\n📥 WEBHOOK HIT: {data.company}", flush=True)
-        sys.stdout.flush()
-        
-        # --- NEW DEBUG LOGGING ---
-        # Use repr() to see the exact string, including quotes and whitespace
-        logger.info(f"📥 WEBHOOK RECEIVED: company={data.company!r}, airtable_record_id={data.airtable_record_id!r}")
-        sys.stdout.flush()
+        logger.info(f"📥 WEBHOOK RECEIVED: company='{data.company}', airtable_record_id={data.airtable_record_id}")
 
-        # --- NEW GUARD CLAUSE (THE FIX) ---
-        # Check if data.company is None or just whitespace
-        if not data.company or data.company.strip() == "":
-            logger.warning(f"⚠️ Webhook rejected: Missing or empty company name. Received: {data.company!r}")
-            # Immediately update Airtable to "Failed" if we have an ID
+        if not data.company or not data.company.strip():
+            logger.warning(f"⚠️ Webhook rejected: Missing or empty company name. Received: '{data.company}'")
             if data.airtable_record_id:
                 asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.FAILED_MISSING_COMPANY))
             raise HTTPException(
@@ -432,40 +437,30 @@ async def start_research_webhook(data: AirtableWebhookInput):
                 detail="Company name is required and cannot be empty."
             )
         
-        company_value = data.company.strip() # Use the stripped, validated company name
-        logger.info(f"✅ Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id})")
-        sys.stdout.flush()
-        # --- END FIX ---
-
-        job_id = str(uuid.uuid4())
-        logger.info(f"🆔 Generated job ID: {job_id}")
-        sys.stdout.flush()
+        company_value = data.company.strip()
+        logger.info(f"✅ Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id}, Job ID: {job_id})")
 
         research_data = ResearchRequest(
-            company=company_value, # Use the validated 'company_value'
+            company=company_value,
             company_url=data.company_url,
             industry=data.industry,
             hq_location=data.hq_location
         )
         
-        # 1. CRITICAL: Immediately update Airtable status to "Queued" 
         if data.airtable_record_id:
              asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.QUEUED))
 
-        # 2. Start the job using the SEMAPHORE WRAPPER (This is now the non-blocking part)
-        # --- v2 MODIFIED: Pass data.google_drive_folder_url and use_local_context ---
         logger.info(f"🎯 Queuing research job for {company_value}...")
         if data.use_local_context:
             logger.info(f"📂 Local context mode enabled for {company_value} - will use existing files")
-        sys.stdout.flush()
 
         task = asyncio.create_task(
             run_job_with_semaphore(
                 job_id,
                 research_data,
                 data.airtable_record_id,
-                data.google_drive_folder_url,  # <-- PASS GDrive URL
-                data.use_local_context  # <-- NEW: pass flag
+                data.google_drive_folder_url,
+                data.use_local_context
             )
         )
         task.add_done_callback(_log_task_exception)
@@ -479,7 +474,7 @@ async def start_research_webhook(data: AirtableWebhookInput):
     except Exception as e:
         logger.error(f"Error initiating research via webhook: {str(e)}", exc_info=True)
         if isinstance(e, HTTPException):
-            raise e # Re-raise the HTTP exception
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
 # --- END MODIFIED ENDPOINT ---
 
@@ -589,11 +584,7 @@ async def debug_gdrive_folder_info(
         # Try to read from credentials file/env for a quick hint (non-fatal)
         try:
             import json as _json
-            # Use the more reliable GDRIVE_CREDENTIALS_PATH for Cloud Run/Docker
-            sa_file = os.getenv("GDRIVE_CREDENTIALS_PATH")
-            if not sa_file:
-                # Fallback for local dev if the other env var is set
-                sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
+            sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gdrive_credentials.json")
             if os.path.exists(sa_file):
                 _j = _json.load(open(sa_file))
                 sa_email = _j.get('client_email')

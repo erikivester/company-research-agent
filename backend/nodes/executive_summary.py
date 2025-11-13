@@ -2,20 +2,23 @@
 import io
 import logging
 import os
-from typing import Any, Dict
+from typing import Dict
 
 import google.generativeai as genai
 
-from ..classes import ResearchState
-from backend.utils.utils import company_name
 from backend.utils.enhanced_pdf import create_executive_summary_pdf
+from backend.utils.utils import company_name
+
+from ..classes import ResearchState
 
 logger = logging.getLogger(__name__)
+
 
 class ExecutiveSummaryNode:
     async def run(self, state: ResearchState) -> ResearchState:
         """Entry point for workflow: calls generate_executive_summary."""
         return await self.generate_executive_summary(state)
+
     """
     Generates a dynamic 1-2 page executive summary using AI.
     The structure adapts based on research findings, prioritizing what's most relevant.
@@ -28,10 +31,12 @@ class ExecutiveSummaryNode:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
 
         genai.configure(api_key=self.gemini_key)
-        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp', generation_config=genai.types.GenerationConfig(
-            temperature=0.3,
-            max_output_tokens=4096
-        ))
+        self.gemini_model = genai.GenerativeModel(
+            "gemini-2.0-flash-exp",
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.3, max_output_tokens=4096
+            ),
+        )
         logger.info("Executive Summary node initialized with Gemini 2.0 Flash Exp")
 
     async def generate_executive_summary(self, state: ResearchState) -> ResearchState:
@@ -39,38 +44,38 @@ class ExecutiveSummaryNode:
         Generate a dynamic, narrative-driven executive summary optimized for ReFED's mission.
         """
         company = company_name(state)
-        websocket_manager = state.get('websocket_manager')
-        job_id = state.get('job_id')
+        websocket_manager = state.get("websocket_manager")
+        job_id = state.get("job_id")
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
                 job_id=job_id,
                 status="generating_summary",
                 message=f"Generating executive summary for {company}",
-                result={"step": "Executive Summary", "company": company}
+                result={"step": "Executive Summary", "company": company},
             )
 
         # Gather all available briefings
         briefings = {
-            'company_brief': state.get('company_brief_briefing', ''),
-            'news_signals': state.get('news_signal_briefing', ''),
-            'flw_sustainability': state.get('flw_sustainability_briefing', ''),
-            'contacts': state.get('contact_briefing', ''),
-            'engagement': state.get('engagement_briefing', '')
+            "company_brief": state.get("company_brief_briefing", ""),
+            "news_signals": state.get("news_signal_briefing", ""),
+            "flw_sustainability": state.get("flw_sustainability_briefing", ""),
+            "contacts": state.get("contact_briefing", ""),
+            "engagement": state.get("engagement_briefing", ""),
         }
 
         # Get company identity and metadata
-        company_url = state.get('company_url', '')
-        industry = state.get('industry', 'Unknown')
-        hq_location = state.get('hq_location', 'Unknown')
+        company_url = state.get("company_url", "")
+        industry = state.get("industry", "Unknown")
+        hq_location = state.get("hq_location", "Unknown")
 
         # Count available data points
         data_richness = {
-            'has_company_info': bool(briefings['company_brief']),
-            'has_news': bool(briefings['news_signals']),
-            'has_flw': bool(briefings['flw_sustainability']),
-            'has_contacts': bool(briefings['contacts']),
-            'has_engagement': bool(briefings['engagement']),
+            "has_company_info": bool(briefings["company_brief"]),
+            "has_news": bool(briefings["news_signals"]),
+            "has_flw": bool(briefings["flw_sustainability"]),
+            "has_contacts": bool(briefings["contacts"]),
+            "has_engagement": bool(briefings["engagement"]),
         }
 
         # Build context-aware prompt
@@ -80,85 +85,135 @@ class ExecutiveSummaryNode:
             industry=industry,
             hq_location=hq_location,
             briefings=briefings,
-            data_richness=data_richness
+            data_richness=data_richness,
         )
 
         try:
             logger.info(f"Generating executive summary for {company}")
             response = await self.gemini_model.generate_content_async(
-                prompt,
-                request_options={'timeout': 120}
+                prompt, request_options={"timeout": 120}
             )
 
             summary = ""
             if response and response.parts:
-                summary = "".join(part.text for part in response.parts if hasattr(part, 'text')).strip()
+                summary = "".join(
+                    part.text for part in response.parts if hasattr(part, "text")
+                ).strip()
 
             if not summary:
                 logger.error("Failed to generate executive summary")
                 summary = self._create_fallback_summary(company, briefings)
 
-            logger.info(f"Successfully generated executive summary ({len(summary)} chars)")
-            
+            logger.info(
+                f"Successfully generated executive summary ({len(summary)} chars)"
+            )
+
             # Store in state
-            state['executive_summary'] = summary
-            
+            state["executive_summary_text"] = summary
+
             # Generate PDF from the summary
             pdf_path = None  # Initialize pdf_path to None
             try:
-                import tempfile
                 from datetime import datetime
+
                 # Save PDF to a temp file in the pdfs directory
-                pdfs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../pdfs')
+                pdfs_dir = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "../../pdfs"
+                )
                 os.makedirs(pdfs_dir, exist_ok=True)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 pdf_filename = f"executive_summary_{company.replace(' ', '_').lower()}_{timestamp}.pdf"
                 pdf_path = os.path.join(pdfs_dir, pdf_filename)
-                with open(pdf_path, 'wb') as f:
+                with open(pdf_path, "wb") as f:
                     pdf_buffer = io.BytesIO()
                     create_executive_summary_pdf(summary, company, pdf_buffer)
                     pdf_buffer.seek(0)
                     f.write(pdf_buffer.read())
-                
-                logger.info(f"Successfully generated executive summary PDF at {pdf_path}")
+
+                logger.info(
+                    f"Successfully generated executive summary PDF at {pdf_path}"
+                )
             except Exception as pdf_err:
-                logger.error(f"Failed to generate PDF from summary: {pdf_err}", exc_info=True)
-                pdf_path = None # Ensure pdf_path is None on failure
-            
-            state['executive_summary_pdf_file'] = pdf_path
-            
+                logger.error(
+                    f"Failed to generate PDF from summary: {pdf_err}", exc_info=True
+                )
+                pdf_path = None  # Ensure pdf_path is None on failure
+
+            state["executive_summary_pdf_file"] = pdf_path
+
             # Also update final_summary for PDF generation
-            state['final_summary'] = {'markdown_report': summary}
+            state["final_summary"] = {"markdown_report": summary}
+
+            # Define PDF output path
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            pdf_filename = (
+                f"executive_summary_{company.replace(' ', '_')}_{timestamp}.pdf"
+            )
+            pdf_output_dir = os.path.join(
+                os.getcwd(), "pdfs"
+            )  # Save to the 'pdfs' directory in the root
+            os.makedirs(pdf_output_dir, exist_ok=True)
+            pdf_output_path = os.path.join(pdf_output_dir, pdf_filename)
+            logger.info(f"DEBUG: Attempting to generate PDF at: {pdf_output_path}")
+
+            # Generate the PDF
+            try:
+                create_executive_summary_pdf(
+                    markdown_content=summary,
+                    company_name=company,
+                    output_path=pdf_output_path,
+                )
+                state["executive_summary_pdf_file"] = pdf_output_path
+                logger.info(
+                    f"Successfully generated executive summary PDF: {pdf_output_path}"
+                )
+            except Exception as pdf_e:
+                logger.error(
+                    f"Error generating executive summary PDF: {pdf_e}", exc_info=True
+                )
+                state["executive_summary_pdf_file"] = (
+                    None  # Ensure it's None on failure
+                )
+
+            logger.info(
+                f"DEBUG: PDF path in state after generation attempt: {state.get('executive_summary_pdf_file')}"
+            )
 
             if websocket_manager and job_id:
                 await websocket_manager.send_status_update(
                     job_id=job_id,
                     status="summary_complete",
                     message=f"Executive summary generated for {company}",
-                    result={"step": "Executive Summary", "success": True, "length": len(summary)}
+                    result={
+                        "step": "Executive Summary",
+                        "success": True,
+                        "length": len(summary),
+                    },
                 )
 
             return state
 
         except Exception as e:
             logger.error(f"Error generating executive summary: {e}", exc_info=True)
-            state['executive_summary'] = self._create_fallback_summary(company, briefings)
+            state["executive_summary_text"] = self._create_fallback_summary(
+                company, briefings
+            )
             return state
 
     def _build_summary_prompt(
-        self, 
-        company: str, 
+        self,
+        company: str,
         company_url: str,
         industry: str,
         hq_location: str,
         briefings: Dict[str, str],
-        data_richness: Dict[str, bool]
+        data_richness: Dict[str, bool],
     ) -> str:
         """Build a context-aware prompt for executive summary generation."""
-        
+
         refed_context = """
 **About ReFED:**
-ReFED is the leading national nonprofit focused exclusively on ending food waste across the U.S. food system. 
+ReFED is the leading national nonprofit focused exclusively on ending food waste across the U.S. food system.
 Our mission is to catalyze evidence-based action to stop wasting food—for the climate, environment, people, and economy.
 
 **ReFED's Voice & Style:**
@@ -171,17 +226,27 @@ Our mission is to catalyze evidence-based action to stop wasting food—for the 
 
         # Build a rich context summary from the briefings
         context_summary = []
-        
-        if briefings['company_brief']:
-            context_summary.append(f"**Company Profile:** {len(briefings['company_brief'])} chars of company information available")
-        if briefings['flw_sustainability']:
-            context_summary.append(f"**Sustainability Data:** {len(briefings['flw_sustainability'])} chars including food waste initiatives")
-        if briefings['news_signals']:
-            context_summary.append(f"**Recent News:** {len(briefings['news_signals'])} chars of market signals and developments")
-        if briefings['engagement']:
-            context_summary.append(f"**Partnerships:** {len(briefings['engagement'])} chars on collaborations and initiatives")
-        if briefings['contacts']:
-            context_summary.append(f"**Key Contacts:** {len(briefings['contacts'])} chars of personnel information")
+
+        if briefings["company_brief"]:
+            context_summary.append(
+                f"**Company Profile:** {len(briefings['company_brief'])} chars of company information available"
+            )
+        if briefings["flw_sustainability"]:
+            context_summary.append(
+                f"**Sustainability Data:** {len(briefings['flw_sustainability'])} chars including food waste initiatives"
+            )
+        if briefings["news_signals"]:
+            context_summary.append(
+                f"**Recent News:** {len(briefings['news_signals'])} chars of market signals and developments"
+            )
+        if briefings["engagement"]:
+            context_summary.append(
+                f"**Partnerships:** {len(briefings['engagement'])} chars on collaborations and initiatives"
+            )
+        if briefings["contacts"]:
+            context_summary.append(
+                f"**Key Contacts:** {len(briefings['contacts'])} chars of personnel information"
+            )
 
         prompt = f"""{refed_context}
 
@@ -212,19 +277,19 @@ Create a highly customized, narrative-driven executive summary for **{company}**
 """
 
         # Add full briefings with clear delineation
-        if briefings['company_brief']:
+        if briefings["company_brief"]:
             prompt += f"\n### COMPANY OVERVIEW & OPERATIONS\n{briefings['company_brief'][:3000]}\n\n"
-        
-        if briefings['flw_sustainability']:
+
+        if briefings["flw_sustainability"]:
             prompt += f"\n### FOOD WASTE & SUSTAINABILITY PROGRAMS\n{briefings['flw_sustainability'][:3000]}\n\n"
-        
-        if briefings['news_signals']:
+
+        if briefings["news_signals"]:
             prompt += f"\n### RECENT DEVELOPMENTS & MARKET SIGNALS\n{briefings['news_signals'][:2000]}\n\n"
-        
-        if briefings['engagement']:
+
+        if briefings["engagement"]:
             prompt += f"\n### PARTNERSHIPS & COLLABORATIONS\n{briefings['engagement'][:2000]}\n\n"
-        
-        if briefings['contacts']:
+
+        if briefings["contacts"]:
             prompt += f"\n### KEY PERSONNEL\n{briefings['contacts'][:1000]}\n\n"
 
         prompt += f"""
@@ -288,27 +353,33 @@ Return ONLY the markdown summary. No preamble, no meta-commentary.
     def _create_fallback_summary(self, company: str, briefings: Dict[str, str]) -> str:
         """Create a basic fallback summary if AI generation fails."""
         sections = []
-        
+
         sections.append(f"# {company} Research Summary\n")
-        sections.append(f"*Executive Summary - Generated {os.environ.get('REPORT_DATE', 'Today')}*\n\n")
-        
-        if briefings['company_brief']:
+        sections.append(
+            f"*Executive Summary - Generated {os.environ.get('REPORT_DATE', 'Today')}*\n\n"
+        )
+
+        if briefings["company_brief"]:
             sections.append("## Company Overview\n")
-            sections.append(briefings['company_brief'][:500] + "...\n\n")
-        
-        if briefings['flw_sustainability']:
+            sections.append(briefings["company_brief"][:500] + "...\n\n")
+
+        if briefings["flw_sustainability"]:
             sections.append("## Sustainability & Food Waste\n")
-            sections.append(briefings['flw_sustainability'][:500] + "...\n\n")
-        
-        if briefings['engagement']:
+            sections.append(briefings["flw_sustainability"][:500] + "...\n\n")
+
+        if briefings["engagement"]:
             sections.append("## Partnership Opportunities\n")
-            sections.append(briefings['engagement'][:500] + "...\n\n")
-        
-        return ''.join(sections)
+            sections.append(briefings["engagement"][:500] + "...\n\n")
+
+        return "".join(sections)
 
 
 # Export the node function for the graph
 async def generate_executive_summary_node(state: ResearchState) -> ResearchState:
     """Wrapper function for use in LangGraph."""
     node = ExecutiveSummaryNode()
-    return await node.generate_executive_summary(state)
+    result = await node.generate_executive_summary(state)
+    # Ensure fallback is also set to 'executive_summary_text' if needed
+    if "executive_summary" in result:
+        result["executive_summary_text"] = result.pop("executive_summary")
+    return result

@@ -1,12 +1,12 @@
-import os
 import logging
-from typing import Dict, Any
+import os
 
 logger = logging.getLogger(__name__)
 
+
 class Config:
     """Central configuration management for the research agent."""
-    
+
     def __init__(self):
         # Load settings from environment variables
         self.USE_MOCK_DATA = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
@@ -18,16 +18,41 @@ class Config:
         self.USE_LOCAL_ONLY = os.getenv("USE_LOCAL_ONLY", "false").lower() == "true"
         # Comma-separated list of directories relative to project root
         self.LOCAL_CONTEXT_DIRS_RAW = os.getenv(
-            "LOCAL_CONTEXT_DIRS",
-            "archive/reports,archive/pdfs,pdfs,archive/docs"
+            "LOCAL_CONTEXT_DIRS", "archive/reports,archive/pdfs,pdfs,archive/docs"
         )
-        
+
         # Security settings
-        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-for-development")
+        self.JWT_SECRET_KEY = os.getenv(
+            "JWT_SECRET_KEY", "your-secret-key-for-development"
+        )
         self.ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
         self.RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
-        self.RATE_LIMIT_PERIOD = int(os.getenv("RATE_LIMIT_PERIOD", "3600"))  # 1 hour in seconds
-        
+        self.RATE_LIMIT_PERIOD = int(
+            os.getenv("RATE_LIMIT_PERIOD", "3600")
+        )  # 1 hour in seconds
+
+        # --- v2: Airtable Configuration ---
+        self.AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+        self.AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+        self.AIRTABLE_TABLE_NAME = os.getenv(
+            "AIRTABLE_TABLE_NAME", "Corporate Prospects"
+        )
+        self.AIRTABLE_CONTACTS_TABLE_NAME = os.getenv(
+            "AIRTABLE_CONTACTS_TABLE_NAME", "Outreach"
+        )
+
+        # --- PDF Generation ---
+        self.PDF_OUTPUT_DIR = os.getenv("PDF_OUTPUT_DIR", "pdfs")
+
+        # --- v2: Local Context Flag ---
+        self.USE_LOCAL_CONTEXT = (
+            os.getenv("USE_LOCAL_CONTEXT", "false").lower() == "true"
+        )
+        # Comma-separated list of directories relative to project root
+        self.LOCAL_CONTEXT_DIRS_V2_RAW = os.getenv(
+            "LOCAL_CONTEXT_DIRS_V2", "archive/reports,archive/pdfs,pdfs,archive/docs"
+        )
+
         # Log configuration state
         if self.USE_MOCK_DATA:
             logger.info("🔧 Running in MOCK mode - using sample data for research")
@@ -37,15 +62,19 @@ class Config:
                 self.USE_MOCK_DATA = True
             else:
                 logger.info("🔧 Running in LIVE mode - using Tavily API for research")
-        
+
         # Log local context configuration
         if self.USE_LOCAL_FILES:
-            logger.info("📂 Local context enabled - will read existing files before web search")
+            logger.info(
+                "📂 Local context enabled - will read existing files before web search"
+            )
         if self.USE_LOCAL_ONLY:
             logger.info("🚫 Web search disabled - using only local files for context")
-                
+
         # Log security configuration
-        logger.info(f"🔒 Security enabled - Rate limit: {self.RATE_LIMIT_REQUESTS} requests per {self.RATE_LIMIT_PERIOD}s")
+        logger.info(
+            f"🔒 Security enabled - Rate limit: {self.RATE_LIMIT_REQUESTS} requests per {self.RATE_LIMIT_PERIOD}s"
+        )
 
     @property
     def is_mock_mode(self) -> bool:
@@ -56,17 +85,21 @@ class Config:
         """Returns the appropriate Tavily client based on configuration."""
         if self.is_mock_mode:
             from .utils.mock_tavily import MockTavilyClient
+
             return MockTavilyClient()
         else:
             from tavily import AsyncTavilyClient
+
             return AsyncTavilyClient(api_key=self.TAVILY_API_KEY)
 
     def get_local_context_dirs(self):
         """Return absolute paths for configured local context directories."""
         from pathlib import Path
+
         root = Path(__file__).resolve().parents[1]  # project root
-        dirs = [d.strip() for d in self.LOCAL_CONTEXT_DIRS_RAW.split(',') if d.strip()]
+        dirs = [d.strip() for d in self.LOCAL_CONTEXT_DIRS_RAW.split(",") if d.strip()]
         return [str((root / d).resolve()) for d in dirs]
+
 
 # Create a singleton instance
 config = Config()

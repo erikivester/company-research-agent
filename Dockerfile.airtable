@@ -8,7 +8,6 @@ RUN npm install -g @airtable/blocks-cli
 
 # Copy package files and npm config early for better caching
 COPY scripting/package*.json ./scripting/
-COPY scripting/.npmrc ./scripting/.npmrc
 
 # Install dependencies
 WORKDIR /app/scripting

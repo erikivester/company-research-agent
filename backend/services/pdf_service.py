@@ -3,13 +3,14 @@ import io
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
-from backend.utils.utils import generate_pdf_from_md
 from backend.utils.enhanced_pdf import create_enhanced_research_pdf
 from backend.utils.executive_summary_pdf import create_executive_summary_pdf
+from backend.utils.utils import generate_pdf_from_md
 
 logger = logging.getLogger(__name__)
+
 
 class PDFService:
     def __init__(self, config: Dict[str, Any]):
@@ -20,26 +21,27 @@ class PDFService:
     def _generate_filename(self, company_name: str) -> str:
         """Generates a sanitized PDF filename."""
         safe_name = "".join(
-            [c for c in company_name if c
-            .isalnum() or c in (" ", "-")]
+            [c for c in company_name if c.isalnum() or c in (" ", "-")]
         ).rstrip()
         safe_name = safe_name.replace(" ", "_").replace("-", "_")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return f"{safe_name}_research_report_{timestamp}.pdf"
 
     async def generate_pdf_stream(
-        self, content: str | Dict[str, Any], company_name: str = "Company", 
-        summary_mode: bool = True
+        self,
+        content: str | Dict[str, Any],
+        company_name: str = "Company",
+        summary_mode: bool = True,
     ) -> Tuple[bool, Any]:
         """
         Generates a PDF and returns it as a BytesIO stream.
-        
+
         Args:
             content: Either markdown content (str) or research data dictionary
             company_name: Name of the company for the filename
             summary_mode: If True, generate 1-2 page executive summary (default).
                          If False, generate detailed multi-page report.
-        
+
         Returns:
             Tuple[bool, Any]: (success, result)
             On success: (True, (BytesIO, str)) - The stream and the filename
