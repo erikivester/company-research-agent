@@ -110,15 +110,15 @@ class Graph:
     async def run(self, **kwargs):
         """
         Run the workflow graph, yielding full state snapshots at each node.
-        Uses astream(mode="values") to get complete state instead of deltas.
+        Uses astream(stream_mode="values") to get complete state instead of deltas.
         Accepts keyword arguments to pass as the initial state or config.
         """
         # If thread is passed (as in application.py), use it as the initial state/config
         # Otherwise, use self.input_state as the default
         initial_state = kwargs.get("thread", self.input_state)
-        # Use mode="values" to yield full state snapshots instead of deltas/updates
+        # Use stream_mode="values" to yield full state snapshots instead of deltas/updates
         # This ensures all keys from previous nodes are preserved
-        async for s in self.app.astream(initial_state, mode="values"):
+        async for s in self.app.astream(initial_state, stream_mode="values"):
             yield s
     def _build_workflow(self):
         """Configure the state graph workflow (v2)"""

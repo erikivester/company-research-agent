@@ -265,6 +265,17 @@ async def run_job_with_semaphore(
             job_queue_stats["total_failed"] += 1
             metrics_collector.track_error("job_execution")
 
+            # Update Airtable with failure status
+            if airtable_record_id:
+                try:
+                    error_msg = str(e)[:100]  # Truncate to first 100 chars
+                    await _update_airtable_status_queued(
+                        airtable_record_id,
+                        f"{ResearchStatus.FAILED}: {error_msg}"
+                    )
+                except Exception as airtable_err:
+                    logger.error(f"Failed to update Airtable with error status: {airtable_err}")
+
         finally:
             # Always release resources
             job_semaphore.release()
@@ -281,6 +292,17 @@ async def run_job_with_semaphore(
         logger.error(f"💥 CRITICAL ERROR in run_job_with_semaphore for job {job_id}: {e}", exc_info=True)
         job_queue_stats["total_failed"] += 1
         sys.stdout.flush()
+
+        # Update Airtable with critical failure status
+        if airtable_record_id:
+            try:
+                error_msg = str(e)[:100]  # Truncate to first 100 chars
+                await _update_airtable_status_queued(
+                    airtable_record_id,
+                    f"{ResearchStatus.FAILED} (Critical): {error_msg}"
+                )
+            except Exception as airtable_err:
+                logger.error(f"Failed to update Airtable with critical error status: {airtable_err}")
 
         # Best-effort release
         try:
@@ -414,8 +436,21 @@ async def process_research(
                     message="Research completed but no report was generated",
                     error=error_message
                 )
+
+                # Update Airtable with failure status
+                if airtable_record_id:
+                    try:
+                        await _update_airtable_status_queued(
+                            airtable_record_id,
+                            f"{ResearchStatus.FAILED}: No report generated"
+                        )
+                    except Exception as airtable_err:
+                        logger.error(f"Failed to update Airtable with no-report status: {airtable_err}")
+
+                # Raise exception so the outer handler knows this failed
+                raise ValueError(f"Research completed but no report was generated: {error_message}")
     except Exception as e:
-        logger.error(f"Research failed: {str(e)}")
+        logger.error(f"Research failed: {str(e)}", exc_info=True)
         await manager.send_status_update(
             job_id=job_id,
             status="failed",
@@ -425,16 +460,19 @@ async def process_research(
         if mongodb:
             mongodb.update_job(job_id=job_id, status="failed", error=str(e))
 
-    except Exception as e:
-        logger.error(f"Research failed: {str(e)}")
-        await manager.send_status_update(
-            job_id=job_id,
-            status="failed",
-            message=f"Research failed: {str(e)}",
-            error=str(e)
-        )
-        if mongodb:
-            mongodb.update_job(job_id=job_id, status="failed", error=str(e))
+        # Update Airtable with failure status
+        if airtable_record_id:
+            try:
+                error_msg = str(e)[:100]  # Truncate to first 100 chars
+                await _update_airtable_status_queued(
+                    airtable_record_id,
+                    f"{ResearchStatus.FAILED}: {error_msg}"
+                )
+            except Exception as airtable_err:
+                logger.error(f"Failed to update Airtable with error status: {airtable_err}")
+
+        # Re-raise so the outer handler can track this as a failure
+        raise
 # --- END CORE RESEARCH LOGIC ---
 
 
