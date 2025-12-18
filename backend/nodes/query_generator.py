@@ -113,22 +113,34 @@ class QueryGeneratorNode:
                 "engagement_finder",
             ]
 
-            # Check if all keys exist, are lists, and have at least 4 queries
+            # Expected query counts per category
+            expected_counts = {
+                "company_brief": 4,
+                "flw_analyzer": 6,
+                "news_signal": 5,
+                "engagement_finder": 5,
+                "contact_finder": 3
+            }
+
+            # Check if all keys exist, are lists, and have the expected number of queries
             if not all(
                 key in queries_json
                 and isinstance(queries_json[key], list)
-                and len(queries_json[key]) >= 4
+                and len(queries_json[key]) >= expected_counts.get(key, 3)
                 for key in required_keys
             ):
                 logger.warning(
-                    f"LLM output did not match expected structure. Got: {response_content}"
+                    f"LLM output did not match expected structure. Expected counts: {expected_counts}. Got: {response_content}"
                 )
                 raise ValueError(
-                    "LLM output did not match the required 5 categories of 4 queries each."
+                    f"LLM output did not match the required query counts: {expected_counts}"
                 )
 
-            # --- FIX: Trim to exactly 4 queries to be safe ---
-            trimmed_queries = {key: queries_json[key][:4] for key in required_keys}
+            # Trim to expected query counts
+            trimmed_queries = {
+                key: queries_json[key][:expected_counts[key]]
+                for key in required_keys
+            }
 
             # Create new state with deep copying of research queries
             new_state = dict(state)  # Shallow copy first

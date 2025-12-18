@@ -36,7 +36,7 @@ class EmailTemplateManager:
     _instance = None
     _refresh_lock = Lock()
     _last_refresh = None
-    _refresh_interval = timedelta(minutes=5)  # Refresh templates every 5 minutes
+    _refresh_interval = timedelta(seconds=30)  # Refresh templates every 30 seconds
 
     def __new__(cls, folder_id: str = "1h_U3DyDXP1VX6E999zRlti_-xLeRkWOW"):
         if cls._instance is None:
@@ -64,13 +64,6 @@ class EmailTemplateManager:
 
         import asyncio
 
-        credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
-        if not credentials_json:
-            logger.warning(
-                "GDRIVE_CREDENTIALS_JSON not set, Drive features will be unavailable"
-            )
-            return
-
         try:
             # Run the synchronous Drive API initialization in a thread pool
             loop = asyncio.get_running_loop()
@@ -87,10 +80,20 @@ class EmailTemplateManager:
         Internal method to initialize the Drive service synchronously.
         It checks for credentials in a mounted file first, then falls back to an environment variable.
         """
-        credentials_path = "/app/gdrive_credentials.json"
+        # Check multiple possible credential file locations
+        credentials_paths = [
+            "/secrets/gdrive_credentials.json",  # Cloud Run secret mount
+            "/app/gdrive_credentials.json",      # Docker volume mount
+            "gdrive_credentials.json"            # Local development
+        ]
+        credentials_path = None
+        for path in credentials_paths:
+            if os.path.exists(path):
+                credentials_path = path
+                break
 
         try:
-            if os.path.exists(credentials_path):
+            if credentials_path:
                 logger.info(
                     f"Found credentials file at {credentials_path}, using it for authentication."
                 )
@@ -190,8 +193,8 @@ class EmailTemplateManager:
                 )
 
                 files = results.get("files", [])
-                # Cache file list for 5 minutes
-                cache.set(cache_key, files, ttl=300)
+                # Cache file list for 30 seconds
+                cache.set(cache_key, files, ttl=30)
 
             logger.info(f"Found {len(files)} files in folder")
             for file in files:
@@ -201,7 +204,7 @@ class EmailTemplateManager:
 
             new_templates = {}
 
-            for file in results.get("files", []):
+            for file in files:
                 try:
                     # Accept Google Docs and text-based files
                     mime_type = file["mimeType"].lower()
@@ -250,8 +253,8 @@ class EmailTemplateManager:
                                 .execute()
                                 .decode("utf-8"),
                             )
-                        # Cache content for 1 hour
-                        cache.set(content_cache_key, content, ttl=3600)
+                        # Cache content for 30 seconds
+                        cache.set(content_cache_key, content, ttl=30)
 
                     try:
                         template_type = self._extract_template_type(file["name"])

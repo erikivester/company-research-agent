@@ -71,6 +71,7 @@ const companyName = record.getCellValue("Name") || "";
 const contactTitle = record.getCellValue("Contact Title") || "";
 const summary = record.getCellValue("Company Summary") || "";
 const angleForOutreach = record.getCellValue("Angle for Outreach") || "";
+const markdownReport = record.getCellValue("Markdown Report") || "";
 const note = record.getCellValue("Note") || "";
 
 // ============================================================================
@@ -150,6 +151,7 @@ const requestPayload = {
         title: contactTitle,
         summary: summary,
         angle_for_outreach: angleForOutreach,
+        markdown_report: markdownReport,
         note: note
     },
     google_drive_folder_url: researchFolderUrl

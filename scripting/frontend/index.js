@@ -31,6 +31,7 @@ const SETTINGS_KEYS = {
     CONTACT_TITLE_FIELD_ID: 'contactTitleFieldId',
     SUMMARY_FIELD_ID: 'summaryFieldId',
     ANGLE_FIELD_ID: 'angleFieldId',
+    MARKDOWN_REPORT_FIELD_ID: 'markdownReportFieldId',
     NOTE_FIELD_ID: 'noteFieldId',
     RESEARCH_FOLDER_FIELD_ID: 'researchFolderFieldId',
     DRAFT_FIELD_ID: 'draftFieldId',
@@ -145,6 +146,10 @@ function SettingsPanel({ globalConfig, base }) {
                             <FieldPickerSynced table={table} globalConfigKey={SETTINGS_KEYS.ANGLE_FIELD_ID} />
                         </FormField>
 
+                        <FormField label="Markdown Report Field" marginTop={2}>
+                            <FieldPickerSynced table={table} globalConfigKey={SETTINGS_KEYS.MARKDOWN_REPORT_FIELD_ID} />
+                        </FormField>
+
                         <FormField label="Note Field" marginTop={2}>
                             <FieldPickerSynced table={table} globalConfigKey={SETTINGS_KEYS.NOTE_FIELD_ID} />
                         </FormField>
@@ -239,6 +244,7 @@ function MainPanel({ table, globalConfig, apiEndpoint, setIsShowingSettings }) {
     const contactTitleFieldId = globalConfig.get(SETTINGS_KEYS.CONTACT_TITLE_FIELD_ID);
     const summaryFieldId = globalConfig.get(SETTINGS_KEYS.SUMMARY_FIELD_ID);
     const angleFieldId = globalConfig.get(SETTINGS_KEYS.ANGLE_FIELD_ID);
+    const markdownReportFieldId = globalConfig.get(SETTINGS_KEYS.MARKDOWN_REPORT_FIELD_ID);
     const noteFieldId = globalConfig.get(SETTINGS_KEYS.NOTE_FIELD_ID);
     const researchFolderFieldId = globalConfig.get(SETTINGS_KEYS.RESEARCH_FOLDER_FIELD_ID);
     const draftFieldId = globalConfig.get(SETTINGS_KEYS.DRAFT_FIELD_ID);
@@ -360,6 +366,7 @@ function MainPanel({ table, globalConfig, apiEndpoint, setIsShowingSettings }) {
                 const contactTitle = contactTitleFieldId ? record.getCellValueAsString(contactTitleFieldId) || '' : '';
                 const summary = summaryFieldId ? record.getCellValueAsString(summaryFieldId) || '' : '';
                 const angle = angleFieldId ? record.getCellValueAsString(angleFieldId) || '' : '';
+                const markdownReport = markdownReportFieldId ? record.getCellValueAsString(markdownReportFieldId) || '' : '';
                 const note = noteFieldId ? record.getCellValueAsString(noteFieldId) || '' : '';
                 let researchFolder = researchFolderFieldId ? record.getCellValueAsString(researchFolderFieldId) || '' : '';
                 if (!researchFolder) {
@@ -388,6 +395,7 @@ function MainPanel({ table, globalConfig, apiEndpoint, setIsShowingSettings }) {
                             title: contactTitle,
                             summary: summary,
                             angle_for_outreach: angle,
+                            markdown_report: markdownReport,
                             note: note
                         },
                         google_drive_folder_url: researchFolder

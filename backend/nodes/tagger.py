@@ -110,12 +110,16 @@ class Tagger:
         briefings_content = []
         company_brief_text = ""
 
+        # DEBUG: Track which briefings have content
+        briefing_status = {}
+
         # Inject HQ Location into content for regional classification
         hq_location = state.get("hq_location")
         if hq_location and hq_location.strip() and hq_location.lower() != "unknown":
             briefings_content.append(
                 f"## Location Context\n* Headquarters: {hq_location}"
             )
+            briefing_status["hq_location"] = True
 
         # Get Company Brief (for Revenue & Industry)
         if company_briefing := state.get("company_brief_briefing"):
@@ -126,11 +130,15 @@ class Tagger:
                     logger.warning(
                         f"Skipping company briefing as it appears to be an error message: {company_briefing[:100]}"
                     )
+                    briefing_status["company_brief"] = "ERROR"
                 else:
                     company_brief_text = company_briefing
                     briefings_content.append(
                         f"## Company Overview & Financial Health\n{company_briefing}"
                     )
+                    briefing_status["company_brief"] = f"{len(company_briefing)} chars"
+        else:
+            briefing_status["company_brief"] = "MISSING"
 
         # Get FLW Briefing (for Industry & ReFED Alignment)
         if flw_briefing := state.get("flw_sustainability_briefing"):
@@ -138,11 +146,17 @@ class Tagger:
                 briefings_content.append(
                     f"## FLW & Sustainability Briefing\n{flw_briefing}"
                 )
+                briefing_status["flw"] = f"{len(flw_briefing)} chars"
+        else:
+            briefing_status["flw"] = "MISSING"
 
         # Get News Briefing (for ReFED Alignment)
         if news_briefing := state.get("news_signal_briefing"):
             if isinstance(news_briefing, str) and news_briefing.strip():
                 briefings_content.append(f"## News & Signals Briefing\n{news_briefing}")
+                briefing_status["news"] = f"{len(news_briefing)} chars"
+        else:
+            briefing_status["news"] = "MISSING"
 
         # Get Engagement Briefing (for ReFED Alignment)
         if engagement_briefing := state.get("engagement_briefing"):
@@ -150,6 +164,9 @@ class Tagger:
                 briefings_content.append(
                     f"## Engagements & Affiliations Briefing\n{engagement_briefing}"
                 )
+                briefing_status["engagement"] = f"{len(engagement_briefing)} chars"
+        else:
+            briefing_status["engagement"] = "MISSING"
 
         # Get Contact Briefing (for context)
         if contact_briefing := state.get("contact_briefing"):
@@ -157,6 +174,13 @@ class Tagger:
                 briefings_content.append(
                     f"## Potential Contacts Briefing\n{contact_briefing}"
                 )
+                briefing_status["contact"] = f"{len(contact_briefing)} chars"
+        else:
+            briefing_status["contact"] = "MISSING"
+
+        # --- DEBUG: Log briefing status ---
+        logger.info(f"Tagger briefing status for ReFED classification: {briefing_status}")
+        logger.info(f"Total combined briefing length: {len(''.join(briefings_content))} characters")
         # --- End v2 Content Gathering ---
 
         if not briefings_content:
@@ -283,6 +307,12 @@ Or: None
             # Inner function to process one classification request
             try:
                 logger.info(f"Requesting OpenAI classification for: {field_name}")
+
+                # DEBUG: Log the prompt being sent for ReFED Alignment
+                if field_name == "ReFED Alignment":
+                    logger.info(f"ReFED Alignment prompt length: {len(prompt)} characters")
+                    logger.info(f"ReFED Alignment prompt preview (first 1000 chars): {prompt[:1000]}")
+
                 # Adjust system message for ReFED Alignment to emphasize evidence-based classification
                 if field_name == "ReFED Alignment":
                     system_content = "You are a ReFED strategic analyst with deep knowledge of the food waste sector. Carefully evaluate the company information against each alignment category's mission alignment and key signals. Only select categories where you find SPECIFIC, CONCRETE evidence—not general sustainability mentions. Be thorough but precise. Output ONLY exact category names from the provided list, comma-separated. If no clear signals exist, output 'None'."
@@ -303,6 +333,11 @@ Or: None
                 )
                 result_text = response.choices[0].message.content.strip()
                 logger.info(f"OpenAI response for {field_name}: {result_text}")
+
+                # DEBUG: Additional logging for ReFED Alignment
+                if field_name == "ReFED Alignment":
+                    logger.info(f"ReFED Alignment raw response: '{result_text}' (type: {type(result_text).__name__}, length: {len(result_text)})")
+                    logger.info(f"Available ReFED categories count: {len(self.classification_rules.get(field_name, []))}")
 
                 if not result_text or result_text.lower() == "none":
                     return (

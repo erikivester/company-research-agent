@@ -83,11 +83,12 @@ class TokenBucketRateLimiter:
 # Global rate limiters for each API service
 # These are shared across ALL concurrent jobs
 
-# Tavily API - Conservative limits to avoid 429 errors
-# Basic plan: 100 RPM, we use 80 to leave safety margin
+# Tavily API - Very conservative limits to avoid 429 errors with high job queues
+# Basic plan: 100 RPM, but extract API appears stricter
+# With 50+ concurrent jobs, we need to be much more conservative
 tavily_limiter = TokenBucketRateLimiter(
-    rate_per_minute=80,  # Conservative: 80% of 100 RPM limit
-    max_burst=20  # Allow small bursts
+    rate_per_minute=40,  # Very conservative: 40% of limit for large queues
+    max_burst=5  # Minimal burst to prevent spikes
 )
 
 # OpenAI API - Tier 1 limits

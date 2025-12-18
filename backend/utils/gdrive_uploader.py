@@ -15,7 +15,13 @@ logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SERVICE_ACCOUNT_FILE = os.path.join(PROJECT_ROOT, "gdrive_credentials.json")
+
+# Check multiple possible credential file locations
+CREDENTIAL_PATHS = [
+    "/secrets/gdrive_credentials.json",  # Cloud Run secret mount
+    os.path.join(PROJECT_ROOT, "gdrive_credentials.json"),  # Docker volume mount / Local
+    "gdrive_credentials.json"  # Relative path fallback
+]
 # --- END MODIFICATION ---
 
 # Define the scopes required for Google Drive API
@@ -29,32 +35,41 @@ def get_drive_service():
     """Authenticates and returns a Google Drive API service object."""
 
     creds = None
+    # First, try environment variable (highest priority)
     if os.getenv("GDRIVE_SERVICE_ACCOUNT_JSON"):
         try:
             creds_json = json.loads(os.environ["GDRIVE_SERVICE_ACCOUNT_JSON"])
             creds = service_account.Credentials.from_service_account_info(
                 creds_json, scopes=SCOPES
             )
-            logger.info("Loaded Google Drive credentials from ENV variable.")
+            logger.info("Loaded Google Drive credentials from GDRIVE_SERVICE_ACCOUNT_JSON env variable.")
         except Exception as e:
             logger.warning(f"Failed to load GDrive credentials from ENV: {e}")
 
+    # If no env var, try file paths
     if not creds:
-        try:
-            creds = service_account.Credentials.from_service_account_file(
-                SERVICE_ACCOUNT_FILE, scopes=SCOPES
-            )
-            logger.info(
-                f"Loaded Google Drive credentials from file: {SERVICE_ACCOUNT_FILE}"
-            )
-        except FileNotFoundError:
+        found_path = None
+        for path in CREDENTIAL_PATHS:
+            if os.path.exists(path):
+                found_path = path
+                break
+
+        if found_path:
+            try:
+                creds = service_account.Credentials.from_service_account_file(
+                    found_path, scopes=SCOPES
+                )
+                logger.info(
+                    f"Loaded Google Drive credentials from file: {found_path}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error building Google Drive service from file {found_path}: {e}", exc_info=True
+                )
+                return None
+        else:
             logger.error(
-                f"CRITICAL: Google Drive credentials file not found at {SERVICE_ACCOUNT_FILE} and env var not set."
-            )
-            return None
-        except Exception as e:
-            logger.error(
-                f"Error building Google Drive service from file: {e}", exc_info=True
+                f"CRITICAL: Google Drive credentials file not found at any of {CREDENTIAL_PATHS} and env var not set."
             )
             return None
 

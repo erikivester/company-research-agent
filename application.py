@@ -173,7 +173,8 @@ class PDFGenerationRequest(BaseModel):
 # With rate limiting (80 Tavily RPM), 3 concurrent jobs get ~27 RPM each
 # This prevents API throttling and ensures each job completes quickly with full data
 # Memory estimate: 3 jobs × ~80-120MB = 240-360MB peak (very safe)
-MAX_CONCURRENT_JOBS = 3
+MAX_CONCURRENT_JOBS = 2
+MAX_QUEUE_SIZE = 20  # Maximum jobs that can be queued/running at once
 job_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
 
 # Track job queue metrics
@@ -181,9 +182,13 @@ job_queue_stats = {
     "total_queued": 0,
     "total_completed": 0,
     "total_failed": 0,
+    "total_rejected": 0,
     "current_running": 0,
     "peak_concurrent": 0,
 }
+
+# Track active job tasks for cancellation
+active_job_tasks = {}
 
 # ----------------------------------------------------
 # 🟢 SEMAPHORE WRAPPER FOR BACKGROUND TASK
@@ -265,6 +270,10 @@ async def run_job_with_semaphore(
             job_semaphore.release()
             job_queue_stats["current_running"] -= 1
 
+            # Clean up from active jobs tracking
+            if job_id in active_job_tasks:
+                del active_job_tasks[job_id]
+
             logger.info(f"✅ SEMAPHORE RELEASED: Job {job_id} finished. Running: {job_queue_stats['current_running']}/{MAX_CONCURRENT_JOBS}")
             sys.stdout.flush()
 
@@ -343,12 +352,15 @@ async def process_research(
                 thread_config["google_drive_folder_url"] = google_drive_folder_url
             # --- End Fix ---
 
-            # Accumulate state updates from the graph
+            # Get the final state from the graph
+            # Since we're using mode="values", each iteration yields the full state snapshot
+            # We keep the last one which is the final complete state
             state = {}
             async for s in graph.run(thread=thread_config):
-                # Merge each state update into our accumulated state
+                # Each s is now a complete state snapshot (not a delta)
+                # Keep updating to get the final state
                 if s:
-                    state.update(s)
+                    state = s  # Replace with latest full state instead of merging
             if not state:
                 state = {}
 
@@ -441,6 +453,7 @@ async def research(data: ResearchRequest):
             )
         )
         task.add_done_callback(_log_task_exception)
+        active_job_tasks[job_id] = {"task": task, "company": data.company}
 
         response = JSONResponse(content={
             "status": "accepted",
@@ -479,6 +492,22 @@ async def start_research_webhook(data: AirtableWebhookInput):
             )
         
         company_value = data.company.strip()
+
+        # Check if queue is full
+        current_queue_size = len(active_job_tasks)
+        if current_queue_size >= MAX_QUEUE_SIZE:
+            job_queue_stats["total_rejected"] += 1
+            logger.warning(f"⚠️ Queue full ({current_queue_size}/{MAX_QUEUE_SIZE}), rejecting {company_value}")
+            if data.airtable_record_id:
+                asyncio.create_task(_update_airtable_status_queued(
+                    data.airtable_record_id,
+                    f"Failed: Queue Full ({current_queue_size}/{MAX_QUEUE_SIZE})"
+                ))
+            raise HTTPException(
+                status_code=503,
+                detail=f"Research queue is full ({current_queue_size}/{MAX_QUEUE_SIZE} jobs). Please try again later."
+            )
+
         logger.info(f"✅ Webhook accepted for {company_value} (Airtable ID: {data.airtable_record_id}, Job ID: {job_id})")
 
         research_data = ResearchRequest(
@@ -487,11 +516,11 @@ async def start_research_webhook(data: AirtableWebhookInput):
             industry=data.industry,
             hq_location=data.hq_location
         )
-        
+
         if data.airtable_record_id:
              asyncio.create_task(_update_airtable_status_queued(data.airtable_record_id, ResearchStatus.QUEUED))
 
-        logger.info(f"🎯 Queuing research job for {company_value}...")
+        logger.info(f"🎯 Queuing research job for {company_value}... (Queue: {current_queue_size + 1}/{MAX_QUEUE_SIZE})")
         if data.use_local_context:
             logger.info(f"📂 Local context mode enabled for {company_value} - will use existing files")
 
@@ -505,6 +534,7 @@ async def start_research_webhook(data: AirtableWebhookInput):
             )
         )
         task.add_done_callback(_log_task_exception)
+        active_job_tasks[job_id] = {"task": task, "company": company_value, "airtable_record_id": data.airtable_record_id}
 
         return {
             "status": "Accepted",
@@ -948,11 +978,67 @@ async def get_research_report(job_id: str):
             if report := result.get("report"):
                 return {"report": report}
         raise HTTPException(status_code=404, detail="Report not found")
-    
+
     report = mongodb.get_report(job_id)
     if not report:
         raise HTTPException(status_code=404, detail="Research report not found")
     return report
+
+@app.delete("/research/{job_id}")
+async def cancel_research(job_id: str):
+    """Cancel a running or queued research job."""
+    if job_id not in active_job_tasks:
+        raise HTTPException(status_code=404, detail="Job not found or already completed")
+
+    job_info = active_job_tasks[job_id]
+    task = job_info["task"]
+    company = job_info.get("company", "Unknown")
+    airtable_record_id = job_info.get("airtable_record_id")
+
+    # Cancel the task
+    task.cancel()
+
+    # Update Airtable if applicable
+    if airtable_record_id:
+        try:
+            await asyncio.to_thread(
+                update_airtable_record,
+                airtable_record_id,
+                {'Research Status': ResearchStatus.CANCELLED}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update Airtable status for cancelled job {job_id}: {e}")
+
+    # Remove from tracking
+    del active_job_tasks[job_id]
+
+    logger.info(f"❌ Job {job_id} cancelled for {company}")
+
+    return {
+        "status": "cancelled",
+        "job_id": job_id,
+        "company": company,
+        "message": f"Research job for {company} has been cancelled"
+    }
+
+@app.get("/jobs/active")
+async def get_active_jobs():
+    """Get list of all active (running or queued) jobs."""
+    jobs = []
+    for job_id, info in active_job_tasks.items():
+        jobs.append({
+            "job_id": job_id,
+            "company": info.get("company", "Unknown"),
+            "airtable_record_id": info.get("airtable_record_id"),
+            "cancelled": info["task"].cancelled(),
+            "done": info["task"].done()
+        })
+
+    return {
+        "active_jobs": jobs,
+        "total_active": len(jobs),
+        "queue_stats": job_queue_stats
+    }
 
 @app.post("/generate-pdf")
 async def generate_pdf(data: PDFGenerationRequest):
@@ -992,6 +1078,9 @@ async def health():
     from backend.utils.rate_limiter import get_all_limiter_stats
     rate_limiter_stats = get_all_limiter_stats()
 
+    current_queue_size = len(active_job_tasks)
+    queue_capacity_percent = (current_queue_size / MAX_QUEUE_SIZE) * 100
+
     return {
         "status": "healthy",
         "uptime": str(performance_monitor.get_uptime()),
@@ -1001,9 +1090,13 @@ async def health():
             "max_concurrent": MAX_CONCURRENT_JOBS,
             "utilization_percent": round(utilization, 1),
             "current_running": job_queue_stats["current_running"],
+            "current_queue_size": current_queue_size,
+            "max_queue_size": MAX_QUEUE_SIZE,
+            "queue_capacity_percent": round(queue_capacity_percent, 1),
             "total_queued": job_queue_stats["total_queued"],
             "total_completed": job_queue_stats["total_completed"],
             "total_failed": job_queue_stats["total_failed"],
+            "total_rejected": job_queue_stats["total_rejected"],
             "peak_concurrent": job_queue_stats["peak_concurrent"],
             "success_rate": round(
                 (job_queue_stats["total_completed"] / max(job_queue_stats["total_queued"], 1)) * 100, 1

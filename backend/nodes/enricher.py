@@ -30,22 +30,22 @@ class Enricher:
         self.semaphore_limit = 5  # Reduced concurrent requests per batch
         # --- END IMPROVED ---
 
-        # --- IMPROVED: Timeout configuration per category ---
+        # --- OPTIMIZED: Reduced timeout budgets for faster failure ---
         self.timeout_budgets = {
-            "company": 25,  # Financial sites can be slow
-            "news": 20,
-            "contact": 15,  # Contact sites usually faster
-            "flw": 30,  # ESG/sustainability reports can be large
-            "engagement": 20,
+            "company": 20,  # Reduced from 25s - fail faster
+            "news": 15,     # Reduced from 20s - news sites are fast or blocked
+            "contact": 12,  # Reduced from 15s - contact pages are simple
+            "flw": 25,      # Reduced from 30s - still priority but fail faster
+            "engagement": 15,  # Reduced from 20s
         }
-        self.default_timeout = 20  # Fallback timeout
-        # --- END IMPROVED ---
+        self.default_timeout = 15  # Reduced from 20s
+        # --- END OPTIMIZED ---
 
-        # --- IMPROVED: Retry configuration ---
-        self.max_retries = 4  # Increased from 3
+        # --- OPTIMIZED: Reduced retries for faster failure ---
+        self.max_retries = 3  # Reduced from 4 - fail faster, rely on fallback
         self.base_retry_delay = 2  # Base delay for exponential backoff
-        self.max_retry_delay = 60  # Cap on retry delay
-        # --- END IMPROVED ---
+        self.max_retry_delay = 30  # Reduced from 60s - don't wait too long
+        # --- END OPTIMIZED ---
 
         # --- MEMORY OPTIMIZATION: Content size limit ---
         self.max_content_length = 50000  # 50KB limit per document to prevent memory bloat
@@ -83,7 +83,28 @@ class Enricher:
             # Government sites that block scrapers
             "dol.gov",
             "www.dol.gov",
-            # --- END NEW DOMAINS ---
+            # --- TIMEOUT OPTIMIZATIONS: Slow/problematic sites from Dec 17 logs ---
+            "ibisworld.com",           # Slow data aggregator
+            "www.ibisworld.com",
+            "zippia.com",              # Slow revenue databases
+            "www.zippia.com",
+            "sfchronicle.com",         # Paywall + slow
+            "www.sfchronicle.com",
+            "martini.ai",              # Research platform (slow API)
+            "www.simplyhired.com",     # Job sites (anti-bot)
+            "simplyhired.com",
+            "markets.ft.com",          # Financial Times - paywall
+            "agalert.com",             # Ag news - often times out
+            "www.agalert.com",
+            "morningagclips.com",      # Ag news - slow
+            "www.morningagclips.com",
+            "renewablethermal.org",    # Slow nonprofit sites
+            "www.renewablethermal.org",
+            "cdic.net",                # Dairy industry sites (slow)
+            "www.cdic.net",
+            "dairypcc.net",            # Dairy processor council (timeouts)
+            "www.dairypcc.net",
+            # --- END TIMEOUT OPTIMIZATIONS ---
         }
         # --- END BLOCKLIST ---
 
@@ -392,14 +413,22 @@ class Enricher:
                     docs_with_content += 1
                     continue  # Already enriched
 
-                # Check blocklist
+                # Check blocklist and PDF files
                 try:
                     domain = urlparse(url).netloc
+                    is_pdf = url.lower().endswith('.pdf')
+
                     if domain in self.BLOCKLIST_DOMAINS:
                         # Fallback to snippet and skip API call
                         doc["raw_content"] = doc.get("content", "")
-                        doc["enrichment_error"] = "Skipped (blocklist domain)"
+                        doc["enrichment_note"] = "Skipped (blocklist domain)"
                         docs_blocklisted += 1
+                    elif is_pdf:
+                        # PDFs consistently timeout - skip extraction, use snippet
+                        doc["raw_content"] = doc.get("content", "")
+                        doc["enrichment_note"] = "PDF - using search snippet"
+                        docs_blocklisted += 1
+                        logger.info(f"Skipping PDF extraction (using snippet): {url}")
                     else:
                         # Add to fetch queue
                         docs_needing_content[url] = doc

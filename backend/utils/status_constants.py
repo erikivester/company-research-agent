@@ -15,6 +15,7 @@ class ResearchStatus:
     CLASSIFYING = "Classifying"
     COMPLETED = "Completed"
     FAILED = "Failed"
+    CANCELLED = "Cancelled"
 
     # Error status templates
     FAILED_CURATION = "Failed: Curation Error - {}"

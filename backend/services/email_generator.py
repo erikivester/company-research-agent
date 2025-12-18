@@ -38,7 +38,7 @@ class EmailGeneratorService:
     def __init__(
         self,
         credentials_path: str = None,
-        model: str = "gpt-4-1106-preview",
+        model: str = "gpt-4o",
         openai_api_key: str = None,
     ):
         """
@@ -73,39 +73,51 @@ class EmailGeneratorService:
         if self.drive_service is not None:
             return
 
-        # Try to get credentials from either file path or JSON string
-        credentials_path = self.credentials_path or os.getenv(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
-        credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
+        # Check multiple possible credential file locations
+        credential_paths = [
+            "/secrets/gdrive_credentials.json",  # Cloud Run secret mount
+            "/app/gdrive_credentials.json",      # Docker volume mount
+            "gdrive_credentials.json"            # Local development
+        ]
 
-        if not credentials_path and not credentials_json:
-            logger.warning(
-                "No Google Drive credentials found (GOOGLE_APPLICATION_CREDENTIALS or GDRIVE_CREDENTIALS_JSON), Drive features will be unavailable"
-            )
-            return
+        # First try to find a credentials file
+        credentials_path = self.credentials_path or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
+        # If no explicit path from env, check standard locations
+        if not credentials_path:
+            for path in credential_paths:
+                if os.path.exists(path):
+                    credentials_path = path
+                    break
 
         try:
-            if credentials_json:
-                # Load credentials from JSON string
-                import json
+            if credentials_path:
+                # Load credentials from file (preferred method)
+                credentials = service_account.Credentials.from_service_account_file(
+                    credentials_path,
+                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                )
+                logger.info(f"Google Drive service initialized from file: {credentials_path}")
+            else:
+                # Fallback to environment variable (only if no file found)
+                credentials_json = os.getenv("GDRIVE_CREDENTIALS_JSON")
+                if not credentials_json:
+                    logger.warning(
+                        f"No Google Drive credentials found. Checked paths: {credential_paths}, env vars: GOOGLE_APPLICATION_CREDENTIALS, GDRIVE_CREDENTIALS_JSON"
+                    )
+                    return
 
+                import json
                 credentials_info = json.loads(credentials_json)
                 credentials = service_account.Credentials.from_service_account_info(
                     credentials_info,
                     scopes=["https://www.googleapis.com/auth/drive.readonly"],
                 )
-            else:
-                # Load credentials from file
-                credentials = service_account.Credentials.from_service_account_file(
-                    credentials_path,
-                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
-                )
+                logger.info("Google Drive service initialized from GDRIVE_CREDENTIALS_JSON env var")
 
             self.drive_service = build("drive", "v3", credentials=credentials)
-            logger.info("Google Drive service initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize Drive service: {e}")
+            logger.error(f"Failed to initialize Drive service: {e}", exc_info=True)
             self.drive_service = None
 
     async def fetch_template(self, template_type: str) -> Optional[Tuple[str, str]]:
@@ -290,6 +302,7 @@ class EmailGeneratorService:
     def _prepare_research_summary(self, research_context: Dict[str, Any]) -> str:
         """
         Prepare a concise summary of research data for the LLM prompt.
+        Now focuses on markdown and text files only, no longer parsing JSON.
 
         Args:
             research_context: Dictionary containing parsed research file contents
@@ -303,23 +316,16 @@ class EmailGeneratorService:
             content_type = file_data.get("type", "unknown")
             content = file_data.get("content", {})
 
-            if content_type == "json":
-                if isinstance(content, dict) and "company_brief_data" in content:
-                    summary_parts.append("Company Research Insights:")
-                    for url, data in content["company_brief_data"].items():
-                        if isinstance(data, dict):
-                            if "title" in data and "content" in data:
-                                summary_parts.append(
-                                    f"- {data['title']}: {data['content'][:300]}..."
-                                )
-
-            elif content_type in ["text", "markdown", "pdf"]:
-                if isinstance(content, str):
-                    preview = content[:500] + ("..." if len(content) > 500 else "")
+            # Only process text-based files (markdown, text, pdf)
+            if content_type in ["text", "markdown", "pdf"]:
+                if isinstance(content, str) and content.strip():
+                    # Include more content for markdown files as they're typically well-structured
+                    max_length = 2000 if content_type == "markdown" else 500
+                    preview = content[:max_length] + ("..." if len(content) > max_length else "")
                     summary_parts.append(f"From {filename}:")
                     summary_parts.append(preview)
 
-        return "\n\n".join(summary_parts)
+        return "\n\n".join(summary_parts) if summary_parts else "No additional research files found."
 
     async def generate_email(
         self,
@@ -352,56 +358,63 @@ class EmailGeneratorService:
             if not airtable_context:
                 raise EmailGenerationError("Airtable context is required")
 
-            # Prepare research summary
+            # Get markdown report from Airtable context (primary source)
+            markdown_report = airtable_context.get('markdown_report', '')
+
+            # Prepare research summary from Drive folder (secondary/supplementary)
             research_summary = self._prepare_research_summary(research_context)
 
             # Construct the prompt
-            system_prompt = """You are an expert at writing highly personalized and compelling business outreach emails. 
-Your task is to generate a professional email that follows the provided template structure while incorporating specific insights from research and strategic context.
+            system_prompt = """You are an expert at writing concise, professional business outreach emails.
+Your task is to generate an email that CLOSELY FOLLOWS the provided template structure and tone while incorporating specific insights.
 
-Guidelines:
-1. Maintain the core message and purpose from the template
-2. LEVERAGE THE RESEARCH DEEPLY: Use specific details, initiatives, programs, partnerships, or commitments mentioned in the research to demonstrate you've done your homework
-3. BE CONCRETE AND SPECIFIC: Reference actual company activities, recent announcements, sustainability goals, or operational details that show genuine understanding of their business
-4. Create a personalized opening that references something specific about their company or recent activities
-5. Integrate strategic talking points naturally, connecting them to specific aspects of the company's operations or goals
-6. Keep the tone professional but conversational - make it clear this isn't a mass email
-7. Avoid generic statements like "I've been following your company" - instead say what specifically you've learned or noticed
-8. When making claims or suggestions, tie them directly to specific information from the research context
-9. Show that you understand their unique position, challenges, or opportunities in their industry
-10. Extract or generate an appropriate subject line that is specific and relevant to the recipient
-
-The goal is to stand out by demonstrating genuine research and understanding of their specific situation, not just sending a templated message.
+CRITICAL GUIDELINES:
+1. STICK TO THE TEMPLATE: Follow the template's structure, length, and tone precisely. Do NOT make it more elaborate or flowery.
+2. USE DIRECT, PROFESSIONAL LANGUAGE: Avoid flowery or overly enthusiastic language. Keep it straightforward and business-appropriate.
+3. PRIORITIZE THE STRATEGIC ANGLE: The "Strategic Angle for Outreach" is the MOST IMPORTANT input - it guides how you should position the outreach.
+4. USE THE MARKDOWN REPORT: This is your primary source of detailed company intelligence. Reference specific facts from it.
+5. BE SPECIFIC BUT BRIEF: Use concrete details but don't elaborate unnecessarily. One or two specific references are better than many generic ones.
+6. MATCH THE TEMPLATE TONE: If the template is casual, be casual. If formal, be formal. Don't default to flowery language.
+7. NO UNNECESSARY EMBELLISHMENT: Don't add extra compliments, praise, or enthusiasm that isn't in the template.
+8. PRESERVE FORMATTING: Use double line breaks (\\n\\n) between paragraphs to maintain readability. Each paragraph should be separated by a blank line.
 
 Important: You must return your response in this exact JSON format:
 {
   "subject": "The email subject line here",
-  "body": "The full email body here"
+  "body": "The full email body here with \\n\\n between paragraphs"
 }"""
 
             user_prompt = f"""Generate a personalized email using the following information:
 
-1. RECIPIENT
+==== RECIPIENT ====
 Contact Name: {contact_name}
 Title: {airtable_context.get('title', 'N/A')}
 Company: {airtable_context.get('name', 'N/A')}
 
-2. TEMPLATE STRUCTURE
+==== TEMPLATE (FOLLOW THIS STRUCTURE CLOSELY) ====
 {template_content}
 
-3. CONTEXT & RESEARCH INSIGHTS (USE THESE SPECIFICS!)
+==== PRIMARY INPUTS (HIGHEST PRIORITY) ====
+
+STRATEGIC ANGLE FOR OUTREACH (THIS GUIDES YOUR ENTIRE APPROACH):
+{airtable_context.get('angle_for_outreach', 'N/A')}
+
+DETAILED RESEARCH REPORT (USE SPECIFIC FACTS FROM THIS):
+{markdown_report if markdown_report else 'No detailed report available - use supplementary sources below.'}
+
+==== SUPPLEMENTARY CONTEXT ====
 Company Summary: {airtable_context.get('summary', 'N/A')}
-Strategic Angle: {airtable_context.get('angle_for_outreach', 'N/A')}
 Additional Notes: {airtable_context.get('note', 'N/A')}
 
-Research Context (mine this for specific details, programs, initiatives, partnerships, goals, and recent activities):
+Additional Research Files from Drive:
 {research_summary}
 
-CRITICAL: Use specific details from the research context above. Reference actual programs, partnerships, sustainability commitments, operational initiatives, or recent company activities. Make it clear you understand their specific business and aren't sending a generic template. The more specific and tailored your references, the better.
-
-Generate the complete email maintaining proper formatting and structure. The email should feel personal, well-researched, and strategically aligned with our outreach goals.
-
-Return your response as a JSON object with "subject" and "body" fields."""
+==== INSTRUCTIONS ====
+1. Use the Strategic Angle to guide your approach
+2. Pull 1-2 specific facts from the Markdown Report to demonstrate research
+3. Keep the length and tone similar to the template
+4. Be direct and professional - avoid flowery language
+5. Return as JSON with "subject" and "body" fields"""
 
             # Call the OpenAI API
             try:
@@ -411,7 +424,7 @@ Return your response as a JSON object with "subject" and "body" fields."""
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
-                    temperature=0.7,
+                    temperature=0.3,
                     max_tokens=2000,
                     response_format={"type": "json_object"},
                 )

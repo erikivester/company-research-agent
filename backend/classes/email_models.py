@@ -14,6 +14,7 @@ class AirtableContext(BaseModel):
     title: str = Field(..., description="Contact's title")
     summary: str = Field(..., description="Company summary")
     angle_for_outreach: str = Field(..., description="Strategic notes from the team")
+    markdown_report: Optional[str] = Field(None, description="Detailed markdown research report")
     note: Optional[str] = Field(None, description="Additional relevant context")
 
 

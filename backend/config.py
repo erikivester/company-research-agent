@@ -90,6 +90,8 @@ class Config:
         else:
             from tavily import AsyncTavilyClient
 
+            # Note: Tavily client timeout is configured per-request in enricher.py
+            # using asyncio.wait_for() wrapper for better control
             return AsyncTavilyClient(api_key=self.TAVILY_API_KEY)
 
     def get_local_context_dirs(self):

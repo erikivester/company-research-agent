@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class Curator:
     def __init__(self) -> None:
         self.relevance_threshold = 0.4
-        self.news_threshold = 0.1  # <-- NEW: Lower threshold for news
+        self.news_threshold = 0.2  # Lower threshold for news, but higher than 0.1 to filter generic articles
         logger.info(
             f"Curator initialized with default threshold: {self.relevance_threshold} and news threshold: {self.news_threshold}"
         )
@@ -84,6 +84,37 @@ class Curator:
                     # Boost 3: Company Website (First-party source preference)
                     if is_company_website and len(content) > 1000:
                         authority_boost += 0.15
+
+                    # Boost 4: Company Name Match for News (Prioritize company-specific news)
+                    if doc_type == "news":
+                        company_name = context.get("company", "").lower()
+                        # Check if company name appears in title or multiple times in content
+                        if company_name and len(company_name) > 3:  # Avoid short/generic names
+                            company_in_title = company_name in title
+                            # Count occurrences in content (simple check)
+                            company_mentions = content.count(company_name)
+
+                            if company_in_title and company_mentions >= 3:
+                                authority_boost += 0.25  # Strong company focus
+                            elif company_in_title or company_mentions >= 2:
+                                authority_boost += 0.15  # Moderate company focus
+
+                    # Boost 5: Contact Source Reliability (Prioritize LinkedIn/company sources)
+                    if doc_type == "contact":
+                        doc_url = doc.get("url", "").lower()
+                        company_name = context.get("company", "").lower()
+
+                        # Strong boost for LinkedIn profiles (most likely to be accurate employees)
+                        if "linkedin.com" in doc_url:
+                            authority_boost += 0.30
+                        # Moderate boost for company website team/about pages
+                        elif any(page in doc_url for page in ["/team", "/about", "/leadership", "/people"]):
+                            authority_boost += 0.20
+                        # Boost if company name appears multiple times (indicates employee focus)
+                        if company_name and len(company_name) > 3:
+                            company_mentions = content.count(company_name)
+                            if company_mentions >= 5:
+                                authority_boost += 0.15
 
                     # Calculate Final Score (Cap at 1.0)
                     final_score = min(1.0, tavily_score + authority_boost)

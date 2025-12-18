@@ -253,10 +253,17 @@ Critical: Output MUST start with [ and end with ] - absolutely no other text or 
             if not isinstance(content, str):
                 content = str(content)
 
+            # Convert score to float for comparison
+            try:
+                score_float = float(score)
+            except (ValueError, TypeError):
+                score_float = 0.0  # Default to low quality if score invalid
+                logger.warning(f"Invalid score type for {doc.get('url', 'unknown')}: {type(score)}, defaulting to 0.0")
+
             # Smart truncation: preserve more content for high-scoring documents
-            if score >= 0.8:  # High-quality document
+            if score_float >= 0.8:  # High-quality document
                 max_content = self.max_doc_length  # Full 12K chars
-            elif score >= 0.5:  # Medium-quality
+            elif score_float >= 0.5:  # Medium-quality
                 max_content = int(self.max_doc_length * 0.75)  # 9K chars
             else:  # Lower-quality
                 max_content = int(self.max_doc_length * 0.5)  # 6K chars

@@ -87,14 +87,13 @@ class ContactFinderNode(BaseResearcher):
                 )
                 logger.info(f"Found {len(documents_found)} documents from web search.")
 
-                # Vet and rank contacts
-                vetted_contacts = self._vet_contacts(documents_found)
-                contact_finder_data = {doc["url"]: doc for doc in vetted_contacts}
+                # Note: Vetting logic removed - the briefing LLM will handle contact filtering
+                # based on actual job titles and roles, not just webpage titles
                 msg.append(
-                    f"\n✓ Vetted and ranked contacts, selected top {len(vetted_contacts)}."
+                    f"\n✓ Collected {len(documents_found)} contact documents for LLM vetting."
                 )
                 logger.info(
-                    f"Vetted and ranked contacts, selected top {len(vetted_contacts)}."
+                    f"Collected {len(documents_found)} contact documents for LLM vetting."
                 )
             else:
                 msg.append(
@@ -170,22 +169,3 @@ class ContactFinderNode(BaseResearcher):
 
         # Modify state in-place and return the full state to preserve pass-through keys
         return state
-
-    def _vet_contacts(self, documents: Dict[str, Any]) -> list:
-        """
-        Vets and ranks contacts based on relevance.
-        """
-        for url, doc in documents.items():
-            title = doc.get("title", "").lower()
-            score = 0
-            if "sustainability" in title:
-                score += 3
-            if "impact" in title:
-                score += 2
-            if "philanthropy" in title:
-                score += 1
-            doc["score"] = score
-
-        vetted_contacts = [doc for doc in documents.values() if doc["score"] > 0]
-        vetted_contacts.sort(key=lambda x: x["score"], reverse=True)
-        return vetted_contacts[:4]

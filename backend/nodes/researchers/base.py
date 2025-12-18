@@ -19,6 +19,41 @@ logger = logging.getLogger(__name__)
 
 
 class BaseResearcher:
+    # Define default search parameters for each analyst type
+    SEARCH_PARAMS_BY_TYPE = {
+        "base_researcher": {
+            "search_depth": "basic",
+            "include_raw_content": False,
+            "max_results": 3,
+        },
+        "news_signal": {
+            "search_depth": "advanced",
+            "include_raw_content": False,
+            "max_results": 10,
+            "topic": "news",
+        },
+        "flw_analyzer": {
+            "search_depth": "advanced",
+            "include_raw_content": False,
+            "max_results": 4,
+        },
+        "company_brief": {
+            "search_depth": "basic",
+            "include_raw_content": True,
+            "max_results": 4,
+        },
+        "contact_finder": {
+            "search_depth": "basic",
+            "include_raw_content": False,
+            "max_results": 3,
+        },
+        "engagement_finder": {
+            "search_depth": "basic",
+            "include_raw_content": False,
+            "max_results": 3,
+        },
+    }
+
     def __init__(self):
         # Get appropriate client from config
         self.tavily_client = config.get_tavily_client()
@@ -267,36 +302,10 @@ class BaseResearcher:
             except Exception as e:
                 logger.warning(f"Failed to load local context directories: {e}")
 
-        # Prepare all search parameters upfront (only if not local-only)
-        search_params = {
-            "search_depth": "basic",
-            "include_raw_content": False,
-            "max_results": 3,
-        }
-
-        # Customize search parameters based on analyst type
-        if self.analyst_type == "news_signal":
-            search_params.update(
-                {
-                    "topic": "news",
-                    "search_depth": "advanced",  # More depth for news
-                    "max_results": 10,  # More results for news
-                }
-            )
-        elif self.analyst_type == "flw_analyzer":
-            search_params.update(
-                {
-                    "search_depth": "advanced",  # More depth for ESG/sustainability
-                    "max_results": 4,  # More results for comprehensive analysis
-                }
-            )
-        elif self.analyst_type == "company_brief":
-            search_params.update(
-                {
-                    "max_results": 4,  # More results for company overview
-                    "include_raw_content": True,  # Get full content for better analysis
-                }
-            )
+        # Get search parameters for this analyst type from configuration
+        search_params = self.SEARCH_PARAMS_BY_TYPE.get(
+            self.analyst_type, self.SEARCH_PARAMS_BY_TYPE["base_researcher"]
+        ).copy()  # Copy to avoid modifying the original
 
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(
