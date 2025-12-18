@@ -13,9 +13,18 @@ from prometheus_client import start_http_server
 import httpx
 
 # Load environment variables from .env file FIRST, before any backend imports
-env_path = Path(__file__).parent / '.env'
-if env_path.exists():
+# Check if ENV_FILE environment variable is set (for Cloud Run secret mounting)
+env_file_from_env = os.getenv('ENV_FILE')
+if env_file_from_env and Path(env_file_from_env).exists():
+    env_path = Path(env_file_from_env)
     load_dotenv(dotenv_path=env_path, override=True)
+    print(f"✅ Loaded environment variables from {env_path}")
+else:
+    # Fall back to local .env file
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=True)
+        print(f"✅ Loaded environment variables from local .env")
 
 from backend.utils.monitoring import metrics_collector, performance_monitor, setup_logging
 from backend.utils.status_constants import ResearchStatus
