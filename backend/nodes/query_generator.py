@@ -35,47 +35,54 @@ class QueryGeneratorNode:
 
         logger.info(f"Generating all queries for {company}...")
 
-        # --- FIX: Changed keys to match the 'analyst_type' in researcher nodes ---
+        # --- PRIORITY-BASED QUERY DISTRIBUTION ---
         system_prompt = """
         You are an expert research analyst for ReFED, an organization focused on
         ending food loss and waste. Your task is to generate a JSON object
         containing lists of search queries for a corporate research agent.
-        You must provide exactly 4 search queries for each of the 5 categories.
+
+        IMPORTANT: Generate queries according to these specific counts:
+        - company_brief: 4 queries
+        - flw_analyzer: 6 queries (EXPANDED - ReFED's core mission)
+        - news_signal: 5 queries (EXPANDED - time-sensitive coverage)
+        - engagement_finder: 5 queries (EXPANDED - partnership opportunities)
+        - contact_finder: 3 queries (REDUCED - simpler extraction task)
+
         The output MUST be a valid JSON object with only these 5 keys:
         "company_brief", "news_signal", "flw_analyzer", "contact_finder", "engagement_finder".
         """
 
         user_prompt = f"""
-        Generate exactly 4 search queries for each category for the company: "{company}"
-        (Industry: {industry}). Current year is {current_year}.
+        Generate search queries for the company: "{company}" (Industry: {industry}).
+        Current year is {current_year}.
 
         1.  **company_brief**: (4 queries)
             * Focus on high-level financial health and core business.
             * Include 1-2 queries for 'ballpark annual revenue' or 'major financial health signals' for {current_year - 1} or {current_year}.
             * Include 2-3 queries on 'core products and services' or 'primary business model'.
 
-        2.  **news_signal**: (4 queries)
-            * Find news from the last 12-18 months (e.g., use "{current_year - 1} {current_year}").
+        2.  **flw_analyzer**: (6 queries - PRIORITY CATEGORY)
+            * Focus on Food Loss & Waste (FLW) and sustainability - ReFED's core mission.
+            * Must include: ESG/Sustainability Report, Annual Impact Report, food waste initiatives, methane reduction, sustainable packaging, circular economy programs.
+            * Example queries: '"{company}" ESG report {current_year - 1}', '"{company}" food waste reduction initiatives', '"{company}" methane emissions goals', '"{company}" sustainable packaging innovation', '"{company}" circular economy {current_year}', '"{company}" food donation program'.
+
+        3.  **news_signal**: (5 queries - EXPANDED)
+            * Find company-specific news from the last 12-18 months (e.g., use "{current_year - 1} {current_year}").
+            * CRITICAL: Every query MUST include the exact company name in quotes (e.g., '"{company}"').
             * Focus on sustainability initiatives, corporate changes, and risk signals.
-            * Include queries for: 'sustainability news', 'food loss and waste initiatives', 'new executive hires' (e.g., VP of Sustainability), and 'layoffs or boycotts'.
+            * Must include: sustainability news, FLW initiatives, executive hires (sustainability roles), risk signals (layoffs/boycotts), corporate announcements.
+            * DO NOT create generic industry queries - every query must be about this specific company.
 
-        3.  **flw_analyzer**: (4 queries)
-            * Focus on Food Loss & Waste (FLW) and sustainability.
-            * Include queries for: 'ESG Report {current_year - 1} {current_year}', 'Annual Impact Report {current_year - 1} {current_year}', methane reduction goals', 'food waste prevention initiatives', 'sustainable packaging', and 'consumer date labeling initiatives'.
+        4.  **engagement_finder**: (5 queries - EXPANDED)
+            * Find external signals for "common ground" and partnership entry points.
+            * Must cover: nonprofit partnerships, coalition memberships, venture investments, solution provider partnerships, policy advocacy.
+            * Example queries: '"{company}" nonprofit partnerships food waste', '"{company}" joins "U.S. Food Loss and Waste 2030 Champions"', '"{company}" foundation grants sustainability', '"{company}" partners Leanpath OR Apeel', '"{company}" supports food donation tax policy'.
 
-        4.  **contact_finder**: (4 queries)
-            * Find relevant mid-to-high-level contacts for corporate outreach.
-            * **Target these specific roles/departments:** "Corporate Social Responsibility", "Social Impact", "Corporate Giving", "Cause Marketing", "Purpose Marketing", "Sustainability", "Philanthropy", "Community Impact", "Community Partnerships", "Community Relations".
-            * **Target these specific levels:** "Manager", "Associate Manager", "Senior Manager", "Director", "Associate Director", "Senior Director", or "Officer" (if a corporate foundation is found).
-            * Create queries combining the company name with these roles and levels.
-
-        5.  **engagement_finder**: (4 queries)
-            * Find a broad and all-encompassing set of external signals for "common ground" and "entry points".
-            * **Query Example 1 (Partnerships/Memberships):** Focus on di
-            rect nonprofit partnerships, coalition memberships (e.g., '"U.S. Food Waste Pact"'), or event sponsorships (e.g., '"ReFED Summit"').
-            * **Query Example 2 (Investment/Innovation):** Look for corporate venture capital (CVC) investments or grants given by their foundation related to sustainability, ag-tech, or food waste. (e.g., '"{company} venture fund" food tech investment').
-            * **Query Example 3 (Supply Chain/Solution Providers):** Search for partnerships with *operational* solution providers. (e.g., '"{company}" partners with Leanpath', '"{company}" adopts Apeel', '"{company}" circular economy supply chain').
-            * **Query Example 4 (Policy/Advocacy/People):** Find public policy statements, advocacy, or key board member affiliations. (e.g., '"{company}" supports food donation policy', '"{company}" board member" nonprofit').
+        5.  **contact_finder**: (3 queries - FOCUSED)
+            * Find relevant mid-to-high-level contacts WHO WORK FOR {company} (not partners/nonprofits).
+            * **Target roles:** CSR, Sustainability, Social Impact, Philanthropy, Community Relations.
+            * **Target levels:** Manager, Director, VP level.
+            * **Critical:** Use LinkedIn-focused queries: '"{company}" "Director of Sustainability" LinkedIn', '"{company}" CSR manager site:linkedin.com', '"{company}" sustainability team contact'.
         """
         # --- END OF MODIFIED PROMPT ---
 

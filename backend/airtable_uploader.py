@@ -44,16 +44,16 @@ def update_airtable_record(record_id: str, fields_to_update: Dict[str, Any]):
                     except TypeError:
                         fields_to_update[field] = [str(value)] if value else []
 
-            # Remove fields with None values and protect the Contacts field
-            fields_to_send_update = {
-                k: v
-                for k, v in fields_to_update.items()
-                if v is not None and k != "Contacts"
-            }  # Never update Contacts field here
+        # Remove fields with None values and protect the Contacts field
+        fields_to_send_update = {
+            k: v
+            for k, v in fields_to_update.items()
+            if v is not None and k != "Contacts"
+        }  # Never update Contacts field here
 
-            logger.info(
-                f"DEBUG: Fields being sent for UPDATE: {fields_to_send_update.keys()}"
-            )
+        logger.info(
+            f"DEBUG: Fields being sent for UPDATE: {fields_to_send_update.keys()}"
+        )
 
         airtable.update(record_id, fields_to_send_update)
         logger.info(

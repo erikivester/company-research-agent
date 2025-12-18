@@ -23,8 +23,18 @@ class Briefing:
     """(v2) Creates polished briefings for each of the 5 v2 research categories."""
 
     def __init__(self) -> None:
-        self.max_doc_length = 8000  # Maximum document content length per doc
-        self.max_total_length = 80000  # Max total characters to send to Gemini
+        self.max_doc_length = 12000  # Increased from 8K for better content preservation
+        self.max_total_length = 150000  # Increased from 80K to support more comprehensive briefings
+
+        # Category-specific context budgets (aligned with query counts and priorities)
+        self.category_budgets = {
+            "company_brief": 35000,    # Core business (4 queries)
+            "flw": 50000,              # PRIORITY: ReFED mission (6 queries - most important!)
+            "news_signal": 35000,      # Time-sensitive coverage (5 queries)
+            "engagement": 35000,       # Partnership opportunities (5 queries)
+            "contact": 20000,          # Contact extraction (3 queries - simpler task)
+        }
+
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         if not self.gemini_key:
             raise ValueError("GEMINI_API_KEY environment variable is not set")
@@ -32,12 +42,12 @@ class Briefing:
         # Configure Gemini
         genai.configure(api_key=self.gemini_key)
         self.gemini_model = genai.GenerativeModel(
-            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",  # COST OPTIMIZATION: Switched from gemini-2.5-flash for 70% cost savings
             generation_config=genai.types.GenerationConfig(
-                temperature=0.1, max_output_tokens=8192  # Max for gemini-2.5-flash
+                temperature=0.1, max_output_tokens=8192  # Max for gemini-2.5-flash-lite
             ),
         )
-        logger.info("Briefing node initialized with Gemini 2.5 Flash model")
+        logger.info("Briefing node initialized with Gemini 2.5 Flash Lite model (cost-optimized, expanded context windows)")
 
     # --- MODIFIED HELPER METHOD to use asyncio.to_thread ---
     async def _update_airtable_status(self, record_id: str, status_text: str):
@@ -121,12 +131,21 @@ Your goal is to extract key business and financial facts from the provided docum
 
 **Instructions:**
 1.  **Format:** Use a simple bulleted list. Do not use headers.
-2.  **Content:** Scan the documents for actionable signals from the last 12-18 months.
-3.  **Tagging:** Start each bullet by tagging the signal type (e.g., `**FLW/Climate Signal:**`, `**Opportunity Signal:**`, `**Risk Signal:**`, `**General News:**`).
-4.  **Include direct quotes:** When relevant, include direct quotes from the source material to support your points.
-5.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
-6.  **Fallback:** If no relevant news or signals are found, output only this message: "No significant news or signals were identified in the provided documents."
-7.  **Be concise:** Do not add any explanations or commentary.
+2.  **Content:** Scan the documents for actionable signals from the last 12-18 months that are DIRECTLY ABOUT {company}.
+3.  **CRITICAL FILTERING:**
+    * ONLY include news items that explicitly mention {company} by name or are clearly about {company}'s own actions, initiatives, or statements.
+    * EXCLUDE generic industry news, competitor news, or news about other companies - even if they operate in the same sector as {company}.
+    * EXCLUDE news that only mentions {company} in passing or in a list with other companies.
+    * If an article discusses {company} AND other companies, only extract the portions specifically about {company}.
+4.  **Tagging:** Start each bullet by tagging the signal type:
+    * `**FLW/Climate Signal:**` - Food Loss & Waste or climate-related initiatives/achievements by {company}
+    * `**Opportunity Signal:**` - New partnerships, programs, or business opportunities for {company}
+    * `**Risk Signal:**` - Challenges, controversies, layoffs, or negative developments at {company}
+    * `**General News:**` - Other significant company developments (executive changes, expansions, acquisitions)
+5.  **Include direct quotes:** When available, include direct quotes from {company} executives, spokespeople, or official statements. Attribute quotes with the speaker's name and title.
+6.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
+7.  **Fallback:** If no relevant news or signals about {company} specifically are found, output only this message: "No significant news or signals about {company} were identified in the provided documents."
+8.  **Be concise:** Do not add any explanations or commentary outside the bulleted items.
 """,
             "flw": f"""As a research analyst for ReFED, a national nonprofit dedicated to ending food loss and waste, create a focused briefing on {company}'s Food Loss & Waste (FLW) and Sustainability efforts. Your analysis should be framed by ReFED's mission to advance data-driven solutions.
 
@@ -145,23 +164,35 @@ Your goal is to extract key business and financial facts from the provided docum
 """,
             "contact": f"""You are a JSON-only contact extractor. You must output ONLY a valid JSON array and nothing else.
 
-For the provided documents about {company}, extract relevant contacts and output them as JSON. Ensure that they are actively working for each company.
+For the provided documents about {company}, extract relevant contacts and output them as JSON.
+
+**CRITICAL VALIDATION REQUIREMENTS:**
+1. ONLY include contacts who are CURRENTLY EMPLOYED BY {company} (the target company)
+2. EXCLUDE contacts from:
+   - Partner organizations, nonprofits, or other companies that {company} works with
+   - Consulting firms, agencies, or vendors
+   - Previous employers (check dates carefully)
+   - Board members unless they are also {company} employees
+3. The contact's employer must be explicitly stated as {company} in the source document
+4. If a person's affiliation is ambiguous or unclear, DO NOT include them
 
 Output Format:
 [
   {{
     "name": "Full Name",
     "title": "Exact Title",
-    "summary": "2-3 sentence summary of role/responsibilities",
+    "company": "{company}",
+    "summary": "2-3 sentence summary of role/responsibilities at {company}"
   }}
 ]
 
 Rules:
 1. Return ONLY raw JSON array - no markdown, no backticks, no explanation text
-2. Include sustainability/impact/CSR/ESG mid-level managers and directors
+2. Include sustainability/impact/CSR/ESG mid-level managers and directors WHO WORK FOR {company}
 3. Skip C-suite unless directly sustainability-related
-4. Return empty array [] if no relevant contacts found
+4. Return empty array [] if no relevant contacts found who actually work for {company}
 5. Ensure output is valid JSON with proper escaping
+6. ALWAYS include the "company" field set to "{company}" for validation
 
 Critical: Output MUST start with [ and end with ] - absolutely no other text or formatting""",
             "engagement": f"""Create an "Engagements & Affiliations" briefing for {company}.
@@ -200,10 +231,16 @@ Critical: Output MUST start with [ and end with ] - absolutely no other text or 
             sorted_items = items  # Fallback to unsorted
 
         # Prepare document text, limiting length
+        # Use category-specific budget for better content distribution
+        category_budget = self.category_budgets.get(category, self.max_total_length)
+
         doc_texts = []
         total_length = 0
         separator = "\n" + "-" * 40 + "\n"
-        for _, doc in sorted_items:
+        docs_included = 0
+        docs_skipped = 0
+
+        for score, doc in sorted_items:
             if not isinstance(doc, dict):
                 logger.warning(
                     f"Skipping non-dictionary item during doc text preparation for {category}."
@@ -215,21 +252,35 @@ Critical: Output MUST start with [ and end with ] - absolutely no other text or 
 
             if not isinstance(content, str):
                 content = str(content)
-            if len(content) > self.max_doc_length:
-                content = content[: self.max_doc_length] + "... [content truncated]"
+
+            # Smart truncation: preserve more content for high-scoring documents
+            if score >= 0.8:  # High-quality document
+                max_content = self.max_doc_length  # Full 12K chars
+            elif score >= 0.5:  # Medium-quality
+                max_content = int(self.max_doc_length * 0.75)  # 9K chars
+            else:  # Lower-quality
+                max_content = int(self.max_doc_length * 0.5)  # 6K chars
+
+            if len(content) > max_content:
+                content = content[:max_content] + "... [content truncated]"
 
             doc_url = doc.get("url", "Unknown Source")
             doc_entry = f"Source URL: {doc_url}\nTitle: {title}\n\nContent: {content}"
 
             entry_len = len(doc_entry) + len(separator)
-            if total_length + entry_len < self.max_total_length:
+            if total_length + entry_len < category_budget:
                 doc_texts.append(doc_entry)
                 total_length += entry_len
+                docs_included += 1
             else:
-                logger.warning(
-                    f"Reached max total length ({self.max_total_length} chars). Truncating documents for {category} briefing."
-                )
-                break
+                docs_skipped += 1
+                # Continue checking - might find smaller docs that fit
+                if docs_skipped > 5:  # Stop after skipping 5 docs
+                    break
+
+        logger.info(
+            f"{category} briefing: Included {docs_included} docs ({total_length:,} chars of {category_budget:,} budget). Skipped {docs_skipped} docs."
+        )
 
         if not doc_texts:
             logger.warning(
@@ -288,11 +339,21 @@ Output ONLY the requested markdown content.
                     full_prompt, request_options={"timeout": 300}
                 )
 
+                # Check if response was blocked BEFORE trying to access parts
                 content = ""
-                if response and response.parts:
-                    content = "".join(
-                        part.text for part in response.parts if hasattr(part, "text")
-                    ).strip()
+                if response:
+                    # Check for blocking at the prompt level first
+                    if response.prompt_feedback and response.prompt_feedback.block_reason:
+                        logger.warning(
+                            f"Gemini blocked the {category} briefing prompt. Reason: {response.prompt_feedback.block_reason.name}"
+                        )
+                        content = ""  # Will be handled below
+                    elif response.candidates and len(response.candidates) > 0:
+                        # Safe to access parts now
+                        if response.parts:
+                            content = "".join(
+                                part.text for part in response.parts if hasattr(part, "text")
+                            ).strip()
 
                 if not content:
                     finish_reason_str = "Unknown"
@@ -330,13 +391,77 @@ Output ONLY the requested markdown content.
                     except Exception as e:
                         finish_reason_str = f"Could not determine finish reason ({e})"
 
-                    # Special handling for MAX_TOKENS - retry with concise instruction
-                    if "MAX_TOKENS" in finish_reason_str.upper() and attempt < retries - 1:
+                    # Special handling for BLOCKED responses - retry with fewer/different documents
+                    if "BLOCKED" in finish_reason_str.upper() and attempt < retries - 1:
                         logger.warning(
-                            f"Hit MAX_TOKENS for {category} briefing on attempt {attempt + 1}. Retrying with concise instruction..."
+                            f"Gemini blocked {category} briefing (reason: {finish_reason_str}). Reducing document set and retrying..."
                         )
-                        # Add concise instruction to the prompt and retry
-                        full_prompt += "\n\n**CRITICAL: This response MUST be very concise and fit within 6000 tokens. Prioritize the most important information.**"
+                        # For blocked content, reduce more aggressively and skip controversial-looking docs
+                        # This typically happens with news articles about layoffs, boycotts, CEO changes, etc.
+                        reduced_doc_count = max(1, len(doc_texts) // 3)  # More aggressive reduction
+                        doc_texts = doc_texts[:reduced_doc_count]
+                        logger.info(f"Reduced to {reduced_doc_count} documents to avoid safety filters")
+
+                        # Regenerate prompt with fewer documents
+                        if category == "contact":
+                            full_prompt = f"""{prompt_template}
+
+---
+Documents for Analysis:
+{separator.join(doc_texts)}
+---"""
+                        else:
+                            full_prompt = f"""{prompt_template}
+
+---
+Documents for Analysis:
+{separator.join(doc_texts)}
+---
+
+**Polishing Instructions:**
+As you write the briefing, ensure clean markdown, remove any redundancies, and write in clear, professional language.
+This briefing will be used directly in a report, so do not include any preamble, conversation, or meta-commentary.
+Output ONLY the requested markdown content.
+
+**IMPORTANT: Focus on factual, neutral reporting. Avoid sensitive topics like boycotts or controversies.**
+"""
+                        await asyncio.sleep(delay)
+                        delay *= 2
+                        continue  # Retry the loop
+
+                    # Special handling for MAX_TOKENS - retry with reduced documents
+                    elif "MAX_TOKENS" in finish_reason_str.upper() and attempt < retries - 1:
+                        logger.warning(
+                            f"Hit MAX_TOKENS for {category} briefing on attempt {attempt + 1}. Reducing document set and retrying..."
+                        )
+                        # Reduce document set to top 50% and regenerate prompt
+                        reduced_doc_count = max(1, len(doc_texts) // 2)
+                        doc_texts = doc_texts[:reduced_doc_count]
+                        logger.info(f"Reduced to {reduced_doc_count} documents (from {len(doc_texts)*2})")
+
+                        # Regenerate prompt with fewer documents
+                        if category == "contact":
+                            full_prompt = f"""{prompt_template}
+
+---
+Documents for Analysis:
+{separator.join(doc_texts)}
+---"""
+                        else:
+                            full_prompt = f"""{prompt_template}
+
+---
+Documents for Analysis:
+{separator.join(doc_texts)}
+---
+
+**Polishing Instructions:**
+As you write the briefing, ensure clean markdown, remove any redundancies, and write in clear, professional language.
+This briefing will be used directly in a report, so do not include any preamble, conversation, or meta-commentary.
+Output ONLY the requested markdown content.
+
+**CRITICAL: This response MUST be concise and fit within output limits. Prioritize the most important information.**
+"""
                         await asyncio.sleep(delay)
                         delay *= 2
                         continue  # Retry the loop

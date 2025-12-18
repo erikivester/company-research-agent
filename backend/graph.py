@@ -109,14 +109,16 @@ async def simple_report_compiler_node(state: ResearchState) -> ResearchState:
 class Graph:
     async def run(self, **kwargs):
         """
-        Run the workflow graph, yielding the final state as expected by application.py.
+        Run the workflow graph, yielding full state snapshots at each node.
+        Uses astream(mode="values") to get complete state instead of deltas.
         Accepts keyword arguments to pass as the initial state or config.
         """
         # If thread is passed (as in application.py), use it as the initial state/config
         # Otherwise, use self.input_state as the default
         initial_state = kwargs.get("thread", self.input_state)
-        # Try to run the workflow and yield the result
-        async for s in self.app.astream(initial_state):
+        # Use mode="values" to yield full state snapshots instead of deltas/updates
+        # This ensures all keys from previous nodes are preserved
+        async for s in self.app.astream(initial_state, mode="values"):
             yield s
     def _build_workflow(self):
         """Configure the state graph workflow (v2)"""
@@ -269,14 +271,61 @@ class Graph:
                 await asyncio.to_thread(update_airtable_record, record_id, {'Research Status': ResearchStatus.COMPILING_REPORT})
                 logger.info(f"Updated Airtable status to 'Compiling Report' for record {record_id}")
 
-            # --- 1. Google Drive Executive Summary PDF Upload ---
+            # --- 1. Google Drive Uploads (JSON + PDF) ---
             google_drive_folder_url = state.get("google_drive_folder_url")
             if google_drive_folder_url:
-                logger.info(f"Google Drive URL found. Preparing executive summary PDF for upload...")
+                logger.info(f"Google Drive URL found. Preparing files for upload...")
+                from backend.utils.gdrive_uploader import upload_context_to_gdrive
+
+                gdrive_upload_results = {}
+
+                # 1a. Upload JSON research file
+                try:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    json_filename = f"{company_name.lower().replace(' ', '_')}_research_{timestamp}.json"
+
+                    # Prepare research data dictionary
+                    research_json = {
+                        "company": company_name,
+                        "website": state.get("website", ""),
+                        "hq_location": state.get("hq_location", ""),
+                        "job_id": job_id,
+                        "timestamp": timestamp,
+                        "industries": state.get("airtable_industries", []),
+                        "country_region": state.get("airtable_country_region", []),
+                        "revenue_band": state.get("airtable_revenue_band_est", []),
+                        "refed_alignment": state.get("airtable_refed_alignment", []),
+                        "briefings": {
+                            "company_brief": state.get("company_brief_briefing", ""),
+                            "flw_sustainability": state.get("flw_sustainability_briefing", ""),
+                            "news_signals": state.get("news_signal_briefing", ""),
+                            "engagement": state.get("engagement_briefing", ""),
+                            "contacts": state.get("contact_briefing", ""),
+                        },
+                        "executive_summary": state.get("executive_summary", ""),
+                        "references": state.get("references", []),
+                        "reference_info": state.get("reference_info", {}),
+                        "reference_titles": state.get("reference_titles", {}),
+                    }
+
+                    await upload_context_to_gdrive(
+                        research_json,
+                        google_drive_folder_url,
+                        json_filename,
+                        'application/json'
+                    )
+                    logger.info(f"✅ Successfully uploaded JSON research file to Google Drive: {json_filename}")
+                    gdrive_upload_results['json_file'] = json_filename
+                except Exception as json_exc:
+                    logger.error(f"Failed to upload JSON research file to Google Drive: {json_exc}", exc_info=True)
+                    state.setdefault("messages", []).append(
+                        AIMessage(content=f"⚠️ Failed to upload JSON to Google Drive: {json_exc}")
+                    )
+
+                # 1b. Upload executive summary PDF
                 pdf_path = state.get("executive_summary_pdf_file")
                 if pdf_path and os.path.exists(pdf_path):
                     try:
-                        from backend.utils.gdrive_uploader import upload_context_to_gdrive
                         # Use the filename from the path
                         pdf_filename = os.path.basename(pdf_path)
                         # Open the PDF file and upload
@@ -288,7 +337,7 @@ class Graph:
                                 'application/pdf'
                             )
                         logger.info(f"✅ Successfully uploaded executive summary PDF to Google Drive: {pdf_filename}")
-                        state['gdrive_uploads'] = {'pdf_file': pdf_filename}
+                        gdrive_upload_results['pdf_file'] = pdf_filename
                         # Optionally, delete the temp file after upload
                         try:
                             os.remove(pdf_path)
@@ -302,8 +351,12 @@ class Graph:
                         )
                 else:
                     logger.warning("No executive summary PDF file found in state, skipping PDF upload.")
+
+                # Store upload results
+                if gdrive_upload_results:
+                    state['gdrive_uploads'] = gdrive_upload_results
             else:
-                logger.info("No Google Drive URL provided in state, skipping PDF upload.")
+                logger.info("No Google Drive URL provided in state, skipping file uploads.")
 
             # --- 2. Airtable Upload Preparation ---
             # Build Process Notes
@@ -379,7 +432,12 @@ class Graph:
             logger.info(f"DEBUG: Data prepared for Airtable: {loggable_report_data}")
 
             # Step 1: Upload main company record
-            upload_result = upload_to_airtable(report_data, job_id, record_id)
+            upload_result = await asyncio.to_thread(
+                upload_to_airtable,
+                report_data,
+                job_id,
+                record_id
+            )
             logger.info(f"Airtable upload result: {upload_result}")
 
             # Step 2: If company upload successful, process contacts
@@ -417,6 +475,11 @@ class Graph:
 
         except Exception as e:
             logger.error(f"Error during Airtable upload node: {e}", exc_info=True)
+            state.setdefault("messages", []).append(
+                AIMessage(content=f"⚠️ Airtable upload node failed: {str(e)}")
+            )
+            # CRITICAL: Return state even on error to prevent graph termination
+            return state
 
         return state
 

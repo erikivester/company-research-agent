@@ -13,6 +13,7 @@ from ...classes import ResearchState
 from ...config import config
 from ...utils.mock_tavily import MockTavilyClient
 from ...utils.references import clean_title
+from ...utils.rate_limiter import tavily_limiter  # NEW: Global rate limiter
 
 logger = logging.getLogger(__name__)
 
@@ -355,8 +356,12 @@ class BaseResearcher:
                 if "news" in query.lower():
                     query_params["topic"] = "news"
 
-                # Create search task
-                task = self.tavily_client.search(query, **query_params)
+                # Create rate-limited search task
+                async def rate_limited_search(q, params):
+                    await tavily_limiter.acquire()  # Wait for rate limit token
+                    return await self.tavily_client.search(q, **params)
+
+                task = rate_limited_search(query, query_params)
                 search_tasks.append((query, task))
                 logger.debug(
                     f"Created search task for query '{query}' with params: {query_params}"

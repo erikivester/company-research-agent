@@ -1,8 +1,9 @@
 # backend/nodes/enricher.py
 import asyncio
 import logging
+import random
 from typing import Any, Dict, List
-from urllib.parse import urlparse  # <-- NEW: Import urlparse
+from urllib.parse import urlparse
 
 from langchain_core.messages import AIMessage
 
@@ -11,6 +12,7 @@ from backend.airtable_uploader import update_airtable_record
 from ..classes import ResearchState
 from ..config import config
 from ..utils.status_constants import ResearchStatus
+from ..utils.rate_limiter import tavily_limiter  # NEW: Global rate limiter
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +23,35 @@ class Enricher:
     def __init__(self) -> None:
         # Use config to get the appropriate Tavily client (mock or real)
         self.tavily_client = config.get_tavily_client()
-        self.batch_size = 20  # Number of URLs to fetch in parallel per batch
-        self.semaphore_limit = 10  # Max concurrent requests to Tavily API
 
-        # --- NEW: Define domains that are known to fail extraction ---
+        # --- IMPROVED: Batch processing configuration ---
+        self.batch_size = 5  # Process URLs in smaller batches
+        self.batch_delay = 3.0  # Delay between batches (seconds)
+        self.semaphore_limit = 5  # Reduced concurrent requests per batch
+        # --- END IMPROVED ---
+
+        # --- IMPROVED: Timeout configuration per category ---
+        self.timeout_budgets = {
+            "company": 25,  # Financial sites can be slow
+            "news": 20,
+            "contact": 15,  # Contact sites usually faster
+            "flw": 30,  # ESG/sustainability reports can be large
+            "engagement": 20,
+        }
+        self.default_timeout = 20  # Fallback timeout
+        # --- END IMPROVED ---
+
+        # --- IMPROVED: Retry configuration ---
+        self.max_retries = 4  # Increased from 3
+        self.base_retry_delay = 2  # Base delay for exponential backoff
+        self.max_retry_delay = 60  # Cap on retry delay
+        # --- END IMPROVED ---
+
+        # --- MEMORY OPTIMIZATION: Content size limit ---
+        self.max_content_length = 50000  # 50KB limit per document to prevent memory bloat
+        # --- END MEMORY OPTIMIZATION ---
+
+        # --- Define domains that are known to fail extraction ---
         self.BLOCKLIST_DOMAINS = {
             "linkedin.com",
             "www.linkedin.com",
@@ -38,8 +65,27 @@ class Enricher:
             "www.zoominfo.com",
             "facebook.com",
             "www.facebook.com",
+            # Additional commonly failing domains from logs
+            "stockanalysis.com",
+            "rocketreach.co",
+            "stockrow.com",
+            # --- NEW: Domains with anti-scraping/JS protection (from production logs) ---
+            "newsweek.com",
+            "www.newsweek.com",
+            "supplychaindigital.com",
+            "www.supplychaindigital.com",
+            "tracxn.com",
+            "www.tracxn.com",
+            "refrigeratedfrozenfood.com",
+            "www.refrigeratedfrozenfood.com",
+            "tricitiesbusinessnews.com",
+            "www.tricitiesbusinessnews.com",
+            # Government sites that block scrapers
+            "dol.gov",
+            "www.dol.gov",
+            # --- END NEW DOMAINS ---
         }
-        # --- END NEW ---
+        # --- END BLOCKLIST ---
 
     async def fetch_single_content(
         self,
@@ -47,11 +93,20 @@ class Enricher:
         websocket_manager=None,
         job_id=None,
         category=None,
-        retries: int = 3,
-        retry_delay: int = 2,
+        retries: int = None,
+        retry_delay: int = None,
     ) -> Dict[str, Any]:
-        """Fetch raw content for a single URL using the extract method with retries."""
+        """Fetch raw content for a single URL using the extract method with exponential backoff retries."""
         last_error = None
+
+        # Use instance defaults if not provided
+        if retries is None:
+            retries = self.max_retries
+        if retry_delay is None:
+            retry_delay = self.base_retry_delay
+
+        # Get timeout for this category
+        timeout = self.timeout_budgets.get(category, self.default_timeout)
 
         for attempt in range(retries):
             try:
@@ -71,13 +126,28 @@ class Enricher:
                         },
                     )
 
-                # Use Tavily's extract method
-                response = await self.tavily_client.extract(url)
+                # Use Tavily's extract method with explicit timeout
+                # NEW: Apply global rate limiting before API call
+                await tavily_limiter.acquire()
+
+                # Wrap in asyncio.wait_for to enforce timeout budget
+                response = await asyncio.wait_for(
+                    self.tavily_client.extract(url), timeout=timeout
+                )
 
                 # Parse response
                 if response and isinstance(response, dict) and response.get("results"):
                     result_content = response["results"][0].get("raw_content", "")
                     if result_content and result_content.strip():
+                        original_length = len(result_content)
+
+                        # Truncate content if it exceeds max length
+                        if original_length > self.max_content_length:
+                            result_content = result_content[:self.max_content_length]
+                            logger.info(
+                                f"Truncated content from {url}: {original_length} -> {self.max_content_length} chars"
+                            )
+
                         logger.debug(
                             f"Successfully extracted content from {url} (Length: {len(result_content)}) on attempt {attempt + 1}"
                         )
@@ -111,6 +181,21 @@ class Enricher:
                     last_error = "Invalid response from extract API"
                     # Potentially retryable, continue loop
 
+            except asyncio.TimeoutError:
+                last_error = f"Request timed out after {timeout}s"
+                logger.warning(
+                    f"Timeout on attempt {attempt + 1} for {url} (category: {category}, budget: {timeout}s)"
+                )
+                if attempt < retries - 1:
+                    # Exponential backoff with jitter
+                    delay = min(
+                        retry_delay * (2**attempt) + random.uniform(0, 1),
+                        self.max_retry_delay,
+                    )
+                    logger.info(f"Retrying {url} in {delay:.2f} seconds...")
+                    await asyncio.sleep(delay)
+                continue
+
             except Exception as e:
                 last_error = str(e)
                 logger.error(
@@ -118,16 +203,26 @@ class Enricher:
                     exc_info=True,
                 )
                 if attempt < retries - 1:
-                    logger.info(f"Retrying {url} in {retry_delay} seconds...")
-                    await asyncio.sleep(retry_delay)
+                    # Exponential backoff with jitter
+                    delay = min(
+                        retry_delay * (2**attempt) + random.uniform(0, 1),
+                        self.max_retry_delay,
+                    )
+                    logger.info(f"Retrying {url} in {delay:.2f} seconds...")
+                    await asyncio.sleep(delay)
                 continue  # Go to next attempt
 
             # If we got a bad response but didn't raise an exception, wait before retrying
             if attempt < retries - 1:
-                logger.info(
-                    f"Retrying {url} due to bad response in {retry_delay} seconds..."
+                # Exponential backoff with jitter for bad responses too
+                delay = min(
+                    retry_delay * (2**attempt) + random.uniform(0, 1),
+                    self.max_retry_delay,
                 )
-                await asyncio.sleep(retry_delay)
+                logger.info(
+                    f"Retrying {url} due to bad response in {delay:.2f} seconds..."
+                )
+                await asyncio.sleep(delay)
 
         # If all retries fail, send final error status
         error_msg = last_error or "Unknown extraction error"
@@ -152,35 +247,76 @@ class Enricher:
     async def fetch_raw_content(
         self, urls: List[str], websocket_manager=None, job_id=None, category=None
     ) -> Dict[str, Any]:
-        """Fetch raw content for multiple URLs in parallel with rate limiting."""
+        """Fetch raw content for multiple URLs in batches with rate limiting and delays."""
         if not urls:
             return {}
 
+        total_urls = len(urls)
         logger.info(
-            f"Fetching content for {len(urls)} URLs (category: {category}) with a concurrency limit of {self.semaphore_limit}."
+            f"Fetching content for {total_urls} URLs (category: {category}) in batches of {self.batch_size} with {self.semaphore_limit} concurrent requests per batch."
         )
 
-        semaphore = asyncio.Semaphore(self.semaphore_limit)
-
-        async def fetch_with_semaphore(url: str):
-            async with semaphore:
-                return await self.fetch_single_content(
-                    url, websocket_manager, job_id, category
-                )
-
-        tasks = [fetch_with_semaphore(url) for url in urls]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
         raw_contents = {}
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Unhandled exception during content fetching: {result}")
-            elif isinstance(result, dict):
-                raw_contents.update(result)
-            else:
-                logger.warning(
-                    f"Unexpected result type in content fetching: {type(result)}"
+
+        # Process URLs in batches
+        for batch_num, batch_start in enumerate(
+            range(0, total_urls, self.batch_size), start=1
+        ):
+            batch_end = min(batch_start + self.batch_size, total_urls)
+            batch_urls = urls[batch_start:batch_end]
+            batch_count = len(batch_urls)
+
+            logger.info(
+                f"Processing batch {batch_num} ({batch_count} URLs) for category {category}"
+            )
+
+            if websocket_manager and job_id:
+                await websocket_manager.send_status_update(
+                    job_id=job_id,
+                    status="batch_processing",
+                    message=f"Processing batch {batch_num} ({batch_count} URLs) for {category}",
+                    result={
+                        "step": "Enriching",
+                        "category": category,
+                        "batch": batch_num,
+                        "batch_size": batch_count,
+                    },
                 )
+
+            # Create semaphore for this batch
+            semaphore = asyncio.Semaphore(self.semaphore_limit)
+
+            async def fetch_with_semaphore(url: str):
+                async with semaphore:
+                    return await self.fetch_single_content(
+                        url, websocket_manager, job_id, category
+                    )
+
+            # Process batch concurrently
+            tasks = [fetch_with_semaphore(url) for url in batch_urls]
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Collect results from this batch
+            for result in batch_results:
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Unhandled exception during content fetching: {result}"
+                    )
+                elif isinstance(result, dict):
+                    raw_contents.update(result)
+                else:
+                    logger.warning(
+                        f"Unexpected result type in content fetching: {type(result)}"
+                    )
+
+            # Add delay between batches (except after the last batch)
+            if batch_end < total_urls:
+                logger.info(
+                    f"Batch {batch_num} complete. Waiting {self.batch_delay}s before next batch..."
+                )
+                await asyncio.sleep(self.batch_delay)
+            else:
+                logger.info(f"Batch {batch_num} complete (final batch).")
 
         # --- Count Success/Failure ---
         successful_fetches = sum(
@@ -188,10 +324,10 @@ class Enricher:
             for url, content in raw_contents.items()
             if content and not isinstance(content, dict)
         )
-        failed_fetches = len(urls) - successful_fetches
+        failed_fetches = total_urls - successful_fetches
 
         logger.info(
-            f"Finished fetching content for {category}: {successful_fetches} successful, {failed_fetches} failed out of {len(urls)} URLs."
+            f"Finished fetching content for {category}: {successful_fetches} successful, {failed_fetches} failed out of {total_urls} URLs."
         )
         # --- End Count ---
 
@@ -338,19 +474,32 @@ class Enricher:
                                 isinstance(fetch_result, dict)
                                 and "error" in fetch_result
                             ):
-                                error_count += 1
-                                error_msg = (
-                                    fetch_result.get("error", "Content fetch failed")
-                                    if isinstance(fetch_result, dict)
-                                    else "Content fetch failed"
-                                )
-                                # Add error info to the specific document in the main dict
-                                task["all_curated_docs"][url][
-                                    "enrichment_error"
-                                ] = error_msg
-                                logger.warning(
-                                    f"Failed to enrich {url} for {task['category']}: {error_msg}"
-                                )
+                                # --- NEW: Fallback to existing search snippet on extraction failure ---
+                                existing_snippet = task["all_curated_docs"][url].get("content", "")
+                                if existing_snippet and existing_snippet.strip():
+                                    # Use the search snippet as fallback content
+                                    task["all_curated_docs"][url]["raw_content"] = existing_snippet
+                                    task["all_curated_docs"][url]["enrichment_note"] = "Using search snippet (extraction failed)"
+                                    enriched_count += 1  # Count as successful (we have usable content)
+                                    logger.info(
+                                        f"Extraction failed for {url}, using existing search snippet ({len(existing_snippet)} chars)"
+                                    )
+                                else:
+                                    # No fallback available, record the error
+                                    error_count += 1
+                                    error_msg = (
+                                        fetch_result.get("error", "Content fetch failed")
+                                        if isinstance(fetch_result, dict)
+                                        else "Content fetch failed"
+                                    )
+                                    # Add error info to the specific document in the main dict
+                                    task["all_curated_docs"][url][
+                                        "enrichment_error"
+                                    ] = error_msg
+                                    logger.warning(
+                                        f"Failed to enrich {url} for {task['category']}: {error_msg} (no search snippet available)"
+                                    )
+                                # --- END NEW FALLBACK LOGIC ---
                             # Check if fetch succeeded (result is a non-empty string)
                             elif isinstance(fetch_result, str) and fetch_result.strip():
                                 task["all_curated_docs"][url][
@@ -358,14 +507,27 @@ class Enricher:
                                 ] = fetch_result
                                 enriched_count += 1
                             else:  # Handle empty string or unexpected type
-                                error_count += 1
-                                error_msg = "Content missing or empty after fetch"
-                                task["all_curated_docs"][url][
-                                    "enrichment_error"
-                                ] = error_msg
-                                logger.warning(
-                                    f"Content issue for {url} in {task['category']} post-fetch. Result: {fetch_result}"
-                                )
+                                # --- NEW: Fallback to search snippet on empty extraction ---
+                                existing_snippet = task["all_curated_docs"][url].get("content", "")
+                                if existing_snippet and existing_snippet.strip():
+                                    # Use the search snippet as fallback content
+                                    task["all_curated_docs"][url]["raw_content"] = existing_snippet
+                                    task["all_curated_docs"][url]["enrichment_note"] = "Using search snippet (empty extraction)"
+                                    enriched_count += 1  # Count as successful
+                                    logger.info(
+                                        f"Empty extraction for {url}, using existing search snippet ({len(existing_snippet)} chars)"
+                                    )
+                                else:
+                                    # No fallback available
+                                    error_count += 1
+                                    error_msg = "Content missing or empty after fetch"
+                                    task["all_curated_docs"][url][
+                                        "enrichment_error"
+                                    ] = error_msg
+                                    logger.warning(
+                                        f"Content issue for {url} in {task['category']} post-fetch. Result: {fetch_result} (no search snippet available)"
+                                    )
+                                # --- END NEW FALLBACK LOGIC ---
                         else:
                             logger.warning(
                                 f"URL {url} from fetch task not found in current curated docs for {task['category']}."

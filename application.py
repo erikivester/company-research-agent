@@ -169,8 +169,21 @@ class PDFGenerationRequest(BaseModel):
 # 🟢 CONCURRENCY CONTROL SETUP
 # ----------------------------------------------------
 # Define the maximum number of research jobs allowed to run concurrently.
-MAX_CONCURRENT_JOBS = 5 
+# CONSERVATIVE: Set to 3 to ensure high-quality research with ample API quota per job
+# With rate limiting (80 Tavily RPM), 3 concurrent jobs get ~27 RPM each
+# This prevents API throttling and ensures each job completes quickly with full data
+# Memory estimate: 3 jobs × ~80-120MB = 240-360MB peak (very safe)
+MAX_CONCURRENT_JOBS = 3
 job_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+
+# Track job queue metrics
+job_queue_stats = {
+    "total_queued": 0,
+    "total_completed": 0,
+    "total_failed": 0,
+    "current_running": 0,
+    "peak_concurrent": 0,
+}
 
 # ----------------------------------------------------
 # 🟢 SEMAPHORE WRAPPER FOR BACKGROUND TASK
@@ -202,40 +215,68 @@ def _log_task_exception(task):
 
 
 async def run_job_with_semaphore(
-    job_id: str, 
-    data: ResearchRequest, 
-    airtable_record_id: str | None, 
+    job_id: str,
+    data: ResearchRequest,
+    airtable_record_id: str | None,
     google_drive_folder_url: str | None,
     use_local_context: bool = False  # <-- NEW: flag from Airtable
 ):
-    """Acquire semaphore, run research logic, release semaphore."""
+    """Acquire semaphore, run research logic, release semaphore with metrics tracking."""
     import sys
+
+    # Track queue position
+    job_queue_stats["total_queued"] += 1
+    queue_position = job_queue_stats["total_queued"]
+
     try:
-        print(f"\n🚀 STARTING JOB: {job_id} for {data.company}", flush=True)
+        print(f"\n🚀 STARTING JOB: {job_id} for {data.company} (Queue #{queue_position})", flush=True)
+
         # Acquire semaphore
         await job_semaphore.acquire()
+
+        # Update metrics
+        job_queue_stats["current_running"] += 1
+        job_queue_stats["peak_concurrent"] = max(
+            job_queue_stats["peak_concurrent"],
+            job_queue_stats["current_running"]
+        )
+
         print(f"✅ Semaphore acquired for {data.company}", flush=True)
         logger.info(f"🚀 SEMAPHORE ACQUIRED: Job {job_id} starting research for {data.company}")
-        logger.info(f"   Slots remaining: {job_semaphore._value}/{MAX_CONCURRENT_JOBS}")
+        logger.info(f"   Running: {job_queue_stats['current_running']}/{MAX_CONCURRENT_JOBS}, Queued: {queue_position}, Peak: {job_queue_stats['peak_concurrent']}")
         sys.stdout.flush()
 
         try:
             logger.info(f"🔍 Starting research pipeline for {data.company}...")
             sys.stdout.flush()
             await process_research(job_id, data, airtable_record_id, google_drive_folder_url, use_local_context)
+
+            # Track success
+            job_queue_stats["total_completed"] += 1
+            logger.info(f"✅ Job {job_id} completed successfully. Total completed: {job_queue_stats['total_completed']}")
+
         except Exception as e:
             logger.error(f"❌ Job {job_id} failed during execution: {e}", exc_info=True)
+            job_queue_stats["total_failed"] += 1
             metrics_collector.track_error("job_execution")
+
         finally:
+            # Always release resources
             job_semaphore.release()
-            logger.info(f"✅ SEMAPHORE RELEASED: Job {job_id} finished. {job_semaphore._value} slots available.")
+            job_queue_stats["current_running"] -= 1
+
+            logger.info(f"✅ SEMAPHORE RELEASED: Job {job_id} finished. Running: {job_queue_stats['current_running']}/{MAX_CONCURRENT_JOBS}")
             sys.stdout.flush()
+
     except Exception as e:
         logger.error(f"💥 CRITICAL ERROR in run_job_with_semaphore for job {job_id}: {e}", exc_info=True)
+        job_queue_stats["total_failed"] += 1
         sys.stdout.flush()
+
         # Best-effort release
         try:
             job_semaphore.release()
+            job_queue_stats["current_running"] = max(0, job_queue_stats["current_running"] - 1)
         except Exception:
             pass
 
@@ -939,11 +980,36 @@ async def metrics():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
+    """
+    Health check endpoint for monitoring.
+    Returns system health, uptime, queue status, and API rate limit usage.
+    """
+    # Calculate queue health
+    slots_available = job_semaphore._value
+    utilization = ((MAX_CONCURRENT_JOBS - slots_available) / MAX_CONCURRENT_JOBS) * 100
+
+    # Get rate limiter stats
+    from backend.utils.rate_limiter import get_all_limiter_stats
+    rate_limiter_stats = get_all_limiter_stats()
+
     return {
         "status": "healthy",
         "uptime": str(performance_monitor.get_uptime()),
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "queue": {
+            "slots_available": slots_available,
+            "max_concurrent": MAX_CONCURRENT_JOBS,
+            "utilization_percent": round(utilization, 1),
+            "current_running": job_queue_stats["current_running"],
+            "total_queued": job_queue_stats["total_queued"],
+            "total_completed": job_queue_stats["total_completed"],
+            "total_failed": job_queue_stats["total_failed"],
+            "peak_concurrent": job_queue_stats["peak_concurrent"],
+            "success_rate": round(
+                (job_queue_stats["total_completed"] / max(job_queue_stats["total_queued"], 1)) * 100, 1
+            ) if job_queue_stats["total_queued"] > 0 else 0
+        },
+        "api_rate_limits": rate_limiter_stats
     }
 
 def start():

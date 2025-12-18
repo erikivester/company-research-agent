@@ -111,73 +111,81 @@ class ExecutiveSummaryNode:
             # Store in state
             state["executive_summary_text"] = summary
 
-            # Generate PDF from the summary
-            pdf_path = None  # Initialize pdf_path to None
-            try:
-                from datetime import datetime
+            # PDF GENERATION TEMPORARILY DISABLED FOR COST SAVINGS
+            # Uncomment below to re-enable PDF generation
+            # ---
+            # # Generate PDF from the summary
+            # pdf_path = None  # Initialize pdf_path to None
+            # try:
+            #     from datetime import datetime
+            #
+            #     # Save PDF to a temp file in the pdfs directory
+            #     pdfs_dir = os.path.join(
+            #         os.path.dirname(os.path.abspath(__file__)), "../../pdfs"
+            #     )
+            #     os.makedirs(pdfs_dir, exist_ok=True)
+            #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            #     pdf_filename = f"executive_summary_{company.replace(' ', '_').lower()}_{timestamp}.pdf"
+            #     pdf_path = os.path.join(pdfs_dir, pdf_filename)
+            #     with open(pdf_path, "wb") as f:
+            #         pdf_buffer = io.BytesIO()
+            #         create_executive_summary_pdf(summary, company, pdf_buffer)
+            #         pdf_buffer.seek(0)
+            #         f.write(pdf_buffer.read())
+            #
+            #     logger.info(
+            #         f"Successfully generated executive summary PDF at {pdf_path}"
+            #     )
+            # except Exception as pdf_err:
+            #     logger.error(
+            #         f"Failed to generate PDF from summary: {pdf_err}", exc_info=True
+            #     )
+            #     pdf_path = None  # Ensure pdf_path is None on failure
+            #
+            # state["executive_summary_pdf_file"] = pdf_path
+            #
+            # # Also update final_summary for PDF generation
+            # state["final_summary"] = {"markdown_report": summary}
+            #
+            # # Define PDF output path
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # pdf_filename = (
+            #     f"executive_summary_{company.replace(' ', '_')}_{timestamp}.pdf"
+            # )
+            # pdf_output_dir = os.path.join(
+            #     os.getcwd(), "pdfs"
+            # )  # Save to the 'pdfs' directory in the root
+            # os.makedirs(pdf_output_dir, exist_ok=True)
+            # pdf_output_path = os.path.join(pdf_output_dir, pdf_filename)
+            # logger.info(f"DEBUG: Attempting to generate PDF at: {pdf_output_path}")
+            #
+            # # Generate the PDF
+            # try:
+            #     create_executive_summary_pdf(
+            #         markdown_content=summary,
+            #         company_name=company,
+            #         output_path=pdf_output_path,
+            #     )
+            #     state["executive_summary_pdf_file"] = pdf_output_path
+            #     logger.info(
+            #         f"Successfully generated executive summary PDF: {pdf_output_path}"
+            #     )
+            # except Exception as pdf_e:
+            #     logger.error(
+            #         f"Error generating executive summary PDF: {pdf_e}", exc_info=True
+            #     )
+            #     state["executive_summary_pdf_file"] = (
+            #         None  # Ensure it's None on failure
+            #     )
+            #
+            # logger.info(
+            #     f"DEBUG: PDF path in state after generation attempt: {state.get('executive_summary_pdf_file')}"
+            # )
+            # ---
 
-                # Save PDF to a temp file in the pdfs directory
-                pdfs_dir = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "../../pdfs"
-                )
-                os.makedirs(pdfs_dir, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                pdf_filename = f"executive_summary_{company.replace(' ', '_').lower()}_{timestamp}.pdf"
-                pdf_path = os.path.join(pdfs_dir, pdf_filename)
-                with open(pdf_path, "wb") as f:
-                    pdf_buffer = io.BytesIO()
-                    create_executive_summary_pdf(summary, company, pdf_buffer)
-                    pdf_buffer.seek(0)
-                    f.write(pdf_buffer.read())
-
-                logger.info(
-                    f"Successfully generated executive summary PDF at {pdf_path}"
-                )
-            except Exception as pdf_err:
-                logger.error(
-                    f"Failed to generate PDF from summary: {pdf_err}", exc_info=True
-                )
-                pdf_path = None  # Ensure pdf_path is None on failure
-
-            state["executive_summary_pdf_file"] = pdf_path
-
-            # Also update final_summary for PDF generation
-            state["final_summary"] = {"markdown_report": summary}
-
-            # Define PDF output path
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            pdf_filename = (
-                f"executive_summary_{company.replace(' ', '_')}_{timestamp}.pdf"
-            )
-            pdf_output_dir = os.path.join(
-                os.getcwd(), "pdfs"
-            )  # Save to the 'pdfs' directory in the root
-            os.makedirs(pdf_output_dir, exist_ok=True)
-            pdf_output_path = os.path.join(pdf_output_dir, pdf_filename)
-            logger.info(f"DEBUG: Attempting to generate PDF at: {pdf_output_path}")
-
-            # Generate the PDF
-            try:
-                create_executive_summary_pdf(
-                    markdown_content=summary,
-                    company_name=company,
-                    output_path=pdf_output_path,
-                )
-                state["executive_summary_pdf_file"] = pdf_output_path
-                logger.info(
-                    f"Successfully generated executive summary PDF: {pdf_output_path}"
-                )
-            except Exception as pdf_e:
-                logger.error(
-                    f"Error generating executive summary PDF: {pdf_e}", exc_info=True
-                )
-                state["executive_summary_pdf_file"] = (
-                    None  # Ensure it's None on failure
-                )
-
-            logger.info(
-                f"DEBUG: PDF path in state after generation attempt: {state.get('executive_summary_pdf_file')}"
-            )
+            # Set PDF path to None since generation is disabled
+            state["executive_summary_pdf_file"] = None
+            logger.info("PDF generation is disabled - skipping PDF creation")
 
             if websocket_manager and job_id:
                 await websocket_manager.send_status_update(
