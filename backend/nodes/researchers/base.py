@@ -523,6 +523,118 @@ class BaseResearcher:
                     logger.error(f"Error processing search result: {e}")
                     continue
 
+        # --- QUERY EXPANSION RETRY LOGIC ---
+        # If average relevance is low, retry with broader terms
+        if merged_docs:
+            avg_score = sum(doc["score"] for doc in merged_docs.values()) / len(
+                merged_docs
+            )
+
+            # Retry threshold: 0.4 (same as curator threshold)
+            if avg_score < 0.4 and len(merged_docs) < 5:
+                logger.warning(
+                    f"⚠️ Low relevance score ({avg_score:.2f}) with few results ({len(merged_docs)} docs). "
+                    f"Attempting query expansion retry for {self.analyst_type}..."
+                )
+
+                # Define expansion synonyms for common terms
+                expansion_map = {
+                    "methane": "refrigerant management OR HFC reduction OR GreenChill partnership",
+                    "methane reduction": "refrigerant leak management OR Scope 1 emissions refrigeration",
+                    "Chief Sustainability Officer": "CSO OR VP Sustainability OR Head of ESG OR Sustainability Director",
+                    "sustainability contact": "environmental affairs OR climate lead OR ESG director",
+                }
+
+                # Try to expand queries
+                expanded_queries = []
+                for query in queries:
+                    expanded = False
+                    for narrow_term, broad_term in expansion_map.items():
+                        if narrow_term.lower() in query.lower():
+                            expanded_query = query.lower().replace(narrow_term.lower(), broad_term)
+                            expanded_queries.append(expanded_query)
+                            expanded = True
+                            logger.info(f"🔄 Expanding query: '{query}' -> '{expanded_query}'")
+                            break
+                    if not expanded and len(merged_docs) < 3:
+                        # If no specific expansion and very few results, try a simpler version
+                        # Remove specific years or detailed phrases
+                        simplified = query.split("OR")[0].split("AND")[0]  # Take first clause
+                        if simplified != query:
+                            expanded_queries.append(simplified.strip())
+                            logger.info(f"🔄 Simplifying query: '{query}' -> '{simplified.strip()}'")
+
+                if expanded_queries:
+                    logger.info(f"🔍 Retrying with {len(expanded_queries)} expanded queries...")
+
+                    # Execute retry searches
+                    retry_tasks = []
+                    for retry_query in expanded_queries[:2]:  # Limit to 2 retries to avoid cost explosion
+                        async def rate_limited_retry(q, params):
+                            await tavily_limiter.acquire()
+                            return await self.tavily_client.search(q, **params)
+
+                        retry_tasks.append((retry_query, rate_limited_retry(retry_query, search_params.copy())))
+
+                    try:
+                        tasks = [task for _, task in retry_tasks]
+                        retry_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                        retry_docs = 0
+                        for i, result in enumerate(retry_results):
+                            if isinstance(result, Exception):
+                                logger.error(f"Retry search failed: {result}")
+                                continue
+
+                            query = retry_tasks[i][0]
+                            for item in result.get("results", []):
+                                if not item.get("content") or not item.get("url"):
+                                    continue
+                                url = item["url"].strip()
+
+                                # Avoid duplicates
+                                if url in merged_docs:
+                                    continue
+
+                                # Use same validation as above
+                                try:
+                                    parsed_url = urlparse(url)
+                                    if not all([parsed_url.scheme in ("http", "https"), parsed_url.netloc]):
+                                        continue
+                                except Exception:
+                                    continue
+
+                                # Create document
+                                title = clean_title(item.get("title", url), url)
+                                content = str(item.get("content", "")).strip()
+                                score = float(item.get("score", 0.0))
+
+                                if len(content) < 50 or score <= 0.2:
+                                    continue
+
+                                merged_docs[url] = {
+                                    "title": title,
+                                    "content": content,
+                                    "query": query,
+                                    "url": url,
+                                    "source": "tavily_retry",
+                                    "score": score,
+                                    "analyst_type": self.analyst_type,
+                                    "timestamp": datetime.now().isoformat(),
+                                    "content_length": len(content),
+                                    "domain": urlparse(url).netloc,
+                                }
+                                retry_docs += 1
+
+                        if retry_docs > 0:
+                            logger.info(f"✅ Retry successful: Added {retry_docs} new documents via query expansion")
+                        else:
+                            logger.warning("⚠️ Retry completed but no new high-quality documents found")
+
+                    except Exception as e:
+                        logger.error(f"Error during retry search: {e}")
+        # --- END RETRY LOGIC ---
+
         # Send completion status
         if websocket_manager and job_id:
             await websocket_manager.send_status_update(

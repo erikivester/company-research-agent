@@ -135,7 +135,7 @@ class QueryGeneratorNode:
             * **Goal:** Evaluate alignment with ReFED's "Roadmap to 2030" action areas.
             * Adapt based on industry context from website:
               - Food manufacturers: Supply chain waste, upcycling, date labeling
-              - Retailers/Grocery: Food donation, waste diversion, consumer education
+              - Retailers/Grocery: Food donation, waste diversion, consumer education, refrigerant management
               - Restaurants/Foodservice: Portion optimization, donation programs
               - Tech companies: Platform solutions for food waste, data transparency
               - Agriculture: On-farm waste, regenerative practices, methane reduction
@@ -146,7 +146,10 @@ class QueryGeneratorNode:
               - "{company}" ESG performance summary food waste reduction OR donation
               - "{company}" Scope 3 emissions report purchased goods waste
               - "{company}" CDP score climate change {current_year - 1} OR sustainability awards
-            * SKIP industry-specific queries (methane, regen ag) unless clearly relevant from website context
+            * **Methane/Refrigerant queries (for retailers/grocery/restaurants):**
+              - Use broader terms to increase recall: "refrigerant management" OR "HFC reduction" OR "GreenChill partnership"
+              - Include Scope 1 emissions from refrigeration for supermarkets
+              - Only use specific "methane" term if company explicitly mentions it on website
 
         3.  **news_signal**: (4 queries - OPTIMIZED)
             * **Goal:** Detect "Trigger Events" (opportunities) and "Red Flags" (risks).

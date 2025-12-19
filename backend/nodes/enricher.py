@@ -150,6 +150,16 @@ class Enricher:
             "dairypcc.net",            # Dairy processor council (timeouts)
             "www.dairypcc.net",
             # --- END TIMEOUT OPTIMIZATIONS ---
+            # --- CONTENT FARMS (low-quality SEO sites) ---
+            "swotanalysisexample.com",
+            "www.swotanalysisexample.com",
+            "matrixbcg.com",
+            "www.matrixbcg.com",
+            "coursehero.com",
+            "www.coursehero.com",
+            "scribd.com",
+            "www.scribd.com",
+            # --- END CONTENT FARMS ---
         }
         # --- END BLOCKLIST ---
 
@@ -476,12 +486,21 @@ class Enricher:
                     domain = urlparse(url).netloc
                     is_pdf = url.lower().endswith('.pdf')
                     is_priority = self.is_priority_pdf(url) if is_pdf else False
+                    analyst_type = doc.get("analyst_type", "")
 
-                    if domain in self.BLOCKLIST_DOMAINS:
+                    # Special case: Allow LinkedIn for contact_finder
+                    is_linkedin = domain in {"linkedin.com", "www.linkedin.com"}
+                    skip_linkedin_block = is_linkedin and analyst_type == "contact_finder"
+
+                    if domain in self.BLOCKLIST_DOMAINS and not skip_linkedin_block:
                         # Fallback to snippet and skip API call
                         doc["raw_content"] = doc.get("content", "")
                         doc["enrichment_note"] = "Skipped (blocklist domain)"
                         docs_blocklisted += 1
+                    elif skip_linkedin_block:
+                        # LinkedIn is allowed for contact searches - attempt extraction
+                        docs_needing_content[url] = doc
+                        logger.info(f"Allowing LinkedIn extraction for contact_finder: {url}")
                     elif is_pdf and not is_priority:
                         # Low-priority PDFs: skip extraction, use snippet
                         doc["raw_content"] = doc.get("content", "")

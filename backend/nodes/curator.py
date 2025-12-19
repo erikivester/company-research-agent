@@ -99,6 +99,24 @@ class Curator:
                             elif company_in_title or company_mentions >= 2:
                                 authority_boost += 0.15  # Moderate company focus
 
+                        # Strategic vs Operational News Filtering
+                        strategic_keywords = [
+                            "partnership", "acquisition", "pilot", "innovation", "launched",
+                            "coalition", "initiative", "grant", "award", "recognition",
+                            "sustainability", "climate", "esg", "controversy", "lawsuit"
+                        ]
+                        operational_keywords = [
+                            "opening", "hours", "location", "hiring", "store opening",
+                            "now open", "grand opening", "ribbon cutting"
+                        ]
+
+                        # Boost strategic signals
+                        if any(kw in title for kw in strategic_keywords):
+                            authority_boost += 0.10
+                        # Penalize purely operational news
+                        elif any(kw in title for kw in operational_keywords):
+                            authority_boost -= 0.10
+
                     # Boost 5: Contact Source Reliability (Prioritize LinkedIn/company sources)
                     if doc_type == "contact":
                         doc_url = doc.get("url", "").lower()

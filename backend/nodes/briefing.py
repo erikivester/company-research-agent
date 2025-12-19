@@ -124,8 +124,13 @@ Your goal is to extract key business and financial facts from the provided docum
 3.  **Include direct quotes:** When relevant, include direct quotes from the source material to support your points.
 4.  **Cite your sources:** At the end of each bullet point, include a citation in the format `(Source: [URL])`.
 5.  **Omit empty sections:** If you cannot find any relevant information for a header in the documents, leave that section out entirely.
-6.  **Fallback:** If no relevant information can be found for *any* section, output only this message: "A detailed company brief could not be generated from the provided documents."
-7.  **Be concise:** Do not add any explanations or commentary outside of the structured brief.
+6.  **Financial data validation:** When reporting financial information:
+    *   **For large companies (estimated >$500M revenue):** Prioritize annual revenue estimates, SEC filings (10-K), annual reports, and credible industry sources (Forbes, industry publications).
+    *   **Ignore irrelevant entities:** Skip small foundations, employee benefit plans, or subsidiary financials unless they're the only data available or clearly represent the parent company.
+    *   **Flag inconsistencies:** If financial data seems inconsistent with company scale (e.g., a $1,000 foundation for a multi-billion dollar company), note this explicitly or omit the data.
+    *   **Example:** "Hy-Vee Foundation reported $1,000 in assets" should be omitted for a $13B retailer unless no other financial data exists.
+7.  **Fallback:** If no relevant information can be found for *any* section, output only this message: "A detailed company brief could not be generated from the provided documents."
+8.  **Be concise:** Do not add any explanations or commentary outside of the structured brief.
 """,
             "news_signal": f"""Create a "News & Signals" briefing for {company}.
 
