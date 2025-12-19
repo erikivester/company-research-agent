@@ -29,23 +29,23 @@ class BaseResearcher:
         "news_signal": {
             "search_depth": "advanced",
             "include_raw_content": False,
-            "max_results": 10,
+            "max_results": 5,  # Reduced from 10 - still captures key signals
             "topic": "news",
         },
         "flw_analyzer": {
             "search_depth": "advanced",
             "include_raw_content": False,
-            "max_results": 4,
+            "max_results": 3,  # Reduced from 4 - prioritize quality over quantity
         },
         "company_brief": {
             "search_depth": "basic",
             "include_raw_content": True,
-            "max_results": 4,
+            "max_results": 3,  # Reduced from 4 - focus on top results
         },
         "contact_finder": {
             "search_depth": "basic",
             "include_raw_content": False,
-            "max_results": 3,
+            "max_results": 2,  # Reduced from 3 - contacts are high-precision queries
         },
         "engagement_finder": {
             "search_depth": "basic",

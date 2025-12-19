@@ -26,7 +26,7 @@ class Enricher:
 
         # --- IMPROVED: Batch processing configuration ---
         self.batch_size = 5  # Process URLs in smaller batches
-        self.batch_delay = 3.0  # Delay between batches (seconds)
+        self.batch_delay = 0.5  # REDUCED from 3s - minimal delay to prevent rate limiting
         self.semaphore_limit = 5  # Reduced concurrent requests per batch
         # --- END IMPROVED ---
 
