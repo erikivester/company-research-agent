@@ -32,24 +32,41 @@ class Enricher:
 
         # --- OPTIMIZED: Reduced timeout budgets for faster failure ---
         self.timeout_budgets = {
-            "company": 20,  # Reduced from 25s - fail faster
-            "news": 15,     # Reduced from 20s - news sites are fast or blocked
-            "contact": 12,  # Reduced from 15s - contact pages are simple
-            "flw": 25,      # Reduced from 30s - still priority but fail faster
-            "engagement": 15,  # Reduced from 20s
+            "company": 15,  # Reduced from 20s - fail faster, rely on snippet
+            "news": 10,     # Reduced from 15s - news sites are fast or fail
+            "contact": 10,  # Reduced from 12s - contact pages are simple
+            "flw": 20,      # Reduced from 25s - priority but fail faster
+            "engagement": 12,  # Reduced from 15s
         }
-        self.default_timeout = 15  # Reduced from 20s
+        self.default_timeout = 12  # Reduced from 15s - aggressive fail-fast
+        self.pdf_timeout = 40  # Higher timeout for priority PDFs (extraction is slower)
         # --- END OPTIMIZED ---
 
         # --- OPTIMIZED: Reduced retries for faster failure ---
-        self.max_retries = 3  # Reduced from 4 - fail faster, rely on fallback
-        self.base_retry_delay = 2  # Base delay for exponential backoff
-        self.max_retry_delay = 30  # Reduced from 60s - don't wait too long
+        self.max_retries = 2  # Reduced from 3 - fail faster, rely on snippet fallback
+        self.base_retry_delay = 1  # Reduced from 2s - shorter waits between retries
+        self.max_retry_delay = 15  # Reduced from 30s - fail fast and move on
         # --- END OPTIMIZED ---
 
         # --- MEMORY OPTIMIZATION: Content size limit ---
         self.max_content_length = 50000  # 50KB limit per document to prevent memory bloat
         # --- END MEMORY OPTIMIZATION ---
+
+        # --- Define PDF keywords that indicate high-value documents worth extracting ---
+        self.PRIORITY_PDF_KEYWORDS = {
+            "sustainability",
+            "esg",
+            "impact",
+            "responsibility",
+            "environmental",
+            "social",
+            "governance",
+            "annual-report",
+            "corporate-responsibility",
+            "climate",
+            "cdp",
+        }
+        # --- END PRIORITY PDF KEYWORDS ---
 
         # --- Define domains that are known to fail extraction ---
         self.BLOCKLIST_DOMAINS = {
@@ -83,7 +100,35 @@ class Enricher:
             # Government sites that block scrapers
             "dol.gov",
             "www.dol.gov",
+            # SEC filings (often fail with "Unknown error")
+            "sec.gov",
+            "www.sec.gov",
             # --- TIMEOUT OPTIMIZATIONS: Slow/problematic sites from Dec 17 logs ---
+            # News sites with anti-scraping (from Dec 18 logs)
+            "modernretail.co",
+            "www.modernretail.co",
+            "foodservicedirector.com",
+            "www.foodservicedirector.com",
+            "njbiz.com",
+            "www.njbiz.com",
+            "grocerybusiness-digitalmagazine.com",
+            "www.grocerybusiness-digitalmagazine.com",
+            "designrush.com",
+            "news.designrush.com",
+            "monitorriau.com",
+            "www.monitorriau.com",
+            "malaymail.com",
+            "www.malaymail.com",
+            # Financial/analysis sites that timeout
+            "trendspider.com",
+            "www.trendspider.com",
+            "annualreports.com",
+            "www.annualreports.com",
+            "towardspackaging.com",
+            "www.towardspackaging.com",
+            # Forbes articles (consistently return "Unknown error")
+            "forbes.com",
+            "www.forbes.com",
             "ibisworld.com",           # Slow data aggregator
             "www.ibisworld.com",
             "zippia.com",              # Slow revenue databases
@@ -108,6 +153,14 @@ class Enricher:
         }
         # --- END BLOCKLIST ---
 
+    def is_priority_pdf(self, url: str) -> bool:
+        """Check if a PDF URL contains keywords indicating high-value content (ESG, impact reports, etc.)"""
+        if not url.lower().endswith('.pdf'):
+            return False
+
+        url_lower = url.lower()
+        return any(keyword in url_lower for keyword in self.PRIORITY_PDF_KEYWORDS)
+
     async def fetch_single_content(
         self,
         url: str,
@@ -126,8 +179,13 @@ class Enricher:
         if retry_delay is None:
             retry_delay = self.base_retry_delay
 
-        # Get timeout for this category
-        timeout = self.timeout_budgets.get(category, self.default_timeout)
+        # Get timeout for this category (with special handling for priority PDFs)
+        is_priority_pdf = self.is_priority_pdf(url)
+        if is_priority_pdf:
+            timeout = self.pdf_timeout  # Use extended timeout for priority PDFs
+            logger.info(f"Using extended timeout ({timeout}s) for priority PDF: {url}")
+        else:
+            timeout = self.timeout_budgets.get(category, self.default_timeout)
 
         for attempt in range(retries):
             try:
@@ -417,20 +475,25 @@ class Enricher:
                 try:
                     domain = urlparse(url).netloc
                     is_pdf = url.lower().endswith('.pdf')
+                    is_priority = self.is_priority_pdf(url) if is_pdf else False
 
                     if domain in self.BLOCKLIST_DOMAINS:
                         # Fallback to snippet and skip API call
                         doc["raw_content"] = doc.get("content", "")
                         doc["enrichment_note"] = "Skipped (blocklist domain)"
                         docs_blocklisted += 1
-                    elif is_pdf:
-                        # PDFs consistently timeout - skip extraction, use snippet
+                    elif is_pdf and not is_priority:
+                        # Low-priority PDFs: skip extraction, use snippet
                         doc["raw_content"] = doc.get("content", "")
-                        doc["enrichment_note"] = "PDF - using search snippet"
+                        doc["enrichment_note"] = "PDF - using search snippet (not priority)"
                         docs_blocklisted += 1
-                        logger.info(f"Skipping PDF extraction (using snippet): {url}")
+                        logger.info(f"Skipping low-priority PDF extraction (using snippet): {url}")
+                    elif is_pdf and is_priority:
+                        # High-priority PDFs (ESG, sustainability reports): attempt extraction
+                        docs_needing_content[url] = doc
+                        logger.info(f"Attempting extraction for priority PDF: {url}")
                     else:
-                        # Add to fetch queue
+                        # Add to fetch queue (non-PDF URLs)
                         docs_needing_content[url] = doc
                 except Exception as e:
                     logger.warning(f"Error parsing URL {url} for blocklist check: {e}")
