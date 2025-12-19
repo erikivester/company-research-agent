@@ -78,6 +78,10 @@ class QueryGeneratorNode:
         CRITICAL INSTRUCTION - CONTEXT-AWARE QUERY GENERATION:
         You will receive company website content and metadata. ANALYZE this context to generate
         TARGETED, RELEVANT queries that:
+        - **PRIORITIZE PRIMARY SOURCES**: Use site: operators to target official sources (sec.gov, cdp.net,
+          company domains, coalition websites, official databases)
+        - **TARGET AUTHORITATIVE DATA**: Prefer official reports, regulatory filings, verified databases
+          over news articles and aggregators
         - Adapt to the company's actual business model (B2B vs B2C, manufacturing vs services, etc.)
         - Build on what's already known from the website (don't ask what we can already see)
         - Prioritize searches likely to yield results based on company type and industry
@@ -118,38 +122,41 @@ class QueryGeneratorNode:
         Based on the above context, generate targeted search queries. Use these as EXAMPLES to guide you,
         but ADAPT them based on what you learned from the website context:
 
-        1.  **company_brief**: (3 queries - FOCUSED)
-            * **Goal:** Assess financial health and philanthropic capacity.
-            * Adapt based on company type:
-              - Public companies: Focus on SEC filings, earnings reports, investor relations
-              - Private companies: Search for funding rounds, private equity backing, estimated revenue
-              - Nonprofits/Foundations: Search for Form 990, grant amounts, endowment size
-              - Subsidiaries: Research parent company financials
-            * EXAMPLE templates (customize based on context):
-              - "{company}" annual revenue net income {current_year - 1}-{current_year}
-              - "{company}" corporate foundation assets OR Form 990
-              - "{company}" business model OR revenue streams OR funding
-            * NOTE: Remove investor presentation query - often unavailable for private companies
+        1.  **company_brief**: (3 queries - FOCUSED ON PRIMARY SOURCES)
+            * **Goal:** Assess financial health and philanthropic capacity from authoritative sources.
+            * PRIORITIZE PRIMARY SOURCES - Adapt based on company type:
+              - Public companies: SEC filings (10-K, 10-Q), investor relations, annual reports
+              - Private companies: Funding announcements, revenue estimates from reliable sources
+              - Nonprofits/Foundations: IRS Form 990, official grant databases
+              - Subsidiaries: Parent company official documents
+            * EXAMPLE templates (customize based on context - PREFER PRIMARY SOURCES):
+              - site:sec.gov "{company}" 10-K {current_year - 1} OR site:investor.{company_domain} annual report
+              - "{company}" corporate foundation Form 990 {current_year - 1} OR site:instrumentl.com OR site:foundationsearch.com
+              - "{company}" annual revenue net income {current_year - 1}-{current_year} investor relations
+            * NOTE: Use site: operators to target authoritative domains (sec.gov, company IR sites, etc.)
 
-        2.  **flw_analyzer**: (4 queries - PRIORITY CATEGORY, OPTIMIZED)
-            * **Goal:** Evaluate alignment with ReFED's "Roadmap to 2030" action areas.
+        2.  **flw_analyzer**: (4 queries - PRIORITY CATEGORY, PRIMARY SOURCES PREFERRED)
+            * **Goal:** Evaluate alignment with ReFED's "Roadmap to 2030" from official sustainability reports.
+            * PRIORITIZE PRIMARY SOURCES:
+              - Company sustainability/ESG reports (use site: operator + filetype:pdf)
+              - CDP disclosures (site:cdp.net)
+              - GRI/SASB reports
+              - Official ESG data providers
             * Adapt based on industry context from website:
               - Food manufacturers: Supply chain waste, upcycling, date labeling
-              - Retailers/Grocery: Food donation, waste diversion, consumer education, refrigerant management
+              - Retailers/Grocery: Food donation, waste diversion, refrigerant management
               - Restaurants/Foodservice: Portion optimization, donation programs
               - Tech companies: Platform solutions for food waste, data transparency
               - Agriculture: On-farm waste, regenerative practices, methane reduction
-              - Non-food sector: Look for indirect food waste impact (packaging, logistics, etc.)
-            * CRITICAL: Prioritize HTML summaries over PDF reports (PDFs often timeout/fail)
-            * EXAMPLE templates (customize based on context):
-              - "{company}" sustainability highlights {current_year - 1} food waste metrics
-              - "{company}" ESG performance summary food waste reduction OR donation
-              - "{company}" Scope 3 emissions report purchased goods waste
-              - "{company}" CDP score climate change {current_year - 1} OR sustainability awards
+              - Non-food sector: Indirect food waste impact (packaging, logistics, etc.)
+            * EXAMPLE templates (customize based on context - TARGET OFFICIAL REPORTS):
+              - site:{company_domain} sustainability report {current_year - 1} filetype:pdf OR ESG report
+              - site:cdp.net "{company}" climate change {current_year - 1} OR "{company}" Scope 1 2 3 emissions
+              - "{company}" food waste reduction metrics {current_year - 1} OR donation programs official
+              - "{company}" regenerative agriculture OR circular economy progress {current_year - 1}
             * **Methane/Refrigerant queries (for retailers/grocery/restaurants):**
-              - Use broader terms to increase recall: "refrigerant management" OR "HFC reduction" OR "GreenChill partnership"
+              - Use broader terms: "refrigerant management" OR "HFC reduction" OR "GreenChill partnership"
               - Include Scope 1 emissions from refrigeration for supermarkets
-              - Only use specific "methane" term if company explicitly mentions it on website
 
         3.  **news_signal**: (4 queries - OPTIMIZED)
             * **Goal:** Detect "Trigger Events" (opportunities) and "Red Flags" (risks).
@@ -161,14 +168,18 @@ class QueryGeneratorNode:
               - "{company}" award recognition sustainability ESG {current_year - 1}
             * NOTE: Combine controversy + layoffs into single query to reduce volume
 
-        4.  **engagement_finder**: (3 queries - FOCUSED)
-            * **Goal:** Check for participation in ReFED coalitions, peer initiatives, and competitor activity.
+        4.  **engagement_finder**: (3 queries - FOCUSED ON VERIFIED PARTNERSHIPS)
+            * **Goal:** Check for participation in ReFED coalitions, peer initiatives from authoritative sources.
+            * PRIORITIZE PRIMARY SOURCES:
+              - Coalition member pages (site:usfoodlosswastepact.org, site:pacificcoastfoodwaste.org)
+              - Official partnership announcements on company sites
+              - Foundation grant databases
             * Adapt based on company location and sector
-            * EXAMPLE templates (customize based on context):
-              - "{company}" member "Pacific Coast Food Waste Commitment" OR "U.S. Food Waste Pact"
-              - "{company}" partnership "World Wildlife Fund" OR "WRAP" OR "Feeding America"
-              - "{company}" grants awarded food systems climate equity {current_year - 1}
-            * NOTE: Drop public policy query (low hit rate), combine coalition memberships
+            * EXAMPLE templates (customize based on context - USE OFFICIAL SOURCES):
+              - site:usfoodlosswastepact.org "{company}" OR site:pacificcoastfoodwaste.org "{company}" OR "{company}" member food waste coalition
+              - "{company}" partnership announcement WWF OR "World Wildlife Fund" OR WRAP OR "Feeding America" site:{company_domain}
+              - "{company}" grants awarded {current_year - 1} food systems OR climate OR site:foundationcenter.org
+            * NOTE: Use site: operators to find verified memberships on coalition websites
 
         5.  **contact_finder**: (2 queries - MINIMAL)
             * **Goal:** Find decision-makers with budget authority for sustainability/philanthropy.

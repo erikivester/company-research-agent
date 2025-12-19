@@ -24,33 +24,33 @@ class BaseResearcher:
         "base_researcher": {
             "search_depth": "basic",
             "include_raw_content": False,
-            "max_results": 3,
+            "max_results": 5,
         },
         "news_signal": {
             "search_depth": "advanced",
             "include_raw_content": False,
-            "max_results": 5,  # Reduced from 10 - still captures key signals
+            "max_results": 7,  # Increased for broader news coverage
             "topic": "news",
         },
         "flw_analyzer": {
             "search_depth": "advanced",
             "include_raw_content": False,
-            "max_results": 3,  # Reduced from 4 - prioritize quality over quantity
+            "max_results": 6,  # Increased for deeper sustainability data
         },
         "company_brief": {
-            "search_depth": "basic",
+            "search_depth": "advanced",  # Changed to advanced for better financial depth
             "include_raw_content": True,
-            "max_results": 3,  # Reduced from 4 - focus on top results
+            "max_results": 6,  # Increased to capture primary sources
         },
         "contact_finder": {
             "search_depth": "basic",
             "include_raw_content": False,
-            "max_results": 2,  # Reduced from 3 - contacts are high-precision queries
+            "max_results": 3,  # Increased slightly for better contact coverage
         },
         "engagement_finder": {
-            "search_depth": "basic",
+            "search_depth": "advanced",  # Changed to advanced for deeper partnership data
             "include_raw_content": False,
-            "max_results": 3,
+            "max_results": 5,  # Increased for more comprehensive engagement data
         },
     }
 
